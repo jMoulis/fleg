@@ -76,6 +76,21 @@ describe("store authorization isolation", () => {
     ).toThrow(StoreAccessDeniedError);
   });
 
+  it("does not infer experiment execution rights from read access", () => {
+    expect(() =>
+      authorizeStoreAccess({
+        userId: "manager-a",
+        store: storeA,
+        organizationRole: "member",
+        membership: {
+          ...managerA,
+          permissions: ["stores.read", "experiments.read"],
+        },
+        requiredPermissions: ["experiments.start"],
+      }),
+    ).toThrow(StoreAccessDeniedError);
+  });
+
   it("grants organization admins the explicit organization store", () => {
     expect(
       authorizeStoreAccess({

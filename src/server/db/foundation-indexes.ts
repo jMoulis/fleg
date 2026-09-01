@@ -101,5 +101,60 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
         name: "allocation_plans_scope_idempotency_unique",
       },
     ),
+    db.collection("commercialEvents").createIndex(
+      {
+        organizationId: 1,
+        storeId: 1,
+        fixtureId: 1,
+        startsOn: 1,
+        endsOn: 1,
+        status: 1,
+      },
+      { name: "commercial_events_scope_schedule" },
+    ),
+    db.collection("commercialEvents").createIndex(
+      { organizationId: 1, storeId: 1, startsOn: 1 },
+      { name: "commercial_events_scope_start" },
+    ),
+    db.collection("commercialEventCommands").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      { unique: true, name: "commercial_event_commands_scope_key_unique" },
+    ),
+    db.collection("experiments").createIndex(
+      { organizationId: 1, storeId: 1, status: 1, plannedStartAt: -1 },
+      { name: "experiments_scope_status_start" },
+    ),
+    db.collection("experiments").createIndex(
+      { organizationId: 1, storeId: 1, productIds: 1, plannedStartAt: -1 },
+      { name: "experiments_scope_products_start" },
+    ),
+    db.collection("experiments").createIndex(
+      { organizationId: 1, storeId: 1, type: 1, plannedStartAt: -1 },
+      { name: "experiments_scope_type_start" },
+    ),
+    db.collection("experiments").createIndex(
+      { linkedCommercialEventId: 1 },
+      { sparse: true, name: "experiments_commercial_event" },
+    ),
+    db.collection("experimentCommands").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      { unique: true, name: "experiment_commands_scope_key_unique" },
+    ),
+    db.collection("experimentAnalyses").createIndex(
+      { experimentId: 1, analysisVersion: 1 },
+      { unique: true, name: "experiment_analyses_version_unique" },
+    ),
+    db.collection("experimentAnalyses").createIndex(
+      { organizationId: 1, storeId: 1, analyzedAt: -1 },
+      { name: "experiment_analyses_scope_analyzed" },
+    ),
+    db.collection("experimentConclusions").createIndex(
+      { experimentId: 1, active: 1 },
+      {
+        unique: true,
+        partialFilterExpression: { active: true },
+        name: "experiment_conclusions_one_active",
+      },
+    ),
   ]);
 }

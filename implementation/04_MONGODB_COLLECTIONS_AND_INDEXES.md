@@ -5,7 +5,7 @@
 - `fl_cockpit_app`
 
 ## Core collections
-`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `periodTargets`, `importJobs`, `recommendationRuns`, `recommendations`, `decisionLogs`, `layoutVersions`, `allocationPlans`, `markdownFacts`, `commercialEvents`, `auditLogs`.
+`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `periodTargets`, `importJobs`, `recommendationRuns`, `recommendations`, `decisionLogs`, `layoutVersions`, `allocationPlans`, `markdownFacts`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `auditLogs`.
 
 ## Required fields
 All store-scoped business records carry `organizationId`, `storeId`; department records also carry `departmentId` where applicable. Derived records include `calculationVersion`, `inputRevision`, `generatedAt`.
@@ -22,6 +22,12 @@ recommendations:   { storeId: 1, periodKey: 1, productId: 1 }
 decisionLogs:      { storeId: 1, createdAt: -1 }
 layoutVersions:    { storeId: 1, departmentId: 1, version: -1 }
 allocationPlans:   { storeId: 1, layoutVersionId: 1, version: -1 }
+commercialEvents:  { organizationId: 1, storeId: 1, fixtureId: 1, startsOn: 1, endsOn: 1, status: 1 }
+commercialEventCommands: { organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
+experiments:        { organizationId: 1, storeId: 1, status: 1, plannedStartAt: -1 }
+experiments:        { organizationId: 1, storeId: 1, productIds: 1, plannedStartAt: -1 }
+experimentCommands:{ organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
+experimentAnalyses:{ experimentId: 1, analysisVersion: 1 } unique
 auditLogs:         { organizationId: 1, storeId: 1, createdAt: -1 }
 ```
 

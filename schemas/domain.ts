@@ -101,6 +101,17 @@ export interface AllocationPlan {
   }>;
   createdBy:string; createdAt:Date;
 }
+export interface CommercialEvent {
+  _id:ObjectId; organizationId:string; storeId:ObjectId; departmentId:ObjectId;
+  layoutVersionId:ObjectId; fixtureId:string; fixtureName:string;
+  title:string; theme:string; startsOn:string; endsOn:string; productIds:ObjectId[];
+  targetRevenueCents:number|null; targetMarginCents:number|null;
+  actualRevenueCents:number|null; actualMarginCents:number|null; notes:string|null;
+  status:"draft"|"published"|"completed"|"cancelled";
+  createdBy:string; publishedBy:string|null; completedBy:string|null;
+  createdAt:Date; updatedAt:Date; publishedAt:Date|null;
+  completedAt:Date|null; cancelledAt:Date|null;
+}
 export interface AuthorizedStoreContext {
   userId:string; organizationId:string; storeId:string;
   role:StoreRole; permissions:StorePermission[];
@@ -109,13 +120,18 @@ export interface AuthorizedStoreContext {
 export interface Experiment {
   _id:ObjectId; organizationId:string; storeId:ObjectId; departmentId:ObjectId;
   title:string; hypothesis:string; type:ExperimentType; status:ExperimentStatus; ownerUserId:string;
-  productIds:ObjectId[]; family?:string; treatmentPlan:Record<string,unknown>; treatmentActual?:Record<string,unknown>;
-  plannedStartAt:Date; plannedEndAt:Date; actualStartAt?:Date; actualEndAt?:Date;
+  productIds:ObjectId[]; family:string|null;
+  treatmentPlan:{summary:string; fixtureId:string|null; expectedChange:string; instructions:string[]};
+  treatmentActual:{summary:string; fixtureId:string|null; implementationNotes:string|null; deviations:string[]}|null;
+  plannedStartAt:Date; plannedEndAt:Date; actualStartAt:Date|null; actualEndAt:Date|null;
   primaryMetric:ExperimentMetric; secondaryMetrics:ExperimentMetric[]; guardrailMetrics:ExperimentMetric[];
-  baselineConfig:{method:BaselineMethod; comparablePeriods?:number; controlStoreIds?:ObjectId[]};
-  expectedRelativeEffect?:number; explicitCostsCents?:number; confounders:string[];
-  linkedCommercialEventId?:ObjectId; linkedRecommendationId?:ObjectId;
-  createdAt:Date; updatedAt:Date;
+  baselineConfig:{method:BaselineMethod; comparablePeriods:number; trendNormalization:boolean; controlStoreIds:ObjectId[]};
+  expectedRelativeEffect:number|null; explicitCostsCents:number|null; confounders:string[];
+  linkedCommercialEventId:ObjectId|null; linkedRecommendationId:ObjectId|null; linkedDecisionIds:ObjectId[];
+  definitionFrozenAt:Date|null; definitionFrozenBy:string|null; completionNotes:string|null;
+  createdBy:string; createdAt:Date; updatedAt:Date; plannedAt:Date|null; startedAt:Date|null;
+  awaitingDataAt:Date|null; analyzedAt:Date|null; concludedAt:Date|null;
+  archivedAt:Date|null; cancelledAt:Date|null;
 }
 export interface ExperimentMetricEvaluation {
   metric:ExperimentMetric; actual:number; expectedWithoutTest:number|null;

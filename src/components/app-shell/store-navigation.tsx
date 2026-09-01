@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Boxes,
+  CalendarRange,
   CircleGauge,
   ClipboardCheck,
   FileSpreadsheet,
@@ -24,6 +25,7 @@ const navigation = [
   { label: "Actions", segment: "actions", icon: ClipboardCheck },
   { label: "Produits", segment: "products", icon: Boxes },
   { label: "Espace", segment: "space", icon: Ruler },
+  { label: "TG", segment: "tg", icon: CalendarRange },
   { label: "Imports", segment: "imports", icon: FileSpreadsheet },
   { label: "Décisions", segment: "decisions", icon: History, desktopOnly: true },
 ] as const;
@@ -40,7 +42,7 @@ export function StoreNavigation({
     return (
       <nav
         aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background px-2 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
       >
         {navigation
           .filter((item) => !("desktopOnly" in item && item.desktopOnly))

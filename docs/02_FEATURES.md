@@ -36,6 +36,14 @@ Recommend facing width subject to fixture capacity, must-stock, minimum facing, 
 ## F12 TG planner
 Weekly calendar, TG1/TG2/TG3, theme, products, target CA/margin, dates, notes, actual results.
 
+Acceptance criteria for TG-01:
+- the available TGs come from the latest authorized store layout;
+- a manager can save a draft or explicitly publish an operation with at least one product and one CA/margin target;
+- two non-cancelled operations cannot overlap on the same TG, while different TGs can share dates;
+- a published operation is immutable except for its notes and realized CA/margin when it is completed;
+- cancellation, publication and completion are audited and idempotent;
+- all reads and writes are scoped from the server-authenticated store context, never from the client route alone.
+
 ## F13 Markdown
 Record loss by product/date/reason. Compute post-markdown margin. Pareto loss drivers.
 
@@ -51,3 +59,12 @@ Attach photos to store/layout/fixture/event. MVP manual reference. Later compute
 
 ## F17 Tests & Experiments
 Define merchandising/commercial tests before execution, link them to product/TG/space decisions, freeze hypothesis/treatment/baseline/KPIs, evaluate actual vs expected performance, calculate uplift and incremental economics, expose evidence quality/confounders, then record manager verdict and rollout/retest decision. See `17_EXPERIMENT_ENGINE.md`.
+
+Acceptance criteria for EXP-01:
+- experiment definitions and every command are validated at the API boundary;
+- read, write, execution, conclusion and cross-store comparison permissions remain distinct;
+- all experiment queries derive their organization and store scope from the authenticated server context;
+- control stores require explicit read access and must belong to the same organization;
+- planning, start, finish and cancellation use optimistic concurrency, are idempotent and audited;
+- starting freezes the definition and captures the actual treatment snapshot;
+- finishing records the actual period and moves the experiment to `awaiting_data` without fabricating an analysis.

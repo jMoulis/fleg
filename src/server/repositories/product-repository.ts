@@ -36,7 +36,7 @@ export class ProductRepository {
         { projection: { label: 1 } },
       )
       .sort({ label: 1 })
-      .limit(500)
+      .limit(1_000)
       .toArray();
 
     return products.map((product) =>

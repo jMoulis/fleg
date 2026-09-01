@@ -1,7 +1,7 @@
 # 05 — MongoDB data model
 
 ## Collections
-`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `markdownFacts`, `periodTargets`, `importJobs`, `layoutVersions`, `allocationPlans`, `commercialEvents`, `recommendationRuns`, `recommendations`, `decisionLogs`, `attachments`, `auditLogs`, `benchmarkGroups`.
+`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `markdownFacts`, `periodTargets`, `importJobs`, `layoutVersions`, `allocationPlans`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `recommendationRuns`, `recommendations`, `decisionLogs`, `attachments`, `auditLogs`, `benchmarkGroups`.
 
 ## Mandatory tenant fields
 All business documents include `organizationId`, `storeId` where store-scoped, and usually `departmentId`.
@@ -15,6 +15,12 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 - markdownFacts `{storeId:1,date:1,productId:1}`
 - layoutVersions `{storeId:1,departmentId:1,version:-1}`
 - allocationPlans `{storeId:1,layoutVersionId:1,version:-1}`
+- commercialEvents `{organizationId:1,storeId:1,fixtureId:1,startsOn:1,endsOn:1,status:1}`
+- commercialEventCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
+- experiments `{organizationId:1,storeId:1,status:1,plannedStartAt:-1}`
+- experiments `{organizationId:1,storeId:1,productIds:1,plannedStartAt:-1}`
+- experimentAnalyses `{experimentId:1,analysisVersion:1}` unique
+- experimentConclusions `{experimentId:1,active:1}` unique when active
 - recommendations `{storeId:1,periodKey:1,productId:1}`
 - auditLogs `{organizationId:1,storeId:1,createdAt:-1}`
 

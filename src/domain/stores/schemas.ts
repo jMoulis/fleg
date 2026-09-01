@@ -13,6 +13,11 @@ export const storePermissionValues = [
   "markdown.write",
   "recommendations.approve",
   "tg.publish",
+  "experiments.read",
+  "experiments.write",
+  "experiments.start",
+  "experiments.conclude",
+  "experiments.compare_stores",
   "settings.write",
   "ai.use",
 ] as const;
