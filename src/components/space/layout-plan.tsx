@@ -1,4 +1,4 @@
-import type { LayoutVersion } from "@/domain/space/schemas";
+import type { LayoutVersion, StoreFixture } from "@/domain/space/schemas";
 
 export function LayoutPlan({ layout }: { layout: LayoutVersion }) {
   return (
@@ -33,15 +33,16 @@ export function LayoutPlan({ layout }: { layout: LayoutVersion }) {
           ENTRÉE MAGASIN
         </text>
         {layout.fixtures.map((fixture) => {
-          const isEndcap = fixture.type === "endcap";
+          const fixtureColor = {
+            island: "fill-emerald-50 stroke-emerald-700 dark:fill-emerald-950",
+            endcap: "fill-amber-100 stroke-amber-600 dark:fill-amber-950",
+            wall: "fill-sky-100 stroke-sky-700 dark:fill-sky-950",
+            bin: "fill-violet-100 stroke-violet-700 dark:fill-violet-950",
+          }[fixture.type];
           return (
             <g key={fixture.id}>
               <rect
-                className={
-                  isEndcap
-                    ? "fill-amber-100 stroke-amber-600 dark:fill-amber-950"
-                    : "fill-emerald-50 stroke-emerald-700 dark:fill-emerald-950"
-                }
+                className={fixtureColor}
                 height={fixture.depthM}
                 rx="0.08"
                 strokeWidth="0.05"
@@ -50,6 +51,7 @@ export function LayoutPlan({ layout }: { layout: LayoutVersion }) {
                 x={fixture.position.xM}
                 y={fixture.position.yM}
               />
+              <IslandModuleGuides fixture={fixture} />
               <text
                 className="fill-foreground text-[0.22px] font-semibold"
                 textAnchor="middle"
@@ -63,5 +65,42 @@ export function LayoutPlan({ layout }: { layout: LayoutVersion }) {
         })}
       </svg>
     </div>
+  );
+}
+
+export function IslandModuleGuides({ fixture }: { fixture: StoreFixture }) {
+  if (fixture.type !== "island") {
+    return null;
+  }
+
+  const moduleCount = fixture.faces[0]?.modules.length ?? 0;
+
+  return (
+    <g aria-hidden="true" className="pointer-events-none stroke-emerald-700/45">
+      <line
+        vectorEffect="non-scaling-stroke"
+        strokeWidth="0.025"
+        x1={fixture.position.xM + fixture.widthM / 2}
+        x2={fixture.position.xM + fixture.widthM / 2}
+        y1={fixture.position.yM}
+        y2={fixture.position.yM + fixture.depthM}
+      />
+      {Array.from({ length: Math.max(0, moduleCount - 1) }, (_, index) => {
+        const y =
+          fixture.position.yM +
+          (fixture.depthM * (index + 1)) / moduleCount;
+        return (
+          <line
+            key={`${fixture.id}-module-guide-${index + 1}`}
+            vectorEffect="non-scaling-stroke"
+            strokeWidth="0.025"
+            x1={fixture.position.xM}
+            x2={fixture.position.xM + fixture.widthM}
+            y1={y}
+            y2={y}
+          />
+        );
+      })}
+    </g>
   );
 }

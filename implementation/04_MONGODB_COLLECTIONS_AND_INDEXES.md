@@ -5,7 +5,7 @@
 - `fl_cockpit_app`
 
 ## Core collections
-`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `periodTargets`, `importJobs`, `recommendationRuns`, `recommendations`, `decisionLogs`, `layoutVersions`, `displayAllocations`, `markdownFacts`, `commercialEvents`, `auditLogs`.
+`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `periodTargets`, `importJobs`, `recommendationRuns`, `recommendations`, `decisionLogs`, `layoutVersions`, `allocationPlans`, `markdownFacts`, `commercialEvents`, `auditLogs`.
 
 ## Required fields
 All store-scoped business records carry `organizationId`, `storeId`; department records also carry `departmentId` where applicable. Derived records include `calculationVersion`, `inputRevision`, `generatedAt`.
@@ -21,6 +21,7 @@ importJobs:        { storeId: 1, fingerprint: 1 } unique
 recommendations:   { storeId: 1, periodKey: 1, productId: 1 }
 decisionLogs:      { storeId: 1, createdAt: -1 }
 layoutVersions:    { storeId: 1, departmentId: 1, version: -1 }
+allocationPlans:   { storeId: 1, layoutVersionId: 1, version: -1 }
 auditLogs:         { organizationId: 1, storeId: 1, createdAt: -1 }
 ```
 

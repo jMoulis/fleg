@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { AlertTriangle, Layers3, Maximize2, Ruler, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, CheckCircle2, Layers3, Maximize2, MonitorCog, Pencil, Ruler, ShieldCheck } from "lucide-react";
+import * as z from "zod";
 
 import { LayoutPlan } from "@/components/space/layout-plan";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { getCurrentStoreLayout } from "@/server/services/layout-service";
+import type { FixtureType } from "@/domain/space/schemas";
 
 export const metadata: Metadata = {
   title: "Espace — F&L Cockpit",
@@ -14,6 +19,7 @@ export const metadata: Metadata = {
 
 interface StoreSpacePageProps {
   params: Promise<{ organizationSlug: string; storeId: string }>;
+  searchParams: Promise<{ savedVersion?: string }>;
 }
 
 const meterFormatter = new Intl.NumberFormat("fr-FR", {
@@ -27,8 +33,20 @@ const layoutStatusLabels = {
   superseded: "Version remplacée",
 } as const;
 
-export default async function StoreSpacePage({ params }: StoreSpacePageProps) {
-  const [{ storeId }, requestHeaders] = await Promise.all([params, headers()]);
+const fixtureTypeLabels: Record<FixtureType, string> = {
+  island: "Îlot",
+  endcap: "TG",
+  wall: "Mur",
+  bin: "Bac",
+};
+
+export default async function StoreSpacePage({ params, searchParams }: StoreSpacePageProps) {
+  const [{ organizationSlug, storeId }, query, requestHeaders] = await Promise.all([
+    params,
+    searchParams,
+    headers(),
+  ]);
+  const savedVersion = z.coerce.number().int().positive().safeParse(query.savedVersion);
   const context = await requireStoreContext(
     storeId,
     ["stores.read"],
@@ -71,18 +89,48 @@ export default async function StoreSpacePage({ params }: StoreSpacePageProps) {
             {layout.name} · version {layout.version}
           </p>
         </div>
-        <Badge variant="secondary" className="w-fit gap-1.5">
-          <AlertTriangle aria-hidden="true" className="size-3.5" />
-          {layoutStatusLabels[layout.status]}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="w-fit gap-1.5">
+            <AlertTriangle aria-hidden="true" className="size-3.5" />
+            {layoutStatusLabels[layout.status]}
+          </Badge>
+          {context.permissions.includes("layouts.write") ? (
+            <Link
+              className={buttonVariants()}
+              href={`/${organizationSlug}/stores/${storeId}/space/edit`}
+            >
+              <Pencil aria-hidden="true" />
+              Modifier le plan
+            </Link>
+          ) : null}
+          {context.permissions.includes("analytics.read") ? (
+            <Link
+              className={buttonVariants({ variant: "outline" })}
+              href={`/${organizationSlug}/stores/${storeId}/space/allocations`}
+            >
+              <MonitorCog aria-hidden="true" />
+              Allouer l’espace
+            </Link>
+          ) : null}
+        </div>
       </div>
+
+      {savedVersion.success ? (
+        <Alert className="mt-6 border-primary/25 bg-primary/[0.04]">
+          <CheckCircle2 aria-hidden="true" />
+          <AlertTitle>Version {savedVersion.data} enregistrée</AlertTitle>
+          <AlertDescription>
+            Le plan précédent est conservé et cette nouvelle version est disponible comme brouillon.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <section aria-label="Capacité du plan" className="mt-8 grid gap-4 sm:grid-cols-3">
         <MetricCard
           icon={Layers3}
           label="Mobilier"
           value={`${summary.fixtureCount} éléments`}
-          helper={`${summary.faceCount} faces · ${summary.shelfCount} niveaux modélisés`}
+          helper={`${summary.faceCount} faces · ${summary.moduleCount} modules · ${summary.shelfCount} niveaux`}
         />
         <MetricCard
           icon={Maximize2}
@@ -122,13 +170,14 @@ export default async function StoreSpacePage({ params }: StoreSpacePageProps) {
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="text-base">{fixture.name}</CardTitle>
                     <Badge variant="outline">
-                      {fixture.type === "island" ? "Îlot" : "TG"}
+                      {fixtureTypeLabels[fixture.type]}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground">
                   {meterFormatter.format(fixture.depthM)} × {meterFormatter.format(fixture.widthM)} m
                   · {fixture.faces.length} {fixture.faces.length > 1 ? "faces" : "face"}
+                  · {fixture.faces.reduce((total, face) => total + face.modules.length, 0)} modules
                 </CardContent>
               </Card>
             ))}

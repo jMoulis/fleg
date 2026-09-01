@@ -44,11 +44,12 @@ describe("space calculations", () => {
   it("summarizes the complete reference layout", () => {
     expect(summarizeLayoutCapacity(layout)).toEqual({
       fixtureCount: 5,
-      faceCount: 11,
-      shelfCount: 11,
+      faceCount: 7,
+      moduleCount: 19,
+      shelfCount: 19,
       fixtureFloorAreaM2: 18.9213,
-      shelfDisplayAreaM2: 14.9733,
-      effectiveCommercialWidthM: 24.3595,
+      shelfDisplayAreaM2: 11.7873,
+      effectiveCommercialWidthM: 18.6955,
     });
   });
 });

@@ -21,7 +21,8 @@
       "type": "island",
       "lengthM": 4.1,
       "widthM": 1.77,
-      "faces": 4,
+      "mainFaces": 2,
+      "modulesPerFace": 4,
       "upperShelfDepthM": 0.45,
       "associatedEndcaps": ["tg-1", "tg-2"],
       "position": { "xM": 2, "yM": 1.7 },
@@ -33,7 +34,8 @@
       "type": "island",
       "lengthM": 4.1,
       "widthM": 1.77,
-      "faces": 4,
+      "mainFaces": 2,
+      "modulesPerFace": 4,
       "upperShelfDepthM": 0.45,
       "associatedEndcaps": ["tg-3"],
       "position": { "xM": 6.5, "yM": 1.7 },
@@ -73,7 +75,7 @@
   ],
   "notes": [
     "Toute la géométrie reste à confirmer sur site avant activation.",
-    "Chaque îlot possède quatre faces et une étagère supérieure de 0,45 m sur chaque face.",
+    "Chaque îlot possède deux faces principales de quatre modules reliés, avec une étagère supérieure de 0,45 m sur chaque module.",
     "Le dernier quart de l'îlot 2 est identifié comme zone BIO dans le plan de référence.",
     "Les positions sont normalisées pour l'aperçu et ne constituent pas un relevé coté du magasin.",
     "Le coefficient trafic de la TG d'entrée est une hypothèse configurable, fixée à 1,15 pour cette version."

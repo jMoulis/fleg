@@ -39,6 +39,7 @@ export function summarizeLayoutCapacity(
   layout: Pick<LayoutVersion, "fixtures">,
 ): LayoutCapacitySummary {
   let faceCount = 0;
+  let moduleCount = 0;
   let shelfCount = 0;
   let fixtureFloorAreaM2 = 0;
   let shelfDisplayAreaM2 = 0;
@@ -50,15 +51,18 @@ export function summarizeLayoutCapacity(
     for (const face of fixture.faces) {
       faceCount += 1;
 
-      for (const shelf of face.shelves) {
-        shelfCount += 1;
-        shelfDisplayAreaM2 += calculateShelfDisplayAreaM2(shelf);
-        effectiveCommercialWidthM += calculateEffectiveCommercialWidthM({
-          shelfWidthM: shelf.widthM,
-          shelfWeight: shelf.commercialWeight,
-          trafficWeight: face.trafficWeight,
-          visibilityWeight: face.visibilityWeight,
-        });
+      for (const sellingModule of face.modules) {
+        moduleCount += 1;
+
+        for (const shelf of sellingModule.shelves) {
+          shelfCount += 1;
+          shelfDisplayAreaM2 += shelf.widthM * shelf.depthM;
+          effectiveCommercialWidthM +=
+            shelf.widthM *
+            shelf.commercialWeight *
+            face.trafficWeight *
+            face.visibilityWeight;
+        }
       }
     }
   }
@@ -66,10 +70,10 @@ export function summarizeLayoutCapacity(
   return {
     fixtureCount: layout.fixtures.length,
     faceCount,
+    moduleCount,
     shelfCount,
     fixtureFloorAreaM2: roundMetric(fixtureFloorAreaM2),
     shelfDisplayAreaM2: roundMetric(shelfDisplayAreaM2),
     effectiveCommercialWidthM: roundMetric(effectiveCommercialWidthM),
   };
 }
-

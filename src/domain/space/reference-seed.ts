@@ -18,7 +18,8 @@ const referenceIslandSchema = z.object({
   type: z.literal("island"),
   lengthM: z.number().finite().positive(),
   widthM: z.number().finite().positive(),
-  faces: z.literal(4),
+  mainFaces: z.literal(2),
+  modulesPerFace: z.number().int().positive().max(20),
   upperShelfDepthM: z.number().finite().positive(),
   associatedEndcaps: z.array(z.string().trim().min(1)),
   position: positionSchema,
@@ -65,10 +66,8 @@ function buildIslandFaces(
   coefficients: ReferenceLayoutSeed["coefficients"],
 ): SellingFace[] {
   const faceDefinitions = [
-    { orientation: "north" as const, label: "Face courte nord", widthM: fixture.widthM },
-    { orientation: "east" as const, label: "Face longue est", widthM: fixture.lengthM },
-    { orientation: "south" as const, label: "Face courte sud", widthM: fixture.widthM },
-    { orientation: "west" as const, label: "Face longue ouest", widthM: fixture.lengthM },
+    { orientation: "east" as const, label: "Face A", widthM: fixture.lengthM },
+    { orientation: "west" as const, label: "Face B", widthM: fixture.lengthM },
   ];
 
   return faceDefinitions.map((face) => ({
@@ -78,16 +77,25 @@ function buildIslandFaces(
     widthM: face.widthM,
     trafficWeight: coefficients.standardTrafficWeight,
     visibilityWeight: coefficients.standardVisibilityWeight,
-    shelves: [
-      {
-        id: `${fixture.id}-${face.orientation}-upper`,
-        label: "Étagère supérieure",
-        level: "upper",
-        widthM: face.widthM,
-        depthM: fixture.upperShelfDepthM,
-        commercialWeight: coefficients.upperShelfWeight,
-      },
-    ],
+    modules: Array.from({ length: fixture.modulesPerFace }, (_, moduleIndex) => {
+      const moduleWidthM = face.widthM / fixture.modulesPerFace;
+      return {
+        id: `${fixture.id}-${face.orientation}-module-${moduleIndex + 1}`,
+        label: `Module ${moduleIndex + 1}`,
+        position: moduleIndex + 1,
+        widthM: moduleWidthM,
+        shelves: [
+          {
+            id: `${fixture.id}-${face.orientation}-module-${moduleIndex + 1}-upper`,
+            label: "Étagère supérieure",
+            level: "upper" as const,
+            widthM: moduleWidthM,
+            depthM: fixture.upperShelfDepthM,
+            commercialWeight: coefficients.upperShelfWeight,
+          },
+        ],
+      };
+    }),
   }));
 }
 
@@ -138,14 +146,22 @@ export function buildReferenceLayoutVersion(input: {
               ? source.coefficients.entranceTrafficWeight
               : source.coefficients.standardTrafficWeight,
           visibilityWeight: source.coefficients.standardVisibilityWeight,
-          shelves: [
+          modules: [
             {
-              id: `${fixture.id}-front-main`,
-              label: "Niveau principal",
-              level: "main",
+              id: `${fixture.id}-front-module-1`,
+              label: "Module 1",
+              position: 1,
               widthM: fixture.widthM,
-              depthM: fixture.depthM,
-              commercialWeight: source.coefficients.endcapShelfWeight,
+              shelves: [
+                {
+                  id: `${fixture.id}-front-module-1-main`,
+                  label: "Niveau principal",
+                  level: "main",
+                  widthM: fixture.widthM,
+                  depthM: fixture.depthM,
+                  commercialWeight: source.coefficients.endcapShelfWeight,
+                },
+              ],
             },
           ],
         },
@@ -156,6 +172,7 @@ export function buildReferenceLayoutVersion(input: {
   return {
     seedKey: source.seedKey,
     layout: layoutVersionSchema.parse({
+      modelVersion: 2,
       id: input.id,
       organizationId: input.organizationId,
       storeId: input.storeId,
@@ -175,4 +192,3 @@ export function buildReferenceLayoutVersion(input: {
     }),
   };
 }
-

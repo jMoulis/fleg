@@ -36,13 +36,24 @@ describe("reference layout seed", () => {
       "tg-2",
       "tg-3",
     ]);
-    expect(layout.fixtures[0]?.faces).toHaveLength(4);
+    expect(layout.modelVersion).toBe(2);
+    expect(layout.fixtures[0]?.faces).toHaveLength(2);
+    expect(
+      layout.fixtures[0]?.faces.every((face) => face.modules.length === 4),
+    ).toBe(true);
+    expect(
+      layout.fixtures[0]?.faces.reduce(
+        (total, face) => total + face.modules.length,
+        0,
+      ),
+    ).toBe(8);
   });
 
-  it("rejects a shelf wider than its selling face", () => {
+  it("rejects a shelf wider than its selling module", () => {
     const { layout } = buildReferenceLayoutVersion(seedInput);
     const invalidLayout = structuredClone(layout);
-    const firstShelf = invalidLayout.fixtures[0]?.faces[0]?.shelves[0];
+    const firstShelf =
+      invalidLayout.fixtures[0]?.faces[0]?.modules[0]?.shelves[0];
 
     if (!firstShelf) {
       throw new Error("Fixture de test absente");
@@ -50,6 +61,86 @@ describe("reference layout seed", () => {
 
     firstShelf.widthM = 20;
     expect(layoutVersionSchema.safeParse(invalidLayout).success).toBe(false);
+  });
+
+  it("rejects an island without two balanced main faces", () => {
+    const { layout } = buildReferenceLayoutVersion(seedInput);
+    const invalidLayout = structuredClone(layout);
+    const firstIsland = invalidLayout.fixtures[0];
+
+    if (!firstIsland) {
+      throw new Error("Îlot de test absent");
+    }
+
+    firstIsland.faces.pop();
+    expect(layoutVersionSchema.safeParse(invalidLayout).success).toBe(false);
+  });
+
+  it("rejects duplicate capacity node ids before allocations use them", () => {
+    const { layout } = buildReferenceLayoutVersion(seedInput);
+    const invalidLayout = structuredClone(layout);
+    const firstShelf =
+      invalidLayout.fixtures[0]?.faces[0]?.modules[0]?.shelves[0];
+    const secondShelf =
+      invalidLayout.fixtures[0]?.faces[0]?.modules[1]?.shelves[0];
+
+    if (!firstShelf || !secondShelf) {
+      throw new Error("Niveaux de test absents");
+    }
+
+    secondShelf.id = firstShelf.id;
+    expect(layoutVersionSchema.safeParse(invalidLayout).success).toBe(false);
+  });
+
+  it("reads the former four-face format as two faces of four modules", () => {
+    const { layout } = buildReferenceLayoutVersion(seedInput);
+    const toLegacyFace = (face: (typeof layout.fixtures)[number]["faces"][number]) => {
+      const legacyFace: Record<string, unknown> = { ...face };
+      delete legacyFace.modules;
+
+      return {
+        ...legacyFace,
+        shelves: face.modules[0]?.shelves ?? [],
+      };
+    };
+    const legacyLayout: Record<string, unknown> = {
+      ...structuredClone(layout),
+      fixtures: layout.fixtures.map((fixture) => {
+        if (fixture.type !== "island") {
+          return {
+            ...fixture,
+            faces: fixture.faces.map(toLegacyFace),
+          };
+        }
+
+        const east = fixture.faces[0];
+        const west = fixture.faces[1];
+
+        if (!east || !west) {
+          throw new Error("Faces de test absentes");
+        }
+
+        return {
+          ...fixture,
+          faces: [
+            toLegacyFace(east),
+            { ...toLegacyFace(east), id: `${fixture.id}-north`, orientation: "north" },
+            toLegacyFace(west),
+            { ...toLegacyFace(west), id: `${fixture.id}-south`, orientation: "south" },
+          ],
+        };
+      }),
+    };
+    delete legacyLayout.modelVersion;
+
+    const normalized = layoutVersionSchema.parse(legacyLayout);
+    const firstIsland = normalized.fixtures.find(
+      (fixture) => fixture.id === "island-1",
+    );
+
+    expect(normalized.modelVersion).toBe(2);
+    expect(firstIsland?.faces).toHaveLength(2);
+    expect(firstIsland?.faces.map((face) => face.modules.length)).toEqual([4, 4]);
   });
 
   it("rejects an unvalidated associated fixture", () => {
@@ -61,4 +152,3 @@ describe("reference layout seed", () => {
     ).toThrow();
   });
 });
-

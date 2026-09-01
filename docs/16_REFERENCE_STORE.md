@@ -13,6 +13,6 @@ User mapping:
 8. Photo 8: Island 2, exterior aisle.
 9. Photo 9: mass/layout sketch.
 
-Additional fixture fact: every island has an upper shelf on all four faces, 0.45m deep.
+Additional fixture fact: every island is formed by two main faces of four connected modules each. Every module has an upper shelf 0.45m deep. The end faces are modeled separately as TG fixtures when applicable.
 
 Treat sketch dimensions as initial editable seed data, not immutable truth. The application must let the manager correct geometry.

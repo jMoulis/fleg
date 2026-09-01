@@ -77,5 +77,29 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { organizationId: 1, storeId: 1, departmentKey: 1, version: -1 },
       { name: "layout_versions_scope_latest" },
     ),
+    db.collection("layoutVersions").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      {
+        unique: true,
+        sparse: true,
+        name: "layout_versions_scope_idempotency_unique",
+      },
+    ),
+    db.collection("allocationPlans").createIndex(
+      { organizationId: 1, storeId: 1, layoutVersionId: 1, version: 1 },
+      { unique: true, name: "allocation_plans_scope_version_unique" },
+    ),
+    db.collection("allocationPlans").createIndex(
+      { organizationId: 1, storeId: 1, layoutVersionId: 1, version: -1 },
+      { name: "allocation_plans_scope_latest" },
+    ),
+    db.collection("allocationPlans").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      {
+        unique: true,
+        sparse: true,
+        name: "allocation_plans_scope_idempotency_unique",
+      },
+    ),
   ]);
 }

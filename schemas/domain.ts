@@ -69,25 +69,37 @@ export interface MarkdownFact {
   reason:string; note?:string;
 }
 export interface Fixture {
-  id:string; type:FixtureType; name:string; xM:number; yM:number;
-  widthM:number; depthM:number; rotationDeg:number; faces:SellingFace[];
+  id:string; type:FixtureType; name:string; position:{xM:number; yM:number};
+  widthM:number; depthM:number; rotationDeg:number; commercialRole:string|null;
+  associatedFixtureIds:string[]; faces:SellingFace[];
 }
 export interface SellingFace {
-  id:string; fixtureId:string; name:string; widthM:number;
-  trafficWeight:number; visibilityWeight:number; shelves:Shelf[];
+  id:string; label:string; orientation:"north"|"east"|"south"|"west"|"front"; widthM:number;
+  trafficWeight:number; visibilityWeight:number; modules:SellingModule[];
+}
+export interface SellingModule {
+  id:string; label:string; position:number; widthM:number; shelves:Shelf[];
 }
 export interface Shelf {
-  id:string; faceId:string; level:"main"|"upper"|"lower";
-  widthM:number; depthM:number; shelfWeight:number;
+  id:string; label:string; level:"main"|"upper"|"lower";
+  widthM:number; depthM:number; commercialWeight:number;
 }
 export interface LayoutVersion {
   _id:ObjectId; organizationId:string; storeId:ObjectId; departmentId:ObjectId;
-  version:number; effectiveFrom:Date; name:string; fixtures:Fixture[];
+  modelVersion:2; version:number; effectiveFrom:Date; name:string; fixtures:Fixture[];
 }
 export interface DisplayAllocation {
   _id:ObjectId; organizationId:string; storeId:ObjectId; departmentId:ObjectId;
   layoutVersionId:ObjectId; productId:ObjectId; shelfId:string;
   facingWidthM:number; locked:boolean; startsAt:Date; endsAt?:Date;
+}
+export interface AllocationPlan {
+  _id:ObjectId; organizationId:string; storeId:ObjectId; departmentId:ObjectId;
+  layoutVersionId:ObjectId; version:number; status:"draft"; name:string;
+  source:"manager"|"heuristic"; modelVersion:"manual-allocation-v1"|"space-allocation-heuristic-v1"; allocations:Array<{
+    productId:ObjectId; shelfId:string; facingWidthM:number; locked:boolean;
+  }>;
+  createdBy:string; createdAt:Date;
 }
 export interface AuthorizedStoreContext {
   userId:string; organizationId:string; storeId:string;
