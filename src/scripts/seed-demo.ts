@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { loadEnvFile } from "node:process";
 
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
@@ -10,6 +11,7 @@ import {
 } from "mongodb";
 import * as z from "zod";
 
+import { buildReferenceLayoutVersion } from "@/domain/space/reference-seed";
 import { storePermissionValues } from "@/domain/stores/schemas";
 import { ensureFoundationIndexesForDb } from "@/server/db/foundation-indexes";
 
@@ -57,6 +59,16 @@ interface StoreDocument {
   name: string;
   active: boolean;
   dataRevision: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface DepartmentDocument {
+  organizationId: string;
+  storeId: ObjectId;
+  key: "fruit_vegetable";
+  name: string;
+  active: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -204,6 +216,97 @@ async function run() {
         { upsert: true },
       );
 
+    const departments = appDb.collection<DepartmentDocument>("departments");
+    const departmentFilter = {
+      organizationId,
+      storeId: store._id,
+      key: "fruit_vegetable" as const,
+    };
+    const existingDepartment = await departments.findOne(departmentFilter);
+    const department = await departments.findOneAndUpdate(
+      departmentFilter,
+      {
+        $set: {
+          name: "Fruits et légumes",
+          active: true,
+          updatedAt: now,
+        },
+        $setOnInsert: {
+          organizationId,
+          storeId: store._id,
+          key: "fruit_vegetable",
+          createdAt: now,
+        },
+      },
+      { upsert: true, returnDocument: "after" },
+    );
+
+    if (!department) {
+      throw new Error("Le rayon Fruits et Légumes n'a pas pu être créé");
+    }
+
+    const referenceLayoutSource = JSON.parse(
+      await readFile(
+        new URL("../../schemas/reference-layout.json", import.meta.url),
+        "utf8",
+      ),
+    ) as unknown;
+    const layoutObjectId = new ObjectId();
+    const referenceLayout = buildReferenceLayoutVersion({
+      source: referenceLayoutSource,
+      id: layoutObjectId.toHexString(),
+      organizationId,
+      storeId: store._id.toHexString(),
+      departmentId: department._id.toHexString(),
+      createdBy: userId,
+      createdAt: now.toISOString(),
+    });
+    const { id: layoutId, ...layoutValues } = referenceLayout.layout;
+    const layoutVersions = appDb.collection("layoutVersions");
+    const layoutFilter = {
+      organizationId,
+      storeId: store._id,
+      departmentId: department._id,
+      seedKey: referenceLayout.seedKey,
+    };
+    const layoutResult = await layoutVersions.updateOne(
+      layoutFilter,
+      {
+        $setOnInsert: {
+          _id: new ObjectId(layoutId),
+          ...layoutValues,
+          storeId: store._id,
+          departmentId: department._id,
+          seedKey: referenceLayout.seedKey,
+          createdAt: new Date(layoutValues.createdAt),
+        },
+      },
+      { upsert: true },
+    );
+    const storedLayout = await layoutVersions.findOne(layoutFilter, {
+      projection: { _id: 1 },
+    });
+
+    if (!storedLayout) {
+      throw new Error("Le plan de référence n'a pas pu être créé");
+    }
+
+    if (layoutResult.upsertedCount === 1) {
+      await appDb.collection("auditLogs").insertOne({
+        organizationId,
+        storeId: store._id,
+        actorId: userId,
+        action: "layout.seed",
+        entityType: "layoutVersion",
+        entityId: storedLayout._id,
+        before: null,
+        after: referenceLayout.layout,
+        requestId: crypto.randomUUID(),
+        timestamp: now,
+        createdAt: now,
+      });
+    }
+
     console.log(
       JSON.stringify(
         {
@@ -228,6 +331,17 @@ async function run() {
             name: store.name,
             created: existingStore === null,
             membershipCreated: storeMembershipResult.upsertedCount === 1,
+          },
+          department: {
+            id: department._id.toString(),
+            key: department.key,
+            created: existingDepartment === null,
+          },
+          layout: {
+            id: storedLayout._id.toString(),
+            version: referenceLayout.layout.version,
+            status: referenceLayout.layout.status,
+            created: layoutResult.upsertedCount === 1,
           },
         },
         null,

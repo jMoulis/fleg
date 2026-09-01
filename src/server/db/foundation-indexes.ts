@@ -57,5 +57,25 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { storeId: 1, createdAt: -1 },
       { name: "decision_logs_store_created" },
     ),
+    db.collection("departments").createIndex(
+      { organizationId: 1, storeId: 1, key: 1 },
+      { unique: true, name: "departments_org_store_key_unique" },
+    ),
+    db.collection("layoutVersions").createIndex(
+      { organizationId: 1, storeId: 1, departmentId: 1, version: 1 },
+      { unique: true, name: "layout_versions_scope_version_unique" },
+    ),
+    db.collection("layoutVersions").createIndex(
+      { organizationId: 1, storeId: 1, seedKey: 1 },
+      {
+        unique: true,
+        sparse: true,
+        name: "layout_versions_scope_seed_unique",
+      },
+    ),
+    db.collection("layoutVersions").createIndex(
+      { organizationId: 1, storeId: 1, departmentKey: 1, version: -1 },
+      { name: "layout_versions_scope_latest" },
+    ),
   ]);
 }

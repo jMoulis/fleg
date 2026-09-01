@@ -1,6 +1,19 @@
 {
+  "seedKey": "reference-layout-v1",
   "version": 1,
+  "name": "Plan de référence F&L",
   "status": "seed_dimensions_to_confirm",
+  "canvas": {
+    "widthM": 11.5,
+    "depthM": 8.5
+  },
+  "coefficients": {
+    "upperShelfWeight": 0.8,
+    "endcapShelfWeight": 1,
+    "standardTrafficWeight": 1,
+    "entranceTrafficWeight": 1.15,
+    "standardVisibilityWeight": 1
+  },
   "fixtures": [
     {
       "id": "island-1",
@@ -10,7 +23,9 @@
       "widthM": 1.77,
       "faces": 4,
       "upperShelfDepthM": 0.45,
-      "associatedEndcap": "tg-2"
+      "associatedEndcaps": ["tg-1", "tg-2"],
+      "position": { "xM": 2, "yM": 1.7 },
+      "rotationDeg": 0
     },
     {
       "id": "island-2",
@@ -20,7 +35,9 @@
       "widthM": 1.77,
       "faces": 4,
       "upperShelfDepthM": 0.45,
-      "associatedEndcap": "tg-3"
+      "associatedEndcaps": ["tg-3"],
+      "position": { "xM": 6.5, "yM": 1.7 },
+      "rotationDeg": 0
     },
     {
       "id": "tg-1",
@@ -28,26 +45,37 @@
       "type": "endcap",
       "widthM": 1.77,
       "depthM": 0.83,
-      "commercialRole": "entrance"
+      "commercialRole": "entrance",
+      "associatedFixtureId": "island-1",
+      "position": { "xM": 2, "yM": 0.87 },
+      "rotationDeg": 0
     },
     {
       "id": "tg-2",
       "name": "TG2 - Îlot légumes",
       "type": "endcap",
       "widthM": 1.77,
-      "depthM": 0.83
+      "depthM": 0.83,
+      "associatedFixtureId": "island-1",
+      "position": { "xM": 2, "yM": 5.8 },
+      "rotationDeg": 0
     },
     {
       "id": "tg-3",
       "name": "TG3 - Îlot fruits",
       "type": "endcap",
       "widthM": 1.77,
-      "depthM": 0.83
+      "depthM": 0.83,
+      "associatedFixtureId": "island-2",
+      "position": { "xM": 6.5, "yM": 5.8 },
+      "rotationDeg": 0
     }
   ],
   "notes": [
-    "All geometry is editable.",
-    "Each island has a 0.45m upper shelf on all four faces.",
-    "Use supplied sketch/photos as visual reference."
+    "Toute la géométrie reste à confirmer sur site avant activation.",
+    "Chaque îlot possède quatre faces et une étagère supérieure de 0,45 m sur chaque face.",
+    "Le dernier quart de l'îlot 2 est identifié comme zone BIO dans le plan de référence.",
+    "Les positions sont normalisées pour l'aperçu et ne constituent pas un relevé coté du magasin.",
+    "Le coefficient trafic de la TG d'entrée est une hypothèse configurable, fixée à 1,15 pour cette version."
   ]
 }

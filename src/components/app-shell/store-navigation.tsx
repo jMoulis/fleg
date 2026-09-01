@@ -8,7 +8,7 @@ import {
   ClipboardCheck,
   FileSpreadsheet,
   History,
-  MoreHorizontal,
+  Ruler,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ const navigation = [
   { label: "Accueil", segment: "dashboard", icon: CircleGauge },
   { label: "Actions", segment: "actions", icon: ClipboardCheck },
   { label: "Produits", segment: "products", icon: Boxes },
+  { label: "Espace", segment: "space", icon: Ruler },
   { label: "Imports", segment: "imports", icon: FileSpreadsheet },
   { label: "Décisions", segment: "decisions", icon: History, desktopOnly: true },
 ] as const;
@@ -61,10 +62,6 @@ export function StoreNavigation({
             </Link>
           );
           })}
-        <span className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.7rem] font-medium text-muted-foreground">
-          <MoreHorizontal aria-hidden="true" className="size-5" />
-          Plus
-        </span>
       </nav>
     );
   }
