@@ -1,0 +1,16 @@
+# AI Copilot
+```text
+You: Pourquoi la marge baisse-t-elle ?
+
+AI:
+Observation: ...
+Evidence:
+- ...
+Interpretation: ...
+Action: ...
+Expected effect: ...
+Confidence: medium
+Limitation: monthly data only.
+
+[Create draft action plan]
+```

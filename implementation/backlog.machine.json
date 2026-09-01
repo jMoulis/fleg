@@ -1,0 +1,142 @@
+{
+  "version": "1.1",
+  "tickets": [
+    {
+      "id": "FND-01",
+      "epic": "foundation",
+      "title": "Scaffold application",
+      "priority": "P0",
+      "acceptance": [
+        "Next.js App Router",
+        "strict TypeScript",
+        "Tailwind + shadcn",
+        "lint/typecheck commands"
+      ]
+    },
+    {
+      "id": "AUTH-02",
+      "epic": "auth",
+      "title": "Store authorization boundary",
+      "priority": "P0",
+      "acceptance": [
+        "requireStoreContext",
+        "storeMemberships model",
+        "adversarial isolation tests"
+      ]
+    },
+    {
+      "id": "IMP-02",
+      "epic": "import",
+      "title": "Mercalys preview and aggregate detection",
+      "priority": "P0",
+      "acceptance": [
+        "detect total row generically",
+        "reconcile totals",
+        "preview warnings"
+      ]
+    },
+    {
+      "id": "IMP-04",
+      "epic": "import",
+      "title": "Idempotent import commit",
+      "priority": "P0",
+      "acceptance": [
+        "file fingerprint",
+        "no duplicate facts",
+        "dataRevision increment"
+      ]
+    },
+    {
+      "id": "ANA-03",
+      "epic": "analytics",
+      "title": "Forecast with evidence/confidence",
+      "priority": "P0",
+      "acceptance": [
+        "small-base guard",
+        "seasonality components",
+        "confidence metadata"
+      ]
+    },
+    {
+      "id": "REC-01",
+      "epic": "recommendations",
+      "title": "Evidence-based recommendation engine",
+      "priority": "P0",
+      "acceptance": [
+        "explicit recommendation type",
+        "component evidence",
+        "no opaque-only score"
+      ]
+    },
+    {
+      "id": "DEC-01",
+      "epic": "decisions",
+      "title": "Manager decision log",
+      "priority": "P0",
+      "acceptance": [
+        "accepted/modified/rejected/deferred",
+        "snapshot recommendation",
+        "audit actor/time/rationale"
+      ]
+    },
+    {
+      "id": "E2E-01",
+      "epic": "quality",
+      "title": "Vertical slice E2E",
+      "priority": "P0",
+      "acceptance": [
+        "mobile viewport",
+        "desktop viewport",
+        "import to decision flow"
+      ]
+    },
+    {
+      "id": "EXP-01",
+      "epic": "experiments",
+      "title": "Experiment lifecycle and authorization",
+      "priority": "P1",
+      "acceptance": [
+        "experiment collections and indexes",
+        "store-scoped permissions",
+        "audited state transitions"
+      ]
+    },
+    {
+      "id": "EXP-03",
+      "epic": "experiments",
+      "title": "Comparable-period baseline engine",
+      "priority": "P1",
+      "acceptance": [
+        "prior comparable periods",
+        "small denominator guards",
+        "optional department trend normalization",
+        "evidence warnings"
+      ]
+    },
+    {
+      "id": "EXP-04",
+      "epic": "experiments",
+      "title": "Experiment uplift evaluator",
+      "priority": "P1",
+      "acceptance": [
+        "actual vs expected",
+        "absolute and relative uplift",
+        "incremental gross margin",
+        "markdown/economic guardrails",
+        "append-only analysis version"
+      ]
+    },
+    {
+      "id": "EXP-05",
+      "epic": "experiments",
+      "title": "Experiment result and conclusion UX",
+      "priority": "P1",
+      "acceptance": [
+        "mobile result summary",
+        "desktop evidence analysis",
+        "manager verdict and rollout/retest decision",
+        "Decision Log link"
+      ]
+    }
+  ]
+}

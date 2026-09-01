@@ -1,0 +1,58 @@
+# 06 — API contracts
+
+All store routes validate session + store authorization.
+
+## Auth
+Better Auth handlers per official integration.
+
+## Stores
+GET `/api/stores`
+POST `/api/stores`
+GET/PATCH `/api/stores/:storeId`
+GET/POST `/api/stores/:storeId/members`
+
+## Imports
+POST `/api/stores/:storeId/imports/preview`
+POST `/api/stores/:storeId/imports/:importId/commit`
+GET `/api/stores/:storeId/imports`
+
+## Analytics
+GET `/api/stores/:storeId/dashboard?period=YYYY-MM`
+GET `/api/stores/:storeId/products/metrics?period=YYYY-MM`
+GET `/api/network/dashboard?storeIds=...&period=YYYY-MM`
+
+## Layout
+GET `/api/stores/:storeId/layout`
+POST `/api/stores/:storeId/layout/versions`
+POST `/api/stores/:storeId/layout/optimize`
+
+## TG
+GET/POST `/api/stores/:storeId/commercial-events`
+PATCH `/api/stores/:storeId/commercial-events/:id`
+
+## Experiments
+GET/POST `/api/stores/:storeId/experiments`
+GET/PATCH `/api/stores/:storeId/experiments/:experimentId`
+POST `/api/stores/:storeId/experiments/:experimentId/start`
+POST `/api/stores/:storeId/experiments/:experimentId/finish`
+POST `/api/stores/:storeId/experiments/:experimentId/evaluate`
+GET `/api/stores/:storeId/experiments/:experimentId/analyses`
+POST `/api/stores/:storeId/experiments/:experimentId/conclude`
+POST `/api/stores/:storeId/commercial-events/:eventId/create-experiment`
+
+## Markdown
+GET/POST `/api/stores/:storeId/markdown`
+
+## AI
+POST `/api/stores/:storeId/ai/chat`
+POST `/api/network/ai/chat` with explicit cross-store permission.
+
+## Error envelope
+```ts
+interface ApiError {
+  code: string;
+  message: string;
+  fieldErrors?: Record<string,string[]>;
+  requestId: string;
+}
+```

@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "status": "seed_dimensions_to_confirm",
+  "fixtures": [
+    {
+      "id": "island-1",
+      "name": "Îlot 1 - Légumes",
+      "type": "island",
+      "lengthM": 4.1,
+      "widthM": 1.77,
+      "faces": 4,
+      "upperShelfDepthM": 0.45,
+      "associatedEndcap": "tg-2"
+    },
+    {
+      "id": "island-2",
+      "name": "Îlot 2 - Fruits",
+      "type": "island",
+      "lengthM": 4.1,
+      "widthM": 1.77,
+      "faces": 4,
+      "upperShelfDepthM": 0.45,
+      "associatedEndcap": "tg-3"
+    },
+    {
+      "id": "tg-1",
+      "name": "TG1 - Entrée magasin",
+      "type": "endcap",
+      "widthM": 1.77,
+      "depthM": 0.83,
+      "commercialRole": "entrance"
+    },
+    {
+      "id": "tg-2",
+      "name": "TG2 - Îlot légumes",
+      "type": "endcap",
+      "widthM": 1.77,
+      "depthM": 0.83
+    },
+    {
+      "id": "tg-3",
+      "name": "TG3 - Îlot fruits",
+      "type": "endcap",
+      "widthM": 1.77,
+      "depthM": 0.83
+    }
+  ],
+  "notes": [
+    "All geometry is editable.",
+    "Each island has a 0.45m upper shelf on all four faces.",
+    "Use supplied sketch/photos as visual reference."
+  ]
+}
