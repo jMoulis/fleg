@@ -7,7 +7,6 @@ import {
   MongoClient,
   ObjectId,
   ServerApiVersion,
-  type Db,
 } from "mongodb";
 import * as z from "zod";
 
@@ -86,7 +85,7 @@ async function run() {
       appName: "F&L Cockpit",
       baseURL: env.BETTER_AUTH_URL,
       secret: env.BETTER_AUTH_SECRET,
-      database: mongodbAdapter(authDb, { client }),
+      database: mongodbAdapter(authDb, { client, transaction: false }),
       emailAndPassword: {
         enabled: true,
         disableSignUp: false,
