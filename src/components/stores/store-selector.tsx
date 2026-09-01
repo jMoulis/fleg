@@ -110,6 +110,10 @@ export function StoreSelector() {
   }
 
   const selectedStore = state.stores.find((store) => store.id === storeId);
+  const storeItems = state.stores.map((store) => ({
+    value: store.id,
+    label: `${store.name} · ${store.code}`,
+  }));
 
   function openStore() {
     if (!selectedStore) {
@@ -126,8 +130,12 @@ export function StoreSelector() {
       <CardContent className="pt-6">
         <Field>
           <FieldLabel>Magasin actif</FieldLabel>
-          <Select value={storeId} onValueChange={(value) => setStoreId(value ?? "")}>
-            <SelectTrigger className="w-full">
+          <Select
+            items={storeItems}
+            value={storeId}
+            onValueChange={(value) => setStoreId(value ?? "")}
+          >
+            <SelectTrigger className="w-full" aria-label="Magasin actif">
               <SelectValue placeholder="Choisir un magasin" />
             </SelectTrigger>
             <SelectContent>

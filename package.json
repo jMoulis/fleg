@@ -5,13 +5,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
+    "build:e2e": "NEXT_DIST_DIR=.next-e2e next build --webpack",
     "build:turbopack": "next build",
     "start": "next start",
+    "start:e2e": "BETTER_AUTH_URL=http://localhost:3100 NEXT_DIST_DIR=.next-e2e next start -p 3100",
     "lint": "eslint .",
     "typegen": "next typegen",
     "typecheck": "npm run typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "pretest:e2e": "npm run build:e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "check": "npm run lint && npm run typecheck && npm run test",
     "seed:demo": "tsx src/scripts/seed-demo.ts"
   },
@@ -34,6 +39,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
