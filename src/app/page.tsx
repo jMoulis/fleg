@@ -8,8 +8,10 @@ import {
   ShieldCheck,
   Store,
 } from "lucide-react";
+import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const previewMetrics = [
   { label: "CA fruits & légumes", value: "58 891 €", trend: "+6,8 % vs N-1" },
@@ -77,12 +79,15 @@ export default function Home() {
             par un manager.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button size="lg" disabled>
-              Connexion disponible à l’étape suivante
+            <Link
+              href="/sign-in"
+              className={cn(buttonVariants({ size: "lg" }), "w-fit")}
+            >
+              Se connecter au cockpit
               <ArrowRight data-icon="inline-end" aria-hidden="true" />
-            </Button>
+            </Link>
             <p className="text-sm text-muted-foreground">
-              Better Auth et l’accès magasin arrivent avec AUTH-01.
+              Chaque magasin est revérifié côté serveur à l’ouverture.
             </p>
           </div>
           <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm text-foreground/75">
