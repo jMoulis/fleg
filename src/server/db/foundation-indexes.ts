@@ -26,6 +26,18 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { storeId: 1, periodKey: 1, productId: 1 },
       { unique: true, name: "sales_facts_store_period_product_unique" },
     ),
+    db.collection("markdownFacts").createIndex(
+      { organizationId: 1, storeId: 1, occurredOn: 1, productId: 1 },
+      { name: "markdown_facts_scope_date_product" },
+    ),
+    db.collection("markdownFacts").createIndex(
+      { organizationId: 1, storeId: 1, periodKey: 1, productId: 1 },
+      { name: "markdown_facts_scope_period_product" },
+    ),
+    db.collection("markdownCommands").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      { unique: true, name: "markdown_commands_scope_key_unique" },
+    ),
     db.collection("auditLogs").createIndex(
       { organizationId: 1, storeId: 1, createdAt: -1 },
       { name: "audit_logs_org_store_created" },
@@ -143,6 +155,10 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
     db.collection("experimentAnalyses").createIndex(
       { experimentId: 1, analysisVersion: 1 },
       { unique: true, name: "experiment_analyses_version_unique" },
+    ),
+    db.collection("experimentAnalyses").createIndex(
+      { experimentId: 1, dataRevision: 1, engineVersion: 1 },
+      { unique: true, name: "experiment_analyses_input_unique" },
     ),
     db.collection("experimentAnalyses").createIndex(
       { organizationId: 1, storeId: 1, analyzedAt: -1 },

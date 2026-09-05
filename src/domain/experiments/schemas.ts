@@ -111,7 +111,7 @@ export type ExperimentBaselineConfig = z.infer<
   typeof experimentBaselineConfigSchema
 >;
 
-const experimentDefinitionSchema = z
+export const experimentDefinitionSchema = z
   .object({
     title: z.string().trim().min(1).max(180),
     hypothesis: z.string().trim().min(1).max(2_000),
@@ -191,6 +191,16 @@ const experimentDefinitionSchema = z
       });
     }
   });
+export type ExperimentDefinition = z.infer<typeof experimentDefinitionSchema>;
+
+export const experimentFixtureOptionSchema = z.object({
+  id: z.string().trim().min(1).max(100),
+  label: z.string().trim().min(1).max(160),
+  type: z.enum(["island", "endcap", "wall", "bin"]),
+});
+export type ExperimentFixtureOption = z.infer<
+  typeof experimentFixtureOptionSchema
+>;
 
 export const experimentSchema = experimentDefinitionSchema.safeExtend({
   id: mongoIdSchema,

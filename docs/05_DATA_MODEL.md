@@ -13,6 +13,7 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 - productAliases `{storeId:1, source:1, externalKey:1}` unique
 - salesFacts `{storeId:1, periodKey:1, productId:1}`
 - markdownFacts `{storeId:1,date:1,productId:1}`
+- markdownCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - layoutVersions `{storeId:1,departmentId:1,version:-1}`
 - allocationPlans `{storeId:1,layoutVersionId:1,version:-1}`
 - commercialEvents `{organizationId:1,storeId:1,fixtureId:1,startsOn:1,endsOn:1,status:1}`
@@ -20,6 +21,7 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 - experiments `{organizationId:1,storeId:1,status:1,plannedStartAt:-1}`
 - experiments `{organizationId:1,storeId:1,productIds:1,plannedStartAt:-1}`
 - experimentAnalyses `{experimentId:1,analysisVersion:1}` unique
+- experimentAnalyses `{experimentId:1,dataRevision:1,engineVersion:1}` unique
 - experimentConclusions `{experimentId:1,active:1}` unique when active
 - recommendations `{storeId:1,periodKey:1,productId:1}`
 - auditLogs `{organizationId:1,storeId:1,createdAt:-1}`

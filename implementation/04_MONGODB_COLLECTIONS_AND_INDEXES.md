@@ -17,6 +17,9 @@ storeMemberships:  { storeId: 1, userId: 1 } unique
 products:          { storeId: 1, normalizedLabel: 1 }
 productAliases:    { storeId: 1, source: 1, externalKey: 1 } unique
 salesFacts:        { storeId: 1, periodKey: 1, productId: 1 } unique
+markdownFacts:     { organizationId: 1, storeId: 1, occurredOn: 1, productId: 1 }
+markdownFacts:     { organizationId: 1, storeId: 1, periodKey: 1, productId: 1 }
+markdownCommands:  { organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
 importJobs:        { storeId: 1, fingerprint: 1 } unique
 recommendations:   { storeId: 1, periodKey: 1, productId: 1 }
 decisionLogs:      { storeId: 1, createdAt: -1 }
@@ -28,6 +31,7 @@ experiments:        { organizationId: 1, storeId: 1, status: 1, plannedStartAt: 
 experiments:        { organizationId: 1, storeId: 1, productIds: 1, plannedStartAt: -1 }
 experimentCommands:{ organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
 experimentAnalyses:{ experimentId: 1, analysisVersion: 1 } unique
+experimentAnalyses:{ experimentId: 1, dataRevision: 1, engineVersion: 1 } unique
 auditLogs:         { organizationId: 1, storeId: 1, createdAt: -1 }
 ```
 

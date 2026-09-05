@@ -9,6 +9,8 @@ import {
   ClipboardCheck,
   FileSpreadsheet,
   History,
+  FlaskConical,
+  PackageX,
   Ruler,
 } from "lucide-react";
 
@@ -26,6 +28,8 @@ const navigation = [
   { label: "Produits", segment: "products", icon: Boxes },
   { label: "Espace", segment: "space", icon: Ruler },
   { label: "TG", segment: "tg", icon: CalendarRange },
+  { label: "Tests", segment: "experiments", icon: FlaskConical },
+  { label: "Démarque", segment: "markdown", icon: PackageX },
   { label: "Imports", segment: "imports", icon: FileSpreadsheet },
   { label: "Décisions", segment: "decisions", icon: History, desktopOnly: true },
 ] as const;
@@ -42,7 +46,7 @@ export function StoreNavigation({
     return (
       <nav
         aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-8 border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
       >
         {navigation
           .filter((item) => !("desktopOnly" in item && item.desktopOnly))
@@ -55,7 +59,7 @@ export function StoreNavigation({
               href={href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.7rem] font-medium",
+                "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.6rem] font-medium",
                 active ? "text-primary" : "text-muted-foreground",
               )}
             >

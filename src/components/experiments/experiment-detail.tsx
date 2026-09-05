@@ -1,0 +1,1004 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CalendarCheck,
+  ChartNoAxesCombined,
+  Check,
+  CheckCircle2,
+  Clock3,
+  PencilLine,
+  Play,
+  RefreshCw,
+  ShieldCheck,
+  Square,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+
+import {
+  baselineMethodDescriptions,
+  baselineMethodLabels,
+  experimentMetricLabels,
+  experimentStatusLabels,
+  experimentTypeLabels,
+} from "@/domain/experiments/labels";
+import type { ExperimentBaseline } from "@/domain/experiments/baseline";
+import {
+  experimentAnalysisResponseSchema,
+  type ExperimentAnalysis,
+  type MetricEvaluation,
+} from "@/domain/experiments/evaluation-schemas";
+import {
+  experimentDefinitionFromRecord,
+  getExperimentProgress,
+} from "@/domain/experiments/presentation";
+import {
+  experimentResponseSchema,
+  type Experiment,
+  type ExperimentFixtureOption,
+} from "@/domain/experiments/schemas";
+import type { ProductOption } from "@/domain/products/schemas";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  formatMoney,
+  formatQuantity,
+  formatRatio,
+} from "@/lib/formatting";
+
+interface ExperimentDetailProps {
+  baseHref: string;
+  baseline: ExperimentBaseline;
+  canEvaluate: boolean;
+  canStart: boolean;
+  canWrite: boolean;
+  fixtures: ExperimentFixtureOption[];
+  initialExperiment: Experiment;
+  initialAnalyses: ExperimentAnalysis[];
+  initialNotice?: "saved" | "planned" | "createdDraft";
+  products: ProductOption[];
+  storeId: string;
+  userId: string;
+}
+
+const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+});
+
+function splitLines(value: string): string[] {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function apiMessage(payload: unknown): string | null {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "message" in payload &&
+    typeof payload.message === "string"
+  ) {
+    return payload.message;
+  }
+  return null;
+}
+
+function statusVariant(status: Experiment["status"]) {
+  if (status === "cancelled") return "destructive" as const;
+  if (status === "draft" || status === "awaiting_data") {
+    return "secondary" as const;
+  }
+  if (status === "concluded" || status === "archived") {
+    return "outline" as const;
+  }
+  return "default" as const;
+}
+
+export function ExperimentDetail({
+  baseHref,
+  baseline,
+  canEvaluate,
+  canStart,
+  canWrite,
+  fixtures,
+  initialExperiment,
+  initialAnalyses,
+  initialNotice,
+  products,
+  storeId,
+  userId,
+}: ExperimentDetailProps) {
+  const router = useRouter();
+  const [experiment, setExperiment] = useState(initialExperiment);
+  const [analyses, setAnalyses] = useState(initialAnalyses);
+  const [startOpen, setStartOpen] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(
+    initialNotice === "saved"
+      ? "Brouillon enregistré."
+      : initialNotice === "planned"
+        ? "Test planifié."
+        : initialNotice === "createdDraft"
+          ? "Le brouillon a été créé, mais la planification n’a pas abouti. Vérifiez-le puis planifiez-le à nouveau."
+          : null,
+  );
+  const [actualSummary, setActualSummary] = useState(
+    experiment.treatmentPlan.summary,
+  );
+  const [actualFixtureId, setActualFixtureId] = useState(
+    experiment.treatmentPlan.fixtureId ?? "",
+  );
+  const [implementationNotes, setImplementationNotes] = useState("");
+  const [deviations, setDeviations] = useState("");
+  const [completionNotes, setCompletionNotes] = useState("");
+  const [additionalConfounders, setAdditionalConfounders] = useState("");
+  const productById = useMemo(
+    () => new Map(products.map((product) => [product.id, product.label])),
+    [products],
+  );
+  const fixtureById = useMemo(
+    () => new Map(fixtures.map((fixture) => [fixture.id, fixture.label])),
+    [fixtures],
+  );
+  const progress =
+    experiment.status === "running" && experiment.actualStartAt
+      ? getExperimentProgress({
+          actualStartAt: experiment.actualStartAt,
+          plannedEndAt: experiment.plannedEndAt,
+          asOf: new Date().toISOString(),
+        })
+      : null;
+  const canCancel =
+    canWrite &&
+    (experiment.status === "draft" ||
+      experiment.status === "planned" ||
+      (experiment.status === "running" && canStart));
+  const latestAnalysis = analyses[0] ?? null;
+  const analysisIsCurrent =
+    latestAnalysis?.dataRevision === baseline.dataRevision;
+
+  async function mutate(url: string, method: "POST" | "PATCH", body: unknown) {
+    setPending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        throw new Error(apiMessage(payload) ?? "L’action n’a pas pu être enregistrée.");
+      }
+      const updated = experimentResponseSchema.parse(payload).experiment;
+      setExperiment(updated);
+      setConfirmCancel(false);
+      setStartOpen(false);
+      setFinishOpen(false);
+      router.refresh();
+      return updated;
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "L’action n’a pas pu être enregistrée.");
+      return null;
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function start() {
+    const updated = await mutate(
+      `/api/stores/${storeId}/experiments/${experiment.id}/start`,
+      "POST",
+      {
+        idempotencyKey: crypto.randomUUID(),
+        basedOnUpdatedAt: experiment.updatedAt,
+        treatmentActual: {
+          summary: actualSummary,
+          fixtureId: actualFixtureId || null,
+          implementationNotes: implementationNotes.trim() || null,
+          deviations: splitLines(deviations),
+        },
+      },
+    );
+    if (updated) setNotice("Le test est démarré et sa définition est maintenant gelée.");
+  }
+
+  async function finish() {
+    const updated = await mutate(
+      `/api/stores/${storeId}/experiments/${experiment.id}/finish`,
+      "POST",
+      {
+        idempotencyKey: crypto.randomUUID(),
+        basedOnUpdatedAt: experiment.updatedAt,
+        completionNotes: completionNotes.trim() || null,
+        additionalConfounders: splitLines(additionalConfounders),
+      },
+    );
+    if (updated) setNotice("Exécution terminée. Le test attend maintenant les données nécessaires à l’analyse.");
+  }
+
+  async function cancel() {
+    const updated = await mutate(
+      `/api/stores/${storeId}/experiments/${experiment.id}`,
+      "PATCH",
+      {
+        ...experimentDefinitionFromRecord(experiment),
+        idempotencyKey: crypto.randomUUID(),
+        basedOnUpdatedAt: experiment.updatedAt,
+        action: "cancel",
+      },
+    );
+    if (updated) setNotice("Test annulé. Sa trace reste conservée dans l’historique.");
+  }
+
+  async function evaluate() {
+    setPending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        `/api/stores/${storeId}/experiments/${experiment.id}/evaluate`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            idempotencyKey: crypto.randomUUID(),
+            basedOnUpdatedAt: experiment.updatedAt,
+          }),
+        },
+      );
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          apiMessage(payload) ?? "L’analyse n’a pas pu être calculée.",
+        );
+      }
+      const result = experimentAnalysisResponseSchema.parse(payload);
+      setExperiment(result.experiment);
+      setAnalyses((current) => [
+        result.analysis,
+        ...current.filter((analysis) => analysis.id !== result.analysis.id),
+      ]);
+      setNotice(
+        "Analyse enregistrée. Les résultats restent une estimation fondée sur les preuves disponibles.",
+      );
+      router.refresh();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "L’analyse n’a pas pu être calculée.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+      <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={baseHref}>
+        <ArrowLeft aria-hidden="true" />
+        Retour aux tests
+      </Link>
+
+      <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-primary">
+              {experimentTypeLabels[experiment.type]}
+            </p>
+            <Badge variant={statusVariant(experiment.status)}>
+              {experimentStatusLabels[experiment.status]}
+            </Badge>
+          </div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em]">
+            {experiment.title}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {dateFormatter.format(new Date(experiment.plannedStartAt))} – {dateFormatter.format(new Date(experiment.plannedEndAt))}
+          </p>
+        </div>
+        {(experiment.status === "draft" || experiment.status === "planned") && canWrite ? (
+          <Link className={buttonVariants({ variant: "outline" })} href={`${baseHref}/${experiment.id}/edit`}>
+            <PencilLine aria-hidden="true" />
+            Modifier
+          </Link>
+        ) : null}
+      </div>
+
+      {notice ? (
+        <Alert className="mt-6 border-primary/25 bg-primary/[0.035]">
+          <CheckCircle2 aria-hidden="true" />
+          <AlertTitle>{notice}</AlertTitle>
+        </Alert>
+      ) : null}
+      {error ? (
+        <Alert className="mt-6" variant="destructive">
+          <AlertCircle aria-hidden="true" />
+          <AlertTitle>Action impossible</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {experiment.status === "running" && progress ? (
+        <Card className="mt-6 border-primary/25 bg-primary/[0.035]">
+          <CardContent className="py-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">En cours</p>
+                <p className="mt-2 text-3xl font-semibold">J{progress.currentDay}/{progress.totalDays}</p>
+              </div>
+              <Badge>Définition gelée</Badge>
+            </div>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-primary/15">
+              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress.elapsedRatio * 100}%` }} />
+            </div>
+            <div className="mt-5 grid gap-2 sm:grid-cols-3">
+              <ExecutionCheck label={experiment.treatmentActual?.fixtureId ? `${fixtureById.get(experiment.treatmentActual.fixtureId) ?? experiment.treatmentActual.fixtureId} confirmé` : "Emplacement confirmé"} />
+              <ExecutionCheck label={`${experiment.productIds.length} produit(s) confirmé(s)`} />
+              <ExecutionCheck label="Protocole et référence gelés" />
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {experiment.status === "awaiting_data" ? (
+        <Alert className="mt-6">
+          <Clock3 aria-hidden="true" />
+          <AlertTitle>Exécution terminée, données en attente</AlertTitle>
+          <AlertDescription>
+            Aucun uplift provisoire n’est affiché. L’analyse sera disponible lorsque les faits couvrant toute la période auront été importés.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {(experiment.status === "awaiting_data" ||
+        experiment.status === "analyzed") &&
+      canEvaluate ? (
+        <Card className="mt-6 border-primary/25">
+          <CardContent className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">
+                {analysisIsCurrent
+                  ? "Analyse à jour"
+                  : latestAnalysis
+                    ? "De nouvelles données sont disponibles"
+                    : "Prêt pour l’analyse"}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                {baseline.readiness === "unavailable"
+                  ? baseline.warnings[0]?.message
+                  : "Le calcul sera figé dans une nouvelle version avec ses entrées et avertissements."}
+              </p>
+            </div>
+            <Button
+              disabled={
+                pending || baseline.readiness === "unavailable" || analysisIsCurrent
+              }
+              onClick={evaluate}
+              type="button"
+            >
+              {latestAnalysis ? (
+                <RefreshCw aria-hidden="true" />
+              ) : (
+                <ChartNoAxesCombined aria-hidden="true" />
+              )}
+              {analysisIsCurrent
+                ? "Analyse à jour"
+                : latestAnalysis
+                  ? "Recalculer"
+                  : "Analyser le test"}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {latestAnalysis ? (
+        <AnalysisResult analysis={latestAnalysis} />
+      ) : null}
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Hypothèse</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="leading-7">{experiment.hypothesis}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Traitement</CardTitle>
+              <CardDescription>Ce qui doit changer en rayon.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="leading-7">{experiment.treatmentPlan.summary}</p>
+              <div className="rounded-xl bg-muted/55 p-4 text-sm">
+                <p className="font-medium">Effet opérationnel attendu</p>
+                <p className="mt-1 leading-6 text-muted-foreground">{experiment.treatmentPlan.expectedChange}</p>
+              </div>
+              {experiment.treatmentPlan.instructions.length > 0 ? (
+                <ul className="space-y-2 text-sm">
+                  {experiment.treatmentPlan.instructions.map((instruction) => (
+                    <li className="flex gap-2" key={instruction}>
+                      <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+                      {instruction}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Critères de succès</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <DefinitionRow label="KPI principal" value={experimentMetricLabels[experiment.primaryMetric]} />
+              <DefinitionRow label="Indicateurs secondaires" value={experiment.secondaryMetrics.map((metric) => experimentMetricLabels[metric]).join(", ") || "Aucun"} />
+              <DefinitionRow label="Garde-fous" value={experiment.guardrailMetrics.map((metric) => experimentMetricLabels[metric]).join(", ") || "Aucun"} />
+              <DefinitionRow label="Effet attendu" value={experiment.expectedRelativeEffect === null ? "Non défini" : `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(experiment.expectedRelativeEffect * 100)} %`} />
+              <DefinitionRow label="Coûts explicites" value={formatMoney(experiment.explicitCostsCents)} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <aside className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle>Référence</CardTitle>
+                  <CardDescription>
+                    {baselineMethodLabels[experiment.baselineConfig.method]}
+                  </CardDescription>
+                </div>
+                <Badge
+                  variant={
+                    baseline.readiness === "ready"
+                      ? "default"
+                      : baseline.readiness === "limited"
+                        ? "secondary"
+                        : "outline"
+                  }
+                >
+                  {baseline.readiness === "ready"
+                    ? "Calculable"
+                    : baseline.readiness === "limited"
+                      ? "À interpréter"
+                      : "Indisponible"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="leading-6 text-muted-foreground">{baselineMethodDescriptions[experiment.baselineConfig.method]}</p>
+              <DefinitionRow
+                label="Historique disponible"
+                value={`${baseline.availableComparablePeriods}/${baseline.requestedComparablePeriods} période(s)`}
+              />
+              <DefinitionRow
+                label="Calcul"
+                value={
+                  baseline.aggregation === "median"
+                    ? "Médiane robuste"
+                    : baseline.aggregation === "mean"
+                      ? "Moyenne"
+                      : "Non calculé"
+                }
+              />
+              <DefinitionRow
+                label="Correction de tendance"
+                value={
+                  baseline.trendNormalization.applied &&
+                  baseline.trendNormalization.factor !== null
+                    ? `Appliquée (${formatRatio(baseline.trendNormalization.factor - 1)})`
+                    : experiment.baselineConfig.trendNormalization
+                      ? "En attente ou non fiable"
+                      : "Désactivée"
+                }
+              />
+              {baseline.expectedWithoutTest ? (
+                <div className="rounded-xl border border-primary/20 bg-primary/[0.035] p-4">
+                  <p className="font-medium text-primary">
+                    Référence historique pré-test
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">CA produits</p>
+                      <p className="mt-1 font-semibold">
+                        {formatMoney(baseline.expectedWithoutTest.revenueCents)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Marge</p>
+                      <p className="mt-1 font-semibold">
+                        {formatMoney(baseline.expectedWithoutTest.marginCents)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Quantité</p>
+                      <p className="mt-1 font-semibold">
+                        {formatQuantity(baseline.expectedWithoutTest.quantity)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">CA rayon</p>
+                      <p className="mt-1 font-semibold">
+                        {formatMoney(
+                          baseline.expectedWithoutTest.departmentRevenueCents,
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                    Cette estimation ne constitue pas encore un résultat ni une preuve causale.
+                  </p>
+                </div>
+              ) : null}
+              {baseline.evidencePeriodKeys.length > 0 ? (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Périodes retenues
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {baseline.evidencePeriodKeys.map((periodKey) => (
+                      <Badge key={periodKey} variant="outline">
+                        {periodKey}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {baseline.warnings.length > 0 ? (
+                <ul className="space-y-2 border-t pt-3">
+                  {baseline.warnings.map((warning) => (
+                    <li
+                      className="flex gap-2 text-xs leading-5 text-muted-foreground"
+                      key={warning.code}
+                    >
+                      <AlertCircle
+                        aria-hidden="true"
+                        className="mt-0.5 size-3.5 shrink-0"
+                      />
+                      {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Périmètre terrain</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <DefinitionRow label="Emplacement" value={experiment.treatmentPlan.fixtureId ? fixtureById.get(experiment.treatmentPlan.fixtureId) ?? experiment.treatmentPlan.fixtureId : "Rayon"} />
+              <DefinitionRow label="Produits" value={experiment.productIds.map((id) => productById.get(id) ?? "Produit indisponible").join(", ") || experiment.family || "Rayon complet"} />
+              <DefinitionRow label="Responsable" value={experiment.ownerUserId === userId ? "Vous" : "Un autre responsable"} />
+            </CardContent>
+          </Card>
+
+          {experiment.status === "planned" && canStart ? (
+            <Card className="border-primary/25">
+              <CardHeader>
+                <CardTitle>Démarrer sur le terrain</CardTitle>
+                <CardDescription>Confirmez ce qui est réellement installé avant de geler le protocole.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!startOpen ? (
+                  <Button className="w-full" onClick={() => setStartOpen(true)} type="button">
+                    <Play aria-hidden="true" /> Confirmer le démarrage
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="actual-fixture">Emplacement réel</Label>
+                      <Select onValueChange={(value) => setActualFixtureId(value ?? "")} value={actualFixtureId}>
+                        <SelectTrigger className="h-10 w-full" id="actual-fixture">
+                          <SelectValue>{fixtureById.get(actualFixtureId) ?? "Choisir"}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {fixtures.map((fixture) => <SelectItem key={fixture.id} value={fixture.id}>{fixture.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="actual-summary">Traitement réel</Label>
+                      <Textarea id="actual-summary" onChange={(event) => setActualSummary(event.target.value)} value={actualSummary} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="implementation-notes">Observation de mise en place</Label>
+                      <Textarea id="implementation-notes" onChange={(event) => setImplementationNotes(event.target.value)} placeholder="État du rayon, prix, remplissage…" value={implementationNotes} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="start-deviations">Écarts au protocole, un par ligne</Label>
+                      <Textarea id="start-deviations" onChange={(event) => setDeviations(event.target.value)} value={deviations} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={() => setStartOpen(false)} type="button" variant="outline">Retour</Button>
+                      <Button disabled={pending || !actualSummary.trim()} onClick={start} type="button"><Play aria-hidden="true" /> Démarrer</Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {experiment.status === "running" && canStart ? (
+            <Card className="border-primary/25">
+              <CardHeader>
+                <CardTitle>Terminer l’exécution</CardTitle>
+                <CardDescription>Consignez les écarts observés avant d’attendre les données.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!finishOpen ? (
+                  <Button className="w-full" onClick={() => setFinishOpen(true)} type="button">
+                    <Square aria-hidden="true" /> Terminer le test
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="completion-notes">Bilan d’exécution</Label>
+                      <Textarea id="completion-notes" onChange={(event) => setCompletionNotes(event.target.value)} placeholder="Le protocole a-t-il été tenu ?" value={completionNotes} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="additional-confounders">Facteurs perturbateurs, un par ligne</Label>
+                      <Textarea id="additional-confounders" onChange={(event) => setAdditionalConfounders(event.target.value)} placeholder="Rupture, météo, travaux…" value={additionalConfounders} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={() => setFinishOpen(false)} type="button" variant="outline">Retour</Button>
+                      <Button disabled={pending} onClick={finish} type="button"><CalendarCheck aria-hidden="true" /> Confirmer</Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {canCancel ? (
+            <Card>
+              <CardContent className="pt-4">
+                {!confirmCancel ? (
+                  <Button className="w-full" onClick={() => setConfirmCancel(true)} type="button" variant="ghost">
+                    <X aria-hidden="true" /> Annuler ce test
+                  </Button>
+                ) : (
+                  <div role="alert">
+                    <p className="text-sm font-medium">Annuler définitivement ce test ?</p>
+                    <p className="mt-1 text-xs text-muted-foreground">La trace et l’audit seront conservés.</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <Button onClick={() => setConfirmCancel(false)} type="button" variant="outline">Retour</Button>
+                      <Button disabled={pending} onClick={cancel} type="button" variant="destructive">Confirmer</Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+        </aside>
+      </div>
+    </main>
+  );
+}
+
+const evidenceGradeLabels: Record<
+  ExperimentAnalysis["evidenceQuality"]["grade"],
+  string
+> = {
+  high: "Preuves fortes",
+  medium: "Preuves modérées",
+  low: "Preuves limitées",
+};
+
+const evidenceDimensionLabels: Record<
+  ExperimentAnalysis["evidenceQuality"]["dimensions"][number]["dimension"],
+  string
+> = {
+  history_depth: "Profondeur d’historique",
+  baseline_stability: "Stabilité de la référence",
+  date_granularity: "Précision des dates",
+  control_quality: "Qualité du contrôle",
+  execution_compliance: "Respect du protocole",
+  confounders: "Facteurs perturbateurs",
+};
+
+function formatMetricValue(
+  metric: Pick<MetricEvaluation, "unit">,
+  value: number | null,
+): string {
+  if (value === null) return "—";
+  if (metric.unit === "cents") return formatMoney(Math.round(value));
+  if (metric.unit === "ratio") return formatRatio(value);
+  return formatQuantity(value);
+}
+
+function AnalysisResult({ analysis }: { analysis: ExperimentAnalysis }) {
+  const primary = analysis.metrics.find(
+    ({ metric }) => metric === analysis.experimentSnapshot.primaryMetric,
+  );
+  const economics = analysis.economics;
+
+  return (
+    <section aria-labelledby="analysis-title" className="mt-6 space-y-6">
+      <Card className="overflow-hidden border-primary/25">
+        <CardHeader className="bg-primary/[0.035]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle id="analysis-title">Résultat du test</CardTitle>
+              <CardDescription>
+                Analyse v{analysis.analysisVersion} · données révision {analysis.dataRevision}
+              </CardDescription>
+            </div>
+            <Badge
+              variant={
+                analysis.evidenceQuality.grade === "high"
+                  ? "default"
+                  : analysis.evidenceQuality.grade === "medium"
+                    ? "secondary"
+                    : "outline"
+              }
+            >
+              {evidenceGradeLabels[analysis.evidenceQuality.grade]}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="py-6">
+          {primary ? (
+            <>
+              <p className="text-sm font-medium text-muted-foreground">
+                KPI principal · {experimentMetricLabels[primary.metric]}
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <ResultValue
+                  label="Réalisé"
+                  value={formatMetricValue(primary, primary.actual)}
+                />
+                <ResultValue
+                  label="Attendu sans test"
+                  value={formatMetricValue(primary, primary.expectedWithoutTest)}
+                />
+                <ResultValue
+                  emphasized
+                  label="Uplift estimé"
+                  value={
+                    primary.absoluteUplift === null
+                      ? "—"
+                      : `${formatMetricValue(primary, primary.absoluteUplift)}${
+                          primary.relativeUplift === null
+                            ? ""
+                            : ` · ${formatRatio(primary.relativeUplift)}`
+                        }`
+                  }
+                />
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Le KPI principal n’est pas calculable avec les données disponibles.
+            </p>
+          )}
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
+            Cet uplift est une estimation contrefactuelle, pas une certitude causale.
+          </p>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Indicateurs évalués</CardTitle>
+            <CardDescription>Réalisé, référence et écart par KPI.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {analysis.metrics.map((metric) => (
+              <div className="rounded-xl border p-4" key={metric.metric}>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium">
+                    {experimentMetricLabels[metric.metric]}
+                  </p>
+                  <Badge variant="outline">
+                    {evidenceGradeLabels[metric.quality]}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                  <MetricValue
+                    label="Réalisé"
+                    value={formatMetricValue(metric, metric.actual)}
+                  />
+                  <MetricValue
+                    label="Attendu"
+                    value={formatMetricValue(
+                      metric,
+                      metric.expectedWithoutTest,
+                    )}
+                  />
+                  <MetricValue
+                    label="Écart"
+                    value={formatMetricValue(metric, metric.absoluteUplift)}
+                  />
+                </div>
+                {metric.warnings.map((warning) => (
+                  <p
+                    className="mt-3 text-xs leading-5 text-muted-foreground"
+                    key={warning}
+                  >
+                    {warning}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Économie incrémentale</CardTitle>
+            <CardDescription>
+              Marge supplémentaire, démarque et coûts déclarés.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <DefinitionRow
+              label="Marge incrémentale"
+              value={formatMoney(economics.incrementalGrossMarginCents)}
+            />
+            <DefinitionRow
+              label="Démarque incrémentale"
+              value={formatMoney(economics.incrementalMarkdownCents)}
+            />
+            <DefinitionRow
+              label="Coûts explicites"
+              value={formatMoney(economics.explicitCostsCents)}
+            />
+            <div className="rounded-xl bg-muted/55 p-4">
+              <p className="text-xs text-muted-foreground">
+                {economics.complete
+                  ? "Valeur incrémentale nette"
+                  : "Sous-total des composants connus"}
+              </p>
+              <p className="mt-1 text-2xl font-semibold">
+                {formatMoney(
+                  economics.complete
+                    ? economics.netIncrementalValueCents
+                    : economics.knownComponentsValueCents,
+                )}
+              </p>
+              {!economics.complete ? (
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Résultat partiel : les composants absents ne sont pas assimilés à zéro.
+                </p>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pourquoi ce niveau de preuve ?</CardTitle>
+          <CardDescription>
+            Chaque dimension est explicite ; aucun score statistique n’est simulé.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {analysis.evidenceQuality.dimensions.map((dimension) => (
+              <div className="rounded-xl border p-4" key={dimension.dimension}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium">
+                    {evidenceDimensionLabels[dimension.dimension]}
+                  </p>
+                  <Badge variant="outline">
+                    {dimension.grade === "high"
+                      ? "Fort"
+                      : dimension.grade === "medium"
+                        ? "Moyen"
+                        : "Faible"}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {dimension.reason}
+                </p>
+              </div>
+            ))}
+          </div>
+          {analysis.warnings.length > 0 ? (
+            <div className="mt-5 space-y-2 border-t pt-5">
+              {analysis.warnings.map((warning) => (
+                <div
+                  className="flex gap-2 text-sm text-muted-foreground"
+                  key={warning.code}
+                >
+                  <TriangleAlert
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0"
+                  />
+                  <p>{warning.message}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function ResultValue({
+  emphasized = false,
+  label,
+  value,
+}: {
+  emphasized?: boolean;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      className={
+        emphasized
+          ? "rounded-xl border border-primary/25 bg-primary/[0.045] p-4"
+          : "rounded-xl border p-4"
+      }
+    >
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function MetricValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 font-medium">{value}</p>
+    </div>
+  );
+}
+
+function ExecutionCheck({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border bg-background p-3 text-sm">
+      <ShieldCheck aria-hidden="true" className="size-4 shrink-0 text-primary" />
+      {label}
+    </div>
+  );
+}
+
+function DefinitionRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="max-w-[60%] text-right font-medium">{value}</span>
+    </div>
+  );
+}

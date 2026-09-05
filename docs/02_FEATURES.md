@@ -68,3 +68,41 @@ Acceptance criteria for EXP-01:
 - planning, start, finish and cancellation use optimistic concurrency, are idempotent and audited;
 - starting freezes the definition and captures the actual treatment snapshot;
 - finishing records the actual period and moves the experiment to `awaiting_data` without fabricating an analysis.
+
+Acceptance criteria for EXP-02:
+- managers can list tests by preparation, execution, analysis and terminal state;
+- a five-step mobile-first flow captures hypothesis, treatment, period, baseline and success criteria;
+- a test may be linked to an authorized TG operation and only displays product names, never raw identifiers;
+- draft and planned definitions remain editable, while starting freezes the protocol and captures actual execution;
+- running tests show execution progress and allow recording deviations and confounders before finishing;
+- no provisional uplift is shown before a deterministic analysis exists;
+- read-only users can inspect tests without seeing mutation controls.
+
+Acceptance criteria for EXP-03:
+- prior comparable windows are derived deterministically from the frozen test period;
+- monthly facts are used only when the test covers complete calendar months;
+- four or more complete windows use a robust median, otherwise the available windows use a mean;
+- missing history and small revenue, margin or quantity denominators remain visible as evidence warnings;
+- optional department-trend normalization excludes treatment products and is applied only when its control is complete, sufficiently large and stable;
+- engine thresholds and version are store-configurable, with explicit defaults;
+- baseline reads are scoped by the server-authorized organization and store context;
+- the test detail shows the retained periods and historical reference without presenting it as causal uplift.
+
+Acceptance criteria for MD-01 foundation:
+- a manual markdown fact records a positive amount, product, date, optional quantity, reason and notes without modifying sales facts;
+- product references are validated inside the authorized organization/store scope;
+- capture is idempotent, audited and increments the store data revision;
+- reads require store-scoped analytics access and writes require `markdown.write`;
+- post-markdown margin subtracts observed markdown from theoretical gross margin without replacing either source fact.
+
+Acceptance criteria for EXP-04:
+- evaluation is available only after execution is complete and the full test-period facts exist;
+- every analysis is an append-only, versioned snapshot keyed by experiment, data revision and engine version;
+- actual, expected, absolute uplift and guarded relative uplift are persisted per configured metric;
+- small denominators suppress only the relative uplift and preserve the absolute difference;
+- incremental gross margin, incremental markdown, explicit costs and net incremental value remain separate;
+- missing markdown or explicit costs produce a partial known-components subtotal, never an invented complete net value;
+- evidence quality exposes history depth, baseline stability, date granularity, control quality, execution compliance and confounders;
+- the system labels uplift as a counterfactual estimate rather than causal certainty;
+- analysis creation transitions `awaiting_data` to `analyzed` and is audited;
+- read-only users can inspect saved analysis while only `experiments.start` holders can evaluate or re-evaluate.

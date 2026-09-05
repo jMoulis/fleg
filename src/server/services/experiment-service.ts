@@ -6,6 +6,7 @@ import type {
   ExperimentStartInput,
   ExperimentUpdateInput,
 } from "@/domain/experiments/schemas";
+import { experimentFixtureOptionSchema } from "@/domain/experiments/schemas";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 import { getAppDb, getMongoClient } from "@/server/db/mongo-client";
@@ -13,6 +14,9 @@ import {
   ExperimentNotFoundError,
   ExperimentRepository,
 } from "@/server/repositories/experiment-repository";
+import { CommercialEventRepository } from "@/server/repositories/commercial-event-repository";
+import { ProductRepository } from "@/server/repositories/product-repository";
+import { getCurrentStoreLayout } from "@/server/services/layout-service";
 
 function assertControlAuthorization(input: {
   context: AuthorizedStoreContext;
@@ -33,6 +37,33 @@ function assertControlAuthorization(input: {
 
 export async function listExperiments(context: AuthorizedStoreContext) {
   return new ExperimentRepository(await getAppDb()).listForStore(context);
+}
+
+export async function getExperimentWorkspace(
+  context: AuthorizedStoreContext,
+) {
+  const db = await getAppDb();
+  const [{ layout }, experiments, products, commercialEvents] =
+    await Promise.all([
+      getCurrentStoreLayout(context),
+      new ExperimentRepository(db).listForStore(context),
+      new ProductRepository(db).listOptions(context),
+      new CommercialEventRepository(db).listForStore(context),
+    ]);
+
+  return {
+    experiments,
+    products,
+    commercialEvents,
+    fixtures:
+      layout?.fixtures.map((fixture) =>
+        experimentFixtureOptionSchema.parse({
+          id: fixture.id,
+          label: fixture.name,
+          type: fixture.type,
+        }),
+      ) ?? [],
+  };
 }
 
 export async function getExperiment(input: {

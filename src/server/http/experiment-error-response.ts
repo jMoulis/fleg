@@ -10,6 +10,7 @@ import {
   ExperimentTransitionError,
   InvalidExperimentReferenceError,
 } from "@/server/repositories/experiment-repository";
+import { ExperimentEvaluationUnavailableError } from "@/server/repositories/experiment-analysis-repository";
 
 export function experimentErrorResponse(error: unknown, requestId: string) {
   const notFound =
@@ -21,7 +22,8 @@ export function experimentErrorResponse(error: unknown, requestId: string) {
     error instanceof InvalidExperimentReferenceError;
   const conflict =
     error instanceof ExperimentConflictError ||
-    error instanceof ExperimentTransitionError;
+    error instanceof ExperimentTransitionError ||
+    error instanceof ExperimentEvaluationUnavailableError;
 
   return NextResponse.json(
     apiErrorSchema.parse({
@@ -32,6 +34,8 @@ export function experimentErrorResponse(error: unknown, requestId: string) {
           : conflict
             ? error instanceof ExperimentTransitionError
               ? error.code
+              : error instanceof ExperimentEvaluationUnavailableError
+                ? error.code
               : "EXPERIMENT_CONFLICT"
             : "EXPERIMENT_FAILED",
       message: notFound
