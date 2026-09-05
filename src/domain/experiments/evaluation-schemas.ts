@@ -44,6 +44,24 @@ export const evaluationEngineConfigSchema = z
     maximumDeviationsForMedium: z.number().int().nonnegative().max(30),
     maximumConfoundersForMedium: z.number().int().nonnegative().max(30),
     minimumRelativeMarkdownCents: z.number().int().safe().nonnegative(),
+    practicalRelativeUpliftThreshold: z
+      .number()
+      .finite()
+      .positive()
+      .max(1)
+      .default(0.02),
+    criticalGuardrailRelativeChange: z
+      .number()
+      .finite()
+      .positive()
+      .max(1)
+      .default(0.05),
+    materialEconomicLossCents: z
+      .number()
+      .int()
+      .safe()
+      .nonnegative()
+      .default(10_000),
   })
   .superRefine((config, context) => {
     if (config.mediumHistoryPeriods >= config.highHistoryPeriods) {
@@ -80,6 +98,9 @@ export const defaultEvaluationEngineConfig: EvaluationEngineConfig =
     maximumDeviationsForMedium: 1,
     maximumConfoundersForMedium: 1,
     minimumRelativeMarkdownCents: 1_000,
+    practicalRelativeUpliftThreshold: 0.02,
+    criticalGuardrailRelativeChange: 0.05,
+    materialEconomicLossCents: 10_000,
   });
 
 export const metricEvaluationSchema = z.object({

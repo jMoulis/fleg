@@ -4,6 +4,10 @@ import type {
   ExperimentStatus,
   ExperimentType,
 } from "@/domain/experiments/schemas";
+import type {
+  ExperimentManagerDecision,
+  ExperimentVerdict,
+} from "@/domain/experiments/conclusion";
 
 export const experimentStatusLabels: Record<ExperimentStatus, string> = {
   draft: "Brouillon",
@@ -58,4 +62,23 @@ export const baselineMethodDescriptions: Record<BaselineMethod, string> = {
     "Compare à un magasin similaire explicitement autorisé.",
   difference_in_differences:
     "Compare l’évolution du magasin testé à celle d’un magasin contrôle.",
+};
+
+export const experimentVerdictLabels: Record<ExperimentVerdict, string> = {
+  winner: "Gagnant",
+  promising: "Prometteur",
+  neutral: "Neutre",
+  loser: "Défavorable",
+  inconclusive: "Non concluant",
+};
+
+export const experimentManagerDecisionLabels: Record<
+  ExperimentManagerDecision,
+  string
+> = {
+  roll_out: "Généraliser",
+  repeat: "Retester",
+  modify_and_repeat: "Modifier et retester",
+  stop: "Arrêter",
+  no_action: "Ne rien changer",
 };

@@ -22,7 +22,8 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 - experiments `{organizationId:1,storeId:1,productIds:1,plannedStartAt:-1}`
 - experimentAnalyses `{experimentId:1,analysisVersion:1}` unique
 - experimentAnalyses `{experimentId:1,dataRevision:1,engineVersion:1}` unique
-- experimentConclusions `{experimentId:1,active:1}` unique when active
+- experimentConclusions `{organizationId:1,storeId:1,experimentId:1,active:1}` unique when active
+- experimentConclusions `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - recommendations `{storeId:1,periodKey:1,productId:1}`
 - auditLogs `{organizationId:1,storeId:1,createdAt:-1}`
 

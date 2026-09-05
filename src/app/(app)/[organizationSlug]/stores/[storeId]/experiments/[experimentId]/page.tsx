@@ -7,6 +7,7 @@ import { ExperimentDetail } from "@/components/experiments/experiment-detail";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { ExperimentNotFoundError } from "@/server/repositories/experiment-repository";
 import { getExperimentBaseline } from "@/server/services/baseline-service";
+import { getActiveExperimentConclusion } from "@/server/services/conclusion-service";
 import { listExperimentAnalyses } from "@/server/services/evaluation-service";
 import {
   getExperiment,
@@ -58,13 +59,17 @@ export default async function ExperimentPage({
     if (error instanceof ExperimentNotFoundError) notFound();
     throw error;
   }
-  const [workspace, baseline, analyses] = await Promise.all([
+  const [workspace, baseline, analyses, conclusion] = await Promise.all([
     getExperimentWorkspace(context),
     getExperimentBaseline({
       context,
       experimentId: parsedId.data,
     }),
     listExperimentAnalyses({
+      context,
+      experimentId: parsedId.data,
+    }),
+    getActiveExperimentConclusion({
       context,
       experimentId: parsedId.data,
     }),
@@ -81,12 +86,14 @@ export default async function ExperimentPage({
     <ExperimentDetail
       baseHref={`/${organizationSlug}/stores/${storeId}/experiments`}
       baseline={baseline}
+      canConclude={context.permissions.includes("experiments.conclude")}
       canEvaluate={context.permissions.includes("experiments.start")}
       canStart={context.permissions.includes("experiments.start")}
       canWrite={context.permissions.includes("experiments.write")}
       fixtures={workspace.fixtures}
       initialExperiment={experiment}
       initialAnalyses={analyses}
+      initialConclusion={conclusion}
       initialNotice={initialNotice}
       products={workspace.products}
       storeId={storeId}

@@ -8,8 +8,10 @@ import {
 } from "mongodb";
 
 import {
-  decisionRecordSchema,
-  type DecisionRecord,
+  decisionLogEntrySchema,
+  recommendationDecisionRecordSchema,
+  type DecisionLogEntry,
+  type RecommendationDecisionRecord,
   type RecommendationDecisionInput,
 } from "@/domain/decisions/schemas";
 import {
@@ -24,6 +26,7 @@ interface RecommendationDocument
 }
 
 interface DecisionLogDocument {
+  entryType?: "recommendation";
   recommendationId: ObjectId;
   organizationId: string;
   storeId: ObjectId;
@@ -37,6 +40,29 @@ interface DecisionLogDocument {
   createdAt: Date;
 }
 
+interface ExperimentDecisionLogDocument {
+  entryType: "experiment_conclusion";
+  conclusionId: ObjectId;
+  experimentId: ObjectId;
+  organizationId: string;
+  storeId: ObjectId;
+  actorUserId: string;
+  managerVerdict: string;
+  systemSuggestedVerdict: string;
+  decision: string;
+  rationale: string;
+  reusableTags: string[];
+  experimentSnapshot: unknown;
+  analysisSnapshot: unknown;
+  idempotencyKey: string;
+  decidedAt: Date;
+  createdAt: Date;
+}
+
+type AnyDecisionLogDocument =
+  | DecisionLogDocument
+  | ExperimentDecisionLogDocument;
+
 function toRecommendationSnapshot(
   recommendation: RecommendationDocument & { _id: ObjectId },
 ) {
@@ -49,11 +75,28 @@ function toRecommendationSnapshot(
 
 function toDecisionRecord(
   decision: DecisionLogDocument & { _id: ObjectId },
-): DecisionRecord {
-  return decisionRecordSchema.parse({
+): RecommendationDecisionRecord {
+  return recommendationDecisionRecordSchema.parse({
     ...decision,
+    entryType: "recommendation",
     id: decision._id.toHexString(),
     recommendationId: decision.recommendationId.toHexString(),
+    storeId: decision.storeId.toHexString(),
+    decidedAt: decision.decidedAt.toISOString(),
+  });
+}
+
+function toDecisionLogEntry(
+  decision: AnyDecisionLogDocument & { _id: ObjectId },
+): DecisionLogEntry {
+  if (decision.entryType !== "experiment_conclusion") {
+    return toDecisionRecord(decision);
+  }
+  return decisionLogEntrySchema.parse({
+    ...decision,
+    id: decision._id.toHexString(),
+    conclusionId: decision.conclusionId.toHexString(),
+    experimentId: decision.experimentId.toHexString(),
     storeId: decision.storeId.toHexString(),
     decidedAt: decision.decidedAt.toISOString(),
   });
@@ -70,7 +113,8 @@ export class DecisionRepository {
   ) {
     this.recommendations =
       db.collection<RecommendationDocument>("recommendations");
-    this.decisionLogs = db.collection<DecisionLogDocument>("decisionLogs");
+    this.decisionLogs =
+      db.collection<AnyDecisionLogDocument>("decisionLogs");
     this.auditLogs = db.collection("auditLogs");
   }
 
@@ -79,7 +123,7 @@ export class DecisionRepository {
     recommendationId: string;
     decisionInput: RecommendationDecisionInput;
     requestId: string;
-  }): Promise<DecisionRecord> {
+  }): Promise<RecommendationDecisionRecord> {
     const { context, recommendationId, decisionInput, requestId } = input;
     const storeId = new ObjectId(context.storeId);
     const recommendationObjectId = new ObjectId(recommendationId);
@@ -89,6 +133,9 @@ export class DecisionRepository {
       idempotencyKey: decisionInput.idempotencyKey,
     });
 
+    if (existing?.entryType === "experiment_conclusion") {
+      throw new Error("Cette clé d’idempotence appartient à une autre décision");
+    }
     if (existing) {
       return toDecisionRecord(existing);
     }
@@ -115,6 +162,7 @@ export class DecisionRepository {
         const recommendationSnapshot = toRecommendationSnapshot(recommendation);
         const inserted = await this.decisionLogs.insertOne(
           {
+            entryType: "recommendation",
             recommendationId: recommendationObjectId,
             organizationId: context.organizationId,
             storeId,
@@ -129,7 +177,8 @@ export class DecisionRepository {
           },
           { session },
         );
-        const record = decisionRecordSchema.parse({
+        const record = recommendationDecisionRecordSchema.parse({
+          entryType: "recommendation",
           id: inserted.insertedId.toHexString(),
           recommendationId,
           organizationId: context.organizationId,
@@ -179,6 +228,9 @@ export class DecisionRepository {
           storeId,
           idempotencyKey: decisionInput.idempotencyKey,
         });
+        if (duplicate?.entryType === "experiment_conclusion") {
+          throw new Error("Cette clé d’idempotence appartient à une autre décision");
+        }
         if (duplicate) {
           return toDecisionRecord(duplicate);
         }
@@ -193,7 +245,7 @@ export class DecisionRepository {
   async listForStore(
     context: AuthorizedStoreContext,
     limit = 100,
-  ): Promise<DecisionRecord[]> {
+  ): Promise<DecisionLogEntry[]> {
     const decisions = await this.decisionLogs
       .find({
         organizationId: context.organizationId,
@@ -203,6 +255,6 @@ export class DecisionRepository {
       .limit(limit)
       .toArray();
 
-    return decisions.map(toDecisionRecord);
+    return decisions.map(toDecisionLogEntry);
   }
 }

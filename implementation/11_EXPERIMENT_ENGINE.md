@@ -71,6 +71,10 @@ Fields:
 - actorUserId.
 - concludedAt.
 
+Indexes:
+- unique active conclusion by `{ organizationId, storeId, experimentId, active }`;
+- idempotent conclusion command by `{ organizationId, storeId, idempotencyKey }`.
+
 ## Indexes
 `experiments`
 - `{ organizationId:1, storeId:1, status:1, plannedStartAt:-1 }`

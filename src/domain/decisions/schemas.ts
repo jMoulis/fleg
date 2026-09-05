@@ -4,6 +4,12 @@ import {
   recommendationDraftSchema,
   recommendationTypeSchema,
 } from "@/domain/recommendations/schemas";
+import { experimentAnalysisSchema } from "@/domain/experiments/evaluation-schemas";
+import {
+  experimentManagerDecisionSchema,
+  experimentVerdictSchema,
+} from "@/domain/experiments/conclusion";
+import { experimentSchema } from "@/domain/experiments/schemas";
 
 export const managerDecisionSchema = z.enum([
   "accepted",
@@ -32,7 +38,8 @@ export type RecommendationDecisionInput = z.infer<
   typeof recommendationDecisionInputSchema
 >;
 
-export const decisionRecordSchema = z.object({
+export const recommendationDecisionRecordSchema = z.object({
+  entryType: z.literal("recommendation"),
   id: z.string().regex(/^[a-f\d]{24}$/i),
   recommendationId: z.string().regex(/^[a-f\d]{24}$/i),
   organizationId: z.string().min(1),
@@ -45,14 +52,44 @@ export const decisionRecordSchema = z.object({
   idempotencyKey: z.uuid(),
   decidedAt: z.iso.datetime(),
 });
-export type DecisionRecord = z.infer<typeof decisionRecordSchema>;
+export type RecommendationDecisionRecord = z.infer<
+  typeof recommendationDecisionRecordSchema
+>;
+
+export const experimentDecisionRecordSchema = z.object({
+  entryType: z.literal("experiment_conclusion"),
+  id: z.string().regex(/^[a-f\d]{24}$/i),
+  conclusionId: z.string().regex(/^[a-f\d]{24}$/i),
+  experimentId: z.string().regex(/^[a-f\d]{24}$/i),
+  organizationId: z.string().min(1),
+  storeId: z.string().regex(/^[a-f\d]{24}$/i),
+  actorUserId: z.string().min(1),
+  managerVerdict: experimentVerdictSchema,
+  systemSuggestedVerdict: experimentVerdictSchema,
+  decision: experimentManagerDecisionSchema,
+  rationale: z.string().min(20).max(2_000),
+  reusableTags: z.array(z.string().min(2).max(50)).max(12),
+  experimentSnapshot: experimentSchema,
+  analysisSnapshot: experimentAnalysisSchema,
+  idempotencyKey: z.uuid(),
+  decidedAt: z.iso.datetime(),
+});
+export type ExperimentDecisionRecord = z.infer<
+  typeof experimentDecisionRecordSchema
+>;
+
+export const decisionLogEntrySchema = z.discriminatedUnion("entryType", [
+  recommendationDecisionRecordSchema,
+  experimentDecisionRecordSchema,
+]);
+export type DecisionLogEntry = z.infer<typeof decisionLogEntrySchema>;
 
 export const decisionResponseSchema = z.object({
-  decision: decisionRecordSchema,
+  decision: recommendationDecisionRecordSchema,
   requestId: z.uuid(),
 });
 
 export const decisionLogResponseSchema = z.object({
-  decisions: z.array(decisionRecordSchema),
+  decisions: z.array(decisionLogEntrySchema),
   requestId: z.uuid(),
 });

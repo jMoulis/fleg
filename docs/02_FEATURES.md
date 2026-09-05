@@ -106,3 +106,14 @@ Acceptance criteria for EXP-04:
 - the system labels uplift as a counterfactual estimate rather than causal certainty;
 - analysis creation transitions `awaiting_data` to `analyzed` and is audited;
 - read-only users can inspect saved analysis while only `experiments.start` holders can evaluate or re-evaluate.
+
+Acceptance criteria for EXP-05:
+- the system suggestion is derived deterministically from versioned, store-configurable practical, guardrail and economic thresholds;
+- the suggestion remains visually secondary and never concludes or rolls out a test autonomously;
+- only `experiments.conclude` holders can submit a final manager verdict and rollout, repeat, modify-and-repeat, stop or no-action decision;
+- manager rationale is mandatory and reusable learning tags are validated;
+- a conclusion must reference the latest analysis and is rejected when the store data revision has changed;
+- conclusion is idempotent, transitions `analyzed` to `concluded` and writes the conclusion, experiment update, audit and decision-log snapshot atomically;
+- only one active conclusion exists per scoped experiment;
+- the mobile result exposes the primary result before the conclusion controls, while desktop keeps the evidence analysis beside the decision panel;
+- experiment conclusions and their immutable analysis snapshot are visible in the store Decision Log.

@@ -165,11 +165,18 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { name: "experiment_analyses_scope_analyzed" },
     ),
     db.collection("experimentConclusions").createIndex(
-      { experimentId: 1, active: 1 },
+      { organizationId: 1, storeId: 1, experimentId: 1, active: 1 },
       {
         unique: true,
         partialFilterExpression: { active: true },
-        name: "experiment_conclusions_one_active",
+        name: "experiment_conclusions_scope_one_active",
+      },
+    ),
+    db.collection("experimentConclusions").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      {
+        unique: true,
+        name: "experiment_conclusions_scope_key_unique",
       },
     ),
   ]);

@@ -32,6 +32,8 @@ experiments:        { organizationId: 1, storeId: 1, productIds: 1, plannedStart
 experimentCommands:{ organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
 experimentAnalyses:{ experimentId: 1, analysisVersion: 1 } unique
 experimentAnalyses:{ experimentId: 1, dataRevision: 1, engineVersion: 1 } unique
+experimentConclusions:{ organizationId: 1, storeId: 1, experimentId: 1, active: 1 } unique when active
+experimentConclusions:{ organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
 auditLogs:         { organizationId: 1, storeId: 1, createdAt: -1 }
 ```
 

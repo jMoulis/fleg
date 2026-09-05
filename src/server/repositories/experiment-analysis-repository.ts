@@ -118,6 +118,20 @@ export class ExperimentAnalysisRepository {
     return documents.map(toExperimentAnalysis);
   }
 
+  async findForExperiment(input: {
+    context: AuthorizedStoreContext;
+    experimentId: string;
+    analysisId: string;
+  }): Promise<ExperimentAnalysis | null> {
+    const document = await this.analyses.findOne({
+      _id: new ObjectId(input.analysisId),
+      organizationId: input.context.organizationId,
+      storeId: new ObjectId(input.context.storeId),
+      experimentId: new ObjectId(input.experimentId),
+    });
+    return document ? toExperimentAnalysis(document) : null;
+  }
+
   async save(input: {
     context: AuthorizedStoreContext;
     experiment: Experiment;

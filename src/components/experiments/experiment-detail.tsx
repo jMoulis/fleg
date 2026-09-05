@@ -10,13 +10,20 @@ import {
   ChartNoAxesCombined,
   Check,
   CheckCircle2,
+  CircleStop,
   Clock3,
+  Lightbulb,
+  Minus,
   PencilLine,
   Play,
   RefreshCw,
+  Repeat2,
+  Rocket,
   ShieldCheck,
   Square,
+  Tags,
   TriangleAlert,
+  Wrench,
   X,
 } from "lucide-react";
 
@@ -24,10 +31,23 @@ import {
   baselineMethodDescriptions,
   baselineMethodLabels,
   experimentMetricLabels,
+  experimentManagerDecisionLabels,
   experimentStatusLabels,
   experimentTypeLabels,
+  experimentVerdictLabels,
 } from "@/domain/experiments/labels";
 import type { ExperimentBaseline } from "@/domain/experiments/baseline";
+import {
+  experimentConclusionInputSchema,
+  experimentConclusionResponseSchema,
+  experimentManagerDecisionSchema,
+  experimentVerdictSchema,
+  suggestExperimentVerdict,
+  type ExperimentConclusion,
+  type ExperimentManagerDecision,
+  type ExperimentSystemEvidenceSummary,
+  type ExperimentVerdict,
+} from "@/domain/experiments/conclusion";
 import {
   experimentAnalysisResponseSchema,
   type ExperimentAnalysis,
@@ -53,6 +73,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -71,12 +92,14 @@ import {
 interface ExperimentDetailProps {
   baseHref: string;
   baseline: ExperimentBaseline;
+  canConclude: boolean;
   canEvaluate: boolean;
   canStart: boolean;
   canWrite: boolean;
   fixtures: ExperimentFixtureOption[];
   initialExperiment: Experiment;
   initialAnalyses: ExperimentAnalysis[];
+  initialConclusion: ExperimentConclusion | null;
   initialNotice?: "saved" | "planned" | "createdDraft";
   products: ProductOption[];
   storeId: string;
@@ -93,6 +116,26 @@ function splitLines(value: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function parseReusableTags(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function suggestedDecisionForVerdict(
+  verdict: ExperimentVerdict,
+): ExperimentManagerDecision {
+  if (verdict === "winner") return "roll_out";
+  if (verdict === "promising" || verdict === "inconclusive") return "repeat";
+  if (verdict === "loser") return "stop";
+  return "no_action";
 }
 
 function apiMessage(payload: unknown): string | null {
@@ -121,12 +164,14 @@ function statusVariant(status: Experiment["status"]) {
 export function ExperimentDetail({
   baseHref,
   baseline,
+  canConclude,
   canEvaluate,
   canStart,
   canWrite,
   fixtures,
   initialExperiment,
   initialAnalyses,
+  initialConclusion,
   initialNotice,
   products,
   storeId,
@@ -135,6 +180,7 @@ export function ExperimentDetail({
   const router = useRouter();
   const [experiment, setExperiment] = useState(initialExperiment);
   const [analyses, setAnalyses] = useState(initialAnalyses);
+  const [conclusion, setConclusion] = useState(initialConclusion);
   const [startOpen, setStartOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -159,6 +205,27 @@ export function ExperimentDetail({
   const [deviations, setDeviations] = useState("");
   const [completionNotes, setCompletionNotes] = useState("");
   const [additionalConfounders, setAdditionalConfounders] = useState("");
+  const initialSystemSuggestion = initialAnalyses[0]
+    ? suggestExperimentVerdict(initialAnalyses[0])
+    : null;
+  const [managerVerdict, setManagerVerdict] = useState<ExperimentVerdict>(
+    initialConclusion?.managerVerdict ??
+      initialSystemSuggestion?.suggestedVerdict ??
+      "inconclusive",
+  );
+  const [managerDecision, setManagerDecision] =
+    useState<ExperimentManagerDecision>(
+      initialConclusion?.managerDecision ??
+        suggestedDecisionForVerdict(
+          initialSystemSuggestion?.suggestedVerdict ?? "inconclusive",
+        ),
+    );
+  const [conclusionRationale, setConclusionRationale] = useState(
+    initialConclusion?.rationale ?? "",
+  );
+  const [reusableTags, setReusableTags] = useState(
+    initialConclusion?.reusableTags.join(", ") ?? "",
+  );
   const productById = useMemo(
     () => new Map(products.map((product) => [product.id, product.label])),
     [products],
@@ -181,6 +248,10 @@ export function ExperimentDetail({
       experiment.status === "planned" ||
       (experiment.status === "running" && canStart));
   const latestAnalysis = analyses[0] ?? null;
+  const systemSuggestion = useMemo(
+    () => (latestAnalysis ? suggestExperimentVerdict(latestAnalysis) : null),
+    [latestAnalysis],
+  );
   const analysisIsCurrent =
     latestAnalysis?.dataRevision === baseline.dataRevision;
 
@@ -282,11 +353,16 @@ export function ExperimentDetail({
         );
       }
       const result = experimentAnalysisResponseSchema.parse(payload);
+      const nextSuggestion = suggestExperimentVerdict(result.analysis);
       setExperiment(result.experiment);
       setAnalyses((current) => [
         result.analysis,
         ...current.filter((analysis) => analysis.id !== result.analysis.id),
       ]);
+      setManagerVerdict(nextSuggestion.suggestedVerdict);
+      setManagerDecision(
+        suggestedDecisionForVerdict(nextSuggestion.suggestedVerdict),
+      );
       setNotice(
         "Analyse enregistrée. Les résultats restent une estimation fondée sur les preuves disponibles.",
       );
@@ -296,6 +372,61 @@ export function ExperimentDetail({
         caught instanceof Error
           ? caught.message
           : "L’analyse n’a pas pu être calculée.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function conclude() {
+    if (!latestAnalysis) return;
+    const input = experimentConclusionInputSchema.safeParse({
+      idempotencyKey: crypto.randomUUID(),
+      basedOnUpdatedAt: experiment.updatedAt,
+      analysisId: latestAnalysis.id,
+      managerVerdict,
+      managerDecision,
+      rationale: conclusionRationale,
+      reusableTags: parseReusableTags(reusableTags),
+    });
+    if (!input.success) {
+      setError(
+        input.error.issues[0]?.message ??
+          "La conclusion contient des valeurs invalides.",
+      );
+      return;
+    }
+
+    setPending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        `/api/stores/${storeId}/experiments/${experiment.id}/conclude`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input.data),
+        },
+      );
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          apiMessage(payload) ?? "La conclusion n’a pas pu être enregistrée.",
+        );
+      }
+      const result = experimentConclusionResponseSchema.parse(payload);
+      setExperiment(result.experiment);
+      setConclusion(result.conclusion);
+      setNotice(
+        "Conclusion enregistrée. Le test et sa décision sont désormais figés dans le journal.",
+      );
+      router.refresh();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "La conclusion n’a pas pu être enregistrée.",
       );
     } finally {
       setPending(false);
@@ -421,8 +552,28 @@ export function ExperimentDetail({
         </Card>
       ) : null}
 
-      {latestAnalysis ? (
-        <AnalysisResult analysis={latestAnalysis} />
+      {latestAnalysis && systemSuggestion ? (
+        <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
+          <AnalysisResult analysis={latestAnalysis} />
+          <ConclusionPanel
+            analysis={latestAnalysis}
+            baseHref={baseHref}
+            canConclude={canConclude}
+            conclusion={conclusion}
+            managerDecision={managerDecision}
+            managerVerdict={managerVerdict}
+            onConclude={conclude}
+            onDecisionChange={setManagerDecision}
+            onRationaleChange={setConclusionRationale}
+            onTagsChange={setReusableTags}
+            onVerdictChange={setManagerVerdict}
+            pending={pending}
+            rationale={conclusionRationale}
+            reusableTags={reusableTags}
+            status={experiment.status}
+            systemSuggestion={systemSuggestion}
+          />
+        </div>
       ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
@@ -748,7 +899,7 @@ function AnalysisResult({ analysis }: { analysis: ExperimentAnalysis }) {
   const economics = analysis.economics;
 
   return (
-    <section aria-labelledby="analysis-title" className="mt-6 space-y-6">
+    <section aria-labelledby="analysis-title" className="space-y-6">
       <Card className="overflow-hidden border-primary/25">
         <CardHeader className="bg-primary/[0.035]">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -950,6 +1101,238 @@ function AnalysisResult({ analysis }: { analysis: ExperimentAnalysis }) {
         </CardContent>
       </Card>
     </section>
+  );
+}
+
+function DecisionIcon({ decision }: { decision: ExperimentManagerDecision }) {
+  if (decision === "roll_out") return <Rocket aria-hidden="true" />;
+  if (decision === "repeat") return <Repeat2 aria-hidden="true" />;
+  if (decision === "modify_and_repeat") return <Wrench aria-hidden="true" />;
+  if (decision === "stop") return <CircleStop aria-hidden="true" />;
+  return <Minus aria-hidden="true" />;
+}
+
+function ConclusionPanel({
+  analysis,
+  baseHref,
+  canConclude,
+  conclusion,
+  managerDecision,
+  managerVerdict,
+  onConclude,
+  onDecisionChange,
+  onRationaleChange,
+  onTagsChange,
+  onVerdictChange,
+  pending,
+  rationale,
+  reusableTags,
+  status,
+  systemSuggestion,
+}: {
+  analysis: ExperimentAnalysis;
+  baseHref: string;
+  canConclude: boolean;
+  conclusion: ExperimentConclusion | null;
+  managerDecision: ExperimentManagerDecision;
+  managerVerdict: ExperimentVerdict;
+  onConclude: () => void;
+  onDecisionChange: (decision: ExperimentManagerDecision) => void;
+  onRationaleChange: (rationale: string) => void;
+  onTagsChange: (tags: string) => void;
+  onVerdictChange: (verdict: ExperimentVerdict) => void;
+  pending: boolean;
+  rationale: string;
+  reusableTags: string;
+  status: Experiment["status"];
+  systemSuggestion: ExperimentSystemEvidenceSummary;
+}) {
+  const evidence = conclusion?.systemEvidenceSummary ?? systemSuggestion;
+  const decisionLogHref = baseHref.replace(/\/experiments$/, "/decisions");
+
+  return (
+    <aside aria-labelledby="conclusion-title" className="xl:sticky xl:top-6">
+      <Card className="border-primary/25">
+        <CardHeader className="border-b">
+          <CardTitle id="conclusion-title">Conclusion managériale</CardTitle>
+          <CardDescription>
+            Fondée sur l’analyse v{analysis.analysisVersion}. La décision finale
+            reste explicitement humaine.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="rounded-xl bg-muted/55 p-4">
+            <div className="flex items-center gap-2">
+              <Lightbulb aria-hidden="true" className="size-4 text-muted-foreground" />
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Suggestion du système
+              </p>
+            </div>
+            <p className="mt-2 text-lg font-semibold">
+              {experimentVerdictLabels[evidence.suggestedVerdict]}
+            </p>
+            <ul className="mt-3 space-y-2 text-xs leading-5 text-muted-foreground">
+              {evidence.reasons.map((reason) => (
+                <li className="flex gap-2" key={reason}>
+                  <span aria-hidden="true">•</span>
+                  <span>{reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {conclusion ? (
+            <div>
+              <div className="flex items-center gap-2 text-primary">
+                <CheckCircle2 aria-hidden="true" className="size-5" />
+                <p className="font-semibold">Décision enregistrée</p>
+              </div>
+              <dl className="mt-4 space-y-3 text-sm">
+                <DefinitionRow
+                  label="Verdict manager"
+                  value={experimentVerdictLabels[conclusion.managerVerdict]}
+                />
+                <DefinitionRow
+                  label="Décision"
+                  value={
+                    experimentManagerDecisionLabels[
+                      conclusion.managerDecision
+                    ]
+                  }
+                />
+              </dl>
+              <div className="mt-4 rounded-xl border p-4">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Justification
+                </p>
+                <p className="mt-2 text-sm leading-6">{conclusion.rationale}</p>
+              </div>
+              {conclusion.reusableTags.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {conclusion.reusableTags.map((tag) => (
+                    <Badge key={tag} variant="outline">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+              <Link
+                className={buttonVariants({
+                  className: "mt-5 w-full",
+                  variant: "outline",
+                })}
+                href={decisionLogHref}
+              >
+                Ouvrir le journal des décisions
+              </Link>
+            </div>
+          ) : status === "analyzed" && canConclude ? (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="manager-verdict">Verdict du manager</Label>
+                <Select
+                  onValueChange={(value) => {
+                    const parsed = experimentVerdictSchema.safeParse(value);
+                    if (parsed.success) onVerdictChange(parsed.data);
+                  }}
+                  value={managerVerdict}
+                >
+                  <SelectTrigger className="w-full" id="manager-verdict">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {experimentVerdictSchema.options.map((verdict) => (
+                      <SelectItem key={verdict} value={verdict}>
+                        {experimentVerdictLabels[verdict]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <fieldset>
+                <legend className="text-sm font-medium">Décision à prendre</legend>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  {experimentManagerDecisionSchema.options.map((decision) => (
+                    <Button
+                      aria-pressed={managerDecision === decision}
+                      className="justify-start"
+                      key={decision}
+                      onClick={() => onDecisionChange(decision)}
+                      type="button"
+                      variant={
+                        managerDecision === decision ? "secondary" : "outline"
+                      }
+                    >
+                      <DecisionIcon decision={decision} />
+                      {experimentManagerDecisionLabels[decision]}
+                    </Button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div className="space-y-2">
+                <Label htmlFor="conclusion-rationale">
+                  Justification obligatoire
+                </Label>
+                <Textarea
+                  id="conclusion-rationale"
+                  maxLength={2_000}
+                  onChange={(event) => onRationaleChange(event.target.value)}
+                  placeholder="Expliquez le résultat, les réserves et la décision terrain…"
+                  value={rationale}
+                />
+                <p className="text-xs text-muted-foreground">
+                  20 caractères minimum · {rationale.trim().length}/2 000
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="conclusion-tags">Enseignements réutilisables</Label>
+                <div className="relative">
+                  <Tags
+                    aria-hidden="true"
+                    className="absolute left-2.5 top-2 size-4 text-muted-foreground"
+                  />
+                  <Input
+                    className="pl-8"
+                    id="conclusion-tags"
+                    onChange={(event) => onTagsChange(event.target.value)}
+                    placeholder="TG, banane, saison été"
+                    value={reusableTags}
+                  />
+                </div>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Séparez les tags par des virgules.
+                </p>
+              </div>
+
+              <Button
+                className="w-full"
+                disabled={pending || rationale.trim().length < 20}
+                onClick={onConclude}
+                type="button"
+              >
+                <CheckCircle2 aria-hidden="true" />
+                {pending ? "Enregistrement…" : "Valider la conclusion"}
+              </Button>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Cette action termine le test et crée une entrée immuable dans le
+                journal des décisions.
+              </p>
+            </div>
+          ) : status === "analyzed" ? (
+            <Alert>
+              <ShieldCheck aria-hidden="true" />
+              <AlertTitle>Conclusion réservée au manager</AlertTitle>
+              <AlertDescription>
+                Votre rôle permet de consulter l’analyse, mais pas de conclure le test.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
+    </aside>
   );
 }
 
