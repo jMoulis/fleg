@@ -8,6 +8,10 @@ import * as z from "zod";
 import { ExperimentWizard } from "@/components/experiments/experiment-wizard";
 import { buttonVariants } from "@/components/ui/button";
 import { isExperimentDefinitionEditable } from "@/domain/experiments/lifecycle";
+import {
+  listExperimentControlStoreOptions,
+  requireExperimentControlContexts,
+} from "@/server/auth/experiment-controls";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { ExperimentNotFoundError } from "@/server/repositories/experiment-repository";
 import {
@@ -55,7 +59,18 @@ export default async function EditExperimentPage({
   if (!isExperimentDefinitionEditable(experiment.status)) {
     redirect(`${baseHref}/${experiment.id}`);
   }
-  const workspace = await getExperimentWorkspace(context);
+  await requireExperimentControlContexts({
+    primaryContext: context,
+    controlStoreIds: experiment.baselineConfig.controlStoreIds,
+    requestHeaders,
+  });
+  const [workspace, controlStores] = await Promise.all([
+    getExperimentWorkspace(context),
+    listExperimentControlStoreOptions({
+      primaryContext: context,
+      requestHeaders,
+    }),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -77,6 +92,7 @@ export default async function EditExperimentPage({
       <ExperimentWizard
         baseHref={baseHref}
         commercialEvents={workspace.commercialEvents}
+        controlStores={controlStores}
         fixtures={workspace.fixtures}
         initialExperiment={experiment}
         products={workspace.products}

@@ -11,6 +11,7 @@ import {
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import { MarkdownReferenceError } from "@/server/repositories/markdown-repository";
 import {
   createMarkdown,
@@ -24,12 +25,23 @@ interface RouteContext {
   params: Promise<{ storeId: string }>;
 }
 
-function errorResponse(error: unknown, requestId: string) {
+function errorResponse(
+  error: unknown,
+  requestId: string,
+  method: "GET" | "POST",
+) {
   const unauthorized =
     error instanceof AuthenticationRequiredError ||
     error instanceof StoreAccessDeniedError;
   const invalid =
     error instanceof z.ZodError || error instanceof MarkdownReferenceError;
+  reportUnexpectedApiError({
+    error,
+    expected: unauthorized || invalid,
+    requestId,
+    route: "/api/stores/[storeId]/markdown",
+    method,
+  });
   return NextResponse.json(
     apiErrorSchema.parse({
       code: unauthorized
@@ -68,7 +80,7 @@ export async function GET(request: Request, routeContext: RouteContext) {
       markdownListResponseSchema.parse({ markdown, requestId }),
     );
   } catch (error) {
-    return errorResponse(error, requestId);
+    return errorResponse(error, requestId, "GET");
   }
 }
 
@@ -88,6 +100,6 @@ export async function POST(request: Request, routeContext: RouteContext) {
       { status: 201 },
     );
   } catch (error) {
-    return errorResponse(error, requestId);
+    return errorResponse(error, requestId, "POST");
   }
 }

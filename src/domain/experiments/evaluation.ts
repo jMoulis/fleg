@@ -169,7 +169,29 @@ function buildEvidenceQuality(input: {
       ? "high"
       : confounderCount <= input.config.maximumConfoundersForMedium
         ? "medium"
-        : "low";
+      : "low";
+  const controlComparison = input.baseline.controlComparison;
+  const requestedControlCount =
+    controlComparison?.requestedStoreIds.length ?? 0;
+  const includedControlCount = controlComparison?.includedStoreCount ?? 0;
+  const controlGrade: EvidenceGrade = controlComparison
+    ? includedControlCount === requestedControlCount
+      ? "high"
+      : includedControlCount > 0
+        ? "medium"
+        : "low"
+    : input.baseline.trendNormalization.applied
+      ? "high"
+      : input.baseline.trendNormalization.requested
+        ? "low"
+        : "medium";
+  const controlReason = controlComparison
+    ? `${includedControlCount}/${requestedControlCount} magasin(s) témoin(s) inclus dans le calcul ${controlComparison.method === "difference_in_differences" ? "diff-in-diff" : "de comparaison directe"}.`
+    : input.baseline.trendNormalization.applied
+      ? "La correction de tendance repose sur un contrôle rayon stable."
+      : input.baseline.trendNormalization.requested
+        ? "La correction demandée n’a pas satisfait les garde-fous."
+        : "Aucun contrôle de tendance n’a été demandé.";
   const dimensions: EvidenceQuality["dimensions"] = [
     {
       dimension: "history_depth",
@@ -195,16 +217,8 @@ function buildEvidenceQuality(input: {
     },
     {
       dimension: "control_quality",
-      grade: input.baseline.trendNormalization.applied
-        ? "high"
-        : input.baseline.trendNormalization.requested
-          ? "low"
-          : "medium",
-      reason: input.baseline.trendNormalization.applied
-        ? "La correction de tendance repose sur un contrôle rayon stable."
-        : input.baseline.trendNormalization.requested
-          ? "La correction demandée n’a pas satisfait les garde-fous."
-          : "Aucun contrôle de tendance n’a été demandé.",
+      grade: controlGrade,
+      reason: controlReason,
     },
     {
       dimension: "execution_compliance",
@@ -331,6 +345,11 @@ function buildMetricEvaluations(input: {
     if (values.actual === null || values.expected === null) {
       warnings.push(
         "Cette métrique ne peut pas être évaluée avec les données disponibles.",
+      );
+    }
+    if (metric === "markdown_cents" && input.baseline.controlComparison) {
+      warnings.push(
+        "La démarque attendue reste fondée sur l’historique du magasin testé ; elle n’est pas corrigée par les magasins témoins dans cette version.",
       );
     }
     const absoluteUplift =
@@ -513,6 +532,29 @@ export function calculateExperimentEvaluation(input: {
       severity: "warning",
       message:
         "Des facteurs perturbateurs ont été déclarés et doivent être pris en compte.",
+    });
+  }
+  const controlComparison = input.baseline.controlComparison;
+  if (
+    controlComparison &&
+    controlComparison.includedStoreCount <
+      controlComparison.requestedStoreIds.length
+  ) {
+    warnings.push({
+      code: "CONTROL_STORES_EXCLUDED",
+      severity: "warning",
+      message:
+        "Au moins un magasin témoin sélectionné a été exclu ; les raisons restent visibles dans le snapshot de contrôle.",
+    });
+  }
+  if (controlComparison) {
+    warnings.push({
+      code: "CONTROL_COMPARISON_ASSUMPTION",
+      severity: "info",
+      message:
+        controlComparison.method === "difference_in_differences"
+          ? "Le diff-in-diff suppose que les tendances auraient évolué en parallèle sans traitement ; ce résultat reste une estimation, pas une preuve causale."
+          : "La comparaison directe suppose que les magasins témoins sont suffisamment similaires au magasin testé.",
     });
   }
 

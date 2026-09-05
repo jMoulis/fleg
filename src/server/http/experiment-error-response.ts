@@ -4,6 +4,7 @@ import * as z from "zod";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import {
   ExperimentConflictError,
   ExperimentNotFoundError,
@@ -12,7 +13,11 @@ import {
 } from "@/server/repositories/experiment-repository";
 import { ExperimentEvaluationUnavailableError } from "@/server/repositories/experiment-analysis-repository";
 
-export function experimentErrorResponse(error: unknown, requestId: string) {
+export function experimentErrorResponse(
+  error: unknown,
+  requestId: string,
+  request: { route: string; method: string },
+) {
   const notFound =
     error instanceof AuthenticationRequiredError ||
     error instanceof StoreAccessDeniedError ||
@@ -24,6 +29,14 @@ export function experimentErrorResponse(error: unknown, requestId: string) {
     error instanceof ExperimentConflictError ||
     error instanceof ExperimentTransitionError ||
     error instanceof ExperimentEvaluationUnavailableError;
+
+  reportUnexpectedApiError({
+    error,
+    expected: notFound || invalid || conflict,
+    requestId,
+    route: request.route,
+    method: request.method,
+  });
 
   return NextResponse.json(
     apiErrorSchema.parse({

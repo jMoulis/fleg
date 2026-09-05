@@ -8,6 +8,7 @@ import {
 } from "mongodb";
 
 import {
+  aiActionPlanDecisionRecordSchema,
   decisionLogEntrySchema,
   recommendationDecisionRecordSchema,
   type DecisionLogEntry,
@@ -59,9 +60,24 @@ interface ExperimentDecisionLogDocument {
   createdAt: Date;
 }
 
+interface AiActionPlanDecisionLogDocument {
+  entryType: "ai_action_plan";
+  actionPlanId: ObjectId;
+  organizationId: string;
+  storeId: ObjectId;
+  actorUserId: string;
+  decision: "approved" | "rejected";
+  rationale: string;
+  actionPlanSnapshot: unknown;
+  idempotencyKey: string;
+  decidedAt: Date;
+  createdAt: Date;
+}
+
 type AnyDecisionLogDocument =
   | DecisionLogDocument
-  | ExperimentDecisionLogDocument;
+  | ExperimentDecisionLogDocument
+  | AiActionPlanDecisionLogDocument;
 
 function toRecommendationSnapshot(
   recommendation: RecommendationDocument & { _id: ObjectId },
@@ -89,17 +105,26 @@ function toDecisionRecord(
 function toDecisionLogEntry(
   decision: AnyDecisionLogDocument & { _id: ObjectId },
 ): DecisionLogEntry {
-  if (decision.entryType !== "experiment_conclusion") {
-    return toDecisionRecord(decision);
+  if (decision.entryType === "experiment_conclusion") {
+    return decisionLogEntrySchema.parse({
+      ...decision,
+      id: decision._id.toHexString(),
+      conclusionId: decision.conclusionId.toHexString(),
+      experimentId: decision.experimentId.toHexString(),
+      storeId: decision.storeId.toHexString(),
+      decidedAt: decision.decidedAt.toISOString(),
+    });
   }
-  return decisionLogEntrySchema.parse({
-    ...decision,
-    id: decision._id.toHexString(),
-    conclusionId: decision.conclusionId.toHexString(),
-    experimentId: decision.experimentId.toHexString(),
-    storeId: decision.storeId.toHexString(),
-    decidedAt: decision.decidedAt.toISOString(),
-  });
+  if (decision.entryType === "ai_action_plan") {
+    return aiActionPlanDecisionRecordSchema.parse({
+      ...decision,
+      id: decision._id.toHexString(),
+      actionPlanId: decision.actionPlanId.toHexString(),
+      storeId: decision.storeId.toHexString(),
+      decidedAt: decision.decidedAt.toISOString(),
+    });
+  }
+  return toDecisionRecord(decision);
 }
 
 export class DecisionRepository {
@@ -133,7 +158,10 @@ export class DecisionRepository {
       idempotencyKey: decisionInput.idempotencyKey,
     });
 
-    if (existing?.entryType === "experiment_conclusion") {
+    if (
+      existing?.entryType === "experiment_conclusion" ||
+      existing?.entryType === "ai_action_plan"
+    ) {
       throw new Error("Cette clé d’idempotence appartient à une autre décision");
     }
     if (existing) {
@@ -228,7 +256,10 @@ export class DecisionRepository {
           storeId,
           idempotencyKey: decisionInput.idempotencyKey,
         });
-        if (duplicate?.entryType === "experiment_conclusion") {
+        if (
+          duplicate?.entryType === "experiment_conclusion" ||
+          duplicate?.entryType === "ai_action_plan"
+        ) {
           throw new Error("Cette clé d’idempotence appartient à une autre décision");
         }
         if (duplicate) {

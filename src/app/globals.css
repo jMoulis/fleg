@@ -130,7 +130,30 @@
     @apply bg-background text-foreground;
   }
 
+  .skip-link {
+    @apply fixed left-4 top-4 z-[100] -translate-y-24 rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground shadow-lg transition-transform;
+  }
+
+  .skip-link:focus-visible {
+    @apply translate-y-0 outline-2 outline-offset-2 outline-ring;
+  }
+
   ::selection {
     @apply bg-primary/20 text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

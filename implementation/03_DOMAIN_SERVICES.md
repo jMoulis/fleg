@@ -38,3 +38,11 @@ Plans TG/endcaps, objectives, product selection and realized performance.
 
 ## CopilotService
 Exposes only authorized, typed tools. Numeric answers must include source/evidence metadata. Write actions always return a draft.
+
+AI-01 provides separate store and network read executors. Store requests never accept `storeId`; they receive an `AuthorizedStoreContext` from the server and require `ai.use` plus `analytics.read`. Network requests receive an exact context set whose members all require `ai.use`, `analytics.read` and `analytics.compare_stores`.
+
+All request/result variants are Zod discriminated unions. Results include evidence references, data semantics and explicit limitations. `explainRecommendation` uses a non-persisting preview path; no AI-01 tool can create or mutate a business document.
+
+AI-02 wraps those executors in a bounded Responses API tool loop. Store and network conversations use separate strict schemas and prompts; network scope is rechecked against the exact authorized context set before provider invocation. Provider response storage is disabled. The UI renders evidence traces and limitations outside the model prose, so grounding remains inspectable even when answer wording varies.
+
+AI-03 adds one store-only write tool whose sole effect is creating an evidence-backed `draft` with `executionStatus: not_executed`. The service grounds the document from read-tool results collected in the same turn, persists model and prompt versions, and audits creation. Approval/rejection is a separate idempotent service requiring `recommendations.approve`; it records a decision snapshot and audit without executing operational changes.

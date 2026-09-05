@@ -39,3 +39,30 @@ export async function getRecommendations(
     drafts,
   });
 }
+
+export async function previewRecommendation(input: {
+  context: AuthorizedStoreContext;
+  periodKey: string;
+  productId: string;
+}) {
+  const db = await getAppDb();
+  const repository = new RecommendationRepository(db);
+  const [metrics, config] = await Promise.all([
+    getProductMetrics(input.context, input.periodKey),
+    repository.getConfig(input.context),
+  ]);
+  const metric = metrics.products.find(
+    ({ productId }) => productId === input.productId,
+  );
+  if (!metric) return null;
+
+  return buildRecommendation({
+    organizationId: input.context.organizationId,
+    storeId: input.context.storeId,
+    metric,
+    config,
+    calculationVersion: metrics.calculationVersion,
+    inputRevision: metrics.dataRevision,
+    generatedAt: new Date().toISOString(),
+  });
+}

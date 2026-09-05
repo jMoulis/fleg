@@ -30,11 +30,25 @@ export async function GET(request: Request, routeContext: RouteContext) {
       request.headers,
     );
     const experiments = await listExperiments(context);
+    await requireExperimentControlContexts({
+      primaryContext: context,
+      controlStoreIds: [
+        ...new Set(
+          experiments.flatMap(
+            (experiment) => experiment.baselineConfig.controlStoreIds,
+          ),
+        ),
+      ],
+      requestHeaders: request.headers,
+    });
     return NextResponse.json(
       experimentsResponseSchema.parse({ experiments, requestId }),
     );
   } catch (error) {
-    return experimentErrorResponse(error, requestId);
+    return experimentErrorResponse(error, requestId, {
+      route: "/api/stores/[storeId]/experiments",
+      method: "GET",
+    });
   }
 }
 
@@ -64,6 +78,9 @@ export async function POST(request: Request, routeContext: RouteContext) {
       { status: 201 },
     );
   } catch (error) {
-    return experimentErrorResponse(error, requestId);
+    return experimentErrorResponse(error, requestId, {
+      route: "/api/stores/[storeId]/experiments",
+      method: "POST",
+    });
   }
 }

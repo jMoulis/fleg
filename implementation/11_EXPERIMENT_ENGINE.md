@@ -46,6 +46,8 @@ Fields:
 - organizationId/storeId/experimentId.
 - analysisVersion.
 - engineVersion.
+- treatment dataRevision and deterministic controlRevisionKey.
+- controlDataRevisions[] for every frozen witness input.
 - analyzedAt.
 - period windows.
 - baselineMethod.
@@ -84,6 +86,7 @@ Indexes:
 
 `experimentAnalyses`
 - unique `{ experimentId:1, analysisVersion:1 }`
+- unique `{ experimentId:1, dataRevision:1, engineVersion:1, controlRevisionKey:1 }`
 - `{ organizationId:1, storeId:1, analyzedAt:-1 }`
 
 ## Deterministic evaluation API
@@ -128,6 +131,19 @@ For a weekly test with weekly/daily facts available:
   but only if department control denominator is stable.
 
 For monthly-only facts, the engine may evaluate only tests whose windows align with available periods. Otherwise status becomes `awaiting_data` and UI explains why.
+
+## EXP-06 control-store evaluation
+Cross-store methods reuse the same frozen definition and append-only analysis lifecycle:
+- authorize the treatment store for both experiment and analytics comparison;
+- authorize experiment and analytics reads on every selected same-organization control store;
+- match products by canonical normalized label;
+- require complete before/after monthly windows per control and expose every exclusion;
+- for `control_store`, apply the controls' average relative movement to the treatment baseline;
+- for `difference_in_differences`, calculate `(treatment after - treatment before) - (control after - control before)`;
+- persist control evidence and revisions so changed inputs create a new analysis version;
+- reauthorize frozen controls before analysis, conclusion and immutable snapshot reads.
+
+Neither method removes the evidence-quality grade or permits a causal-certainty claim.
 
 ## Guardrails
 A positive revenue uplift does not automatically mean winner.

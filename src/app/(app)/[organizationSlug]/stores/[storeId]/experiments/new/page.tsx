@@ -5,6 +5,7 @@ import { ArrowLeft, FlaskConical } from "lucide-react";
 
 import { ExperimentWizard } from "@/components/experiments/experiment-wizard";
 import { buttonVariants } from "@/components/ui/button";
+import { listExperimentControlStoreOptions } from "@/server/auth/experiment-controls";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { getExperimentWorkspace } from "@/server/services/experiment-service";
 
@@ -28,7 +29,13 @@ export default async function NewExperimentPage({
     ["experiments.write"],
     requestHeaders,
   );
-  const workspace = await getExperimentWorkspace(context);
+  const [workspace, controlStores] = await Promise.all([
+    getExperimentWorkspace(context),
+    listExperimentControlStoreOptions({
+      primaryContext: context,
+      requestHeaders,
+    }),
+  ]);
   const baseHref = `/${organizationSlug}/stores/${storeId}/experiments`;
 
   return (
@@ -51,6 +58,7 @@ export default async function NewExperimentPage({
       <ExperimentWizard
         baseHref={baseHref}
         commercialEvents={workspace.commercialEvents}
+        controlStores={controlStores}
         fixtures={workspace.fixtures}
         products={workspace.products}
         storeId={storeId}

@@ -1,5 +1,6 @@
 import * as z from "zod";
 
+import { aiActionPlanSchema } from "@/domain/ai/action-plans";
 import {
   recommendationDraftSchema,
   recommendationTypeSchema,
@@ -78,9 +79,27 @@ export type ExperimentDecisionRecord = z.infer<
   typeof experimentDecisionRecordSchema
 >;
 
+export const aiActionPlanDecisionRecordSchema = z.object({
+  entryType: z.literal("ai_action_plan"),
+  id: z.string().regex(/^[a-f\d]{24}$/i),
+  actionPlanId: z.string().regex(/^[a-f\d]{24}$/i),
+  organizationId: z.string().min(1),
+  storeId: z.string().regex(/^[a-f\d]{24}$/i),
+  actorUserId: z.string().min(1),
+  decision: z.enum(["approved", "rejected"]),
+  rationale: z.string().min(10).max(1_000),
+  actionPlanSnapshot: aiActionPlanSchema,
+  idempotencyKey: z.uuid(),
+  decidedAt: z.iso.datetime(),
+});
+export type AiActionPlanDecisionRecord = z.infer<
+  typeof aiActionPlanDecisionRecordSchema
+>;
+
 export const decisionLogEntrySchema = z.discriminatedUnion("entryType", [
   recommendationDecisionRecordSchema,
   experimentDecisionRecordSchema,
+  aiActionPlanDecisionRecordSchema,
 ]);
 export type DecisionLogEntry = z.infer<typeof decisionLogEntrySchema>;
 

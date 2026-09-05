@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function SignInPage() {
   return (
-    <main className="grid min-h-svh bg-background lg:grid-cols-[1.05fr_0.95fr]">
+    <main id="main-content" tabIndex={-1} className="grid min-h-svh bg-background lg:grid-cols-[1.05fr_0.95fr]">
       <section className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
         <div className="absolute -right-24 -top-24 size-80 rounded-full border border-white/15" />
         <div className="absolute -right-10 top-16 size-52 rounded-full border border-white/10" />

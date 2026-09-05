@@ -137,6 +137,74 @@
         "manager verdict and rollout/retest decision",
         "Decision Log link"
       ]
+    },
+    {
+      "id": "EXP-06",
+      "epic": "experiments",
+      "title": "Control-store and difference-in-differences evaluation",
+      "priority": "P2",
+      "acceptance": [
+        "exact authorized control-store set",
+        "canonical cross-store product matching",
+        "complete before/after control windows",
+        "control-store and difference-in-differences estimates",
+        "versioned control revisions and explicit assumptions"
+      ]
+    },
+    {
+      "id": "AI-01",
+      "epic": "ai",
+      "title": "Typed read-only store tools",
+      "priority": "P1",
+      "acceptance": [
+        "strict Zod input and output contracts",
+        "server-injected authorized store context",
+        "exact network store authorization",
+        "evidence revisions and data semantics",
+        "explicit limitations and no mutations"
+      ]
+    },
+    {
+      "id": "AI-02",
+      "epic": "ai",
+      "title": "Copilot UI + evidence",
+      "priority": "P1",
+      "acceptance": [
+        "bounded store and network chat contracts",
+        "Responses API read-only tool orchestration",
+        "exact server-authorized store scopes",
+        "visible evidence semantics and limitations",
+        "responsive loading configuration and error states",
+        "no provider-side response storage or business mutation"
+      ]
+    },
+    {
+      "id": "AI-03",
+      "epic": "ai",
+      "title": "Draft action plans and approval boundary",
+      "priority": "P2",
+      "acceptance": [
+        "store-only draft tool after deterministic evidence",
+        "server-injected tenant actor model and prompt metadata",
+        "persisted confidence evidence revisions and limitations",
+        "separate permissioned idempotent manager decision",
+        "immutable decision snapshot and audit trail",
+        "no automatic operational execution"
+      ]
+    },
+    {
+      "id": "HARD-01",
+      "epic": "hardening",
+      "title": "Accessibility, performance, indexes and monitoring",
+      "priority": "P1",
+      "acceptance": [
+        "keyboard skip navigation and reduced-motion support",
+        "browser security headers and no-store APIs",
+        "bounded recoverable MongoDB connection management",
+        "idempotent index readiness before application queries",
+        "structured redacted request-correlated error logs",
+        "documented readiness deployment and recovery procedures"
+      ]
     }
   ]
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildExperimentScope,
+  controlStoreSetMatches,
   controlStoresBelongToOrganization,
 } from "@/domain/experiments/store-scope";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
@@ -50,6 +51,32 @@ describe("experiment store isolation", () => {
       controlStoresBelongToOrganization({
         primaryContext: primary,
         controlContexts: [otherOrganizationControl],
+      }),
+    ).toBe(false);
+  });
+
+  it("requires the exact same-user control set and rejects the treatment store", () => {
+    expect(
+      controlStoreSetMatches({
+        primaryContext: primary,
+        controlContexts: [sameOrganizationControl],
+        requestedStoreIds: [sameOrganizationControl.storeId],
+      }),
+    ).toBe(true);
+    expect(
+      controlStoreSetMatches({
+        primaryContext: primary,
+        controlContexts: [
+          { ...sameOrganizationControl, userId: "another-manager" },
+        ],
+        requestedStoreIds: [sameOrganizationControl.storeId],
+      }),
+    ).toBe(false);
+    expect(
+      controlStoreSetMatches({
+        primaryContext: primary,
+        controlContexts: [primary],
+        requestedStoreIds: [primary.storeId],
       }),
     ).toBe(false);
   });

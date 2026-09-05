@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import * as z from "zod";
 
 import { ExperimentDetail } from "@/components/experiments/experiment-detail";
+import { requireExperimentControlContexts } from "@/server/auth/experiment-controls";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { ExperimentNotFoundError } from "@/server/repositories/experiment-repository";
 import { getExperimentBaseline } from "@/server/services/baseline-service";
@@ -46,7 +47,7 @@ export default async function ExperimentPage({
   if (!parsedId.success) notFound();
   const context = await requireStoreContext(
     storeId,
-    ["experiments.read"],
+    ["experiments.read", "analytics.read"],
     requestHeaders,
   );
   let experiment;
@@ -59,10 +60,16 @@ export default async function ExperimentPage({
     if (error instanceof ExperimentNotFoundError) notFound();
     throw error;
   }
+  const controlContexts = await requireExperimentControlContexts({
+    primaryContext: context,
+    controlStoreIds: experiment.baselineConfig.controlStoreIds,
+    requestHeaders,
+  });
   const [workspace, baseline, analyses, conclusion] = await Promise.all([
     getExperimentWorkspace(context),
     getExperimentBaseline({
       context,
+      controlContexts,
       experimentId: parsedId.data,
     }),
     listExperimentAnalyses({
@@ -87,7 +94,12 @@ export default async function ExperimentPage({
       baseHref={`/${organizationSlug}/stores/${storeId}/experiments`}
       baseline={baseline}
       canConclude={context.permissions.includes("experiments.conclude")}
-      canEvaluate={context.permissions.includes("experiments.start")}
+      canEvaluate={
+        context.permissions.includes("experiments.start") &&
+        (experiment.baselineConfig.controlStoreIds.length === 0 ||
+          (context.permissions.includes("experiments.compare_stores") &&
+            context.permissions.includes("analytics.compare_stores")))
+      }
       canStart={context.permissions.includes("experiments.start")}
       canWrite={context.permissions.includes("experiments.write")}
       fixtures={workspace.fixtures}

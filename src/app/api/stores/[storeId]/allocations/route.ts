@@ -9,6 +9,7 @@ import {
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import {
   AllocationPlanConflictError,
   InvalidAllocationPlanError,
@@ -52,7 +53,7 @@ export async function GET(request: Request, routeContext: RouteContext) {
       allocationPlanResponseSchema.parse({ plan, requestId }),
     );
   } catch (error) {
-    return allocationErrorResponse(error, requestId);
+    return allocationErrorResponse(error, requestId, "GET");
   }
 }
 
@@ -80,17 +81,29 @@ export async function POST(request: Request, routeContext: RouteContext) {
       { status: 201 },
     );
   } catch (error) {
-    return allocationErrorResponse(error, requestId);
+    return allocationErrorResponse(error, requestId, "POST");
   }
 }
 
-function allocationErrorResponse(error: unknown, requestId: string) {
+function allocationErrorResponse(
+  error: unknown,
+  requestId: string,
+  method: "GET" | "POST",
+) {
   const unauthorized =
     error instanceof AuthenticationRequiredError ||
     error instanceof StoreAccessDeniedError;
   const invalid =
     error instanceof z.ZodError || error instanceof InvalidAllocationPlanError;
   const conflict = error instanceof AllocationPlanConflictError;
+
+  reportUnexpectedApiError({
+    error,
+    expected: unauthorized || invalid || conflict,
+    requestId,
+    route: "/api/stores/[storeId]/allocations",
+    method,
+  });
 
   return NextResponse.json(
     apiErrorSchema.parse({

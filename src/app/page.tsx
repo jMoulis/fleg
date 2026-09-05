@@ -42,7 +42,7 @@ const principles = [
 
 export default function Home() {
   return (
-    <main className="min-h-svh overflow-hidden bg-background">
+    <main id="main-content" tabIndex={-1} className="min-h-svh overflow-hidden bg-background">
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
         <div className="flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm shadow-primary/20">

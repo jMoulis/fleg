@@ -33,11 +33,19 @@ export async function GET(request: Request, routeContext: RouteContext) {
       request.headers,
     );
     const experiment = await getExperiment({ context, experimentId });
+    await requireExperimentControlContexts({
+      primaryContext: context,
+      controlStoreIds: experiment.baselineConfig.controlStoreIds,
+      requestHeaders: request.headers,
+    });
     return NextResponse.json(
       experimentResponseSchema.parse({ experiment, requestId }),
     );
   } catch (error) {
-    return experimentErrorResponse(error, requestId);
+    return experimentErrorResponse(error, requestId, {
+      route: "/api/stores/[storeId]/experiments/[experimentId]",
+      method: "GET",
+    });
   }
 }
 
@@ -72,6 +80,9 @@ export async function PATCH(request: Request, routeContext: RouteContext) {
       experimentResponseSchema.parse({ experiment, requestId }),
     );
   } catch (error) {
-    return experimentErrorResponse(error, requestId);
+    return experimentErrorResponse(error, requestId, {
+      route: "/api/stores/[storeId]/experiments/[experimentId]",
+      method: "PATCH",
+    });
   }
 }

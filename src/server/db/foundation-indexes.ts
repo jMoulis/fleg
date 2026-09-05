@@ -1,14 +1,40 @@
-import type { Db } from "mongodb";
+import { MongoServerError, type Db } from "mongodb";
+
+async function migrateExperimentAnalysisInputIndex(db: Db): Promise<void> {
+  const analyses = db.collection("experimentAnalyses");
+  let indexes: Array<{ name?: string; key?: Record<string, unknown> }> = [];
+
+  try {
+    indexes = await analyses.listIndexes().toArray();
+  } catch (error) {
+    if (!(error instanceof MongoServerError) || error.code !== 26) throw error;
+  }
+  const current = indexes.find(
+    ({ name }) => name === "experiment_analyses_input_unique",
+  );
+  if (current && current.key?.controlRevisionKey !== 1) {
+    await analyses.dropIndex("experiment_analyses_input_unique");
+  }
+}
 
 export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
+  await migrateExperimentAnalysisInputIndex(db);
   await Promise.all([
     db.collection("stores").createIndex(
       { organizationId: 1, code: 1 },
       { unique: true, name: "stores_org_code_unique" },
     ),
+    db.collection("stores").createIndex(
+      { organizationId: 1, active: 1, name: 1 },
+      { name: "stores_org_active_name" },
+    ),
     db.collection("storeMemberships").createIndex(
       { storeId: 1, userId: 1 },
       { unique: true, name: "store_memberships_store_user_unique" },
+    ),
+    db.collection("storeMemberships").createIndex(
+      { userId: 1, active: 1, organizationId: 1, storeId: 1 },
+      { name: "store_memberships_user_active_scope" },
     ),
     db.collection("productAliases").createIndex(
       { storeId: 1, source: 1, externalKey: 1 },
@@ -22,9 +48,25 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { storeId: 1, normalizedLabel: 1 },
       { name: "products_store_normalized_label" },
     ),
+    db.collection("products").createIndex(
+      { organizationId: 1, storeId: 1, active: 1, label: 1 },
+      { name: "products_scope_active_label" },
+    ),
     db.collection("salesFacts").createIndex(
       { storeId: 1, periodKey: 1, productId: 1 },
       { unique: true, name: "sales_facts_store_period_product_unique" },
+    ),
+    db.collection("salesFacts").createIndex(
+      { organizationId: 1, storeId: 1, periodKey: 1 },
+      { name: "sales_facts_scope_period" },
+    ),
+    db.collection("storeSettings").createIndex(
+      { organizationId: 1, storeId: 1 },
+      { unique: true, name: "store_settings_scope_unique" },
+    ),
+    db.collection("periodTargets").createIndex(
+      { organizationId: 1, storeId: 1, periodKey: 1 },
+      { unique: true, name: "period_targets_scope_period_unique" },
     ),
     db.collection("markdownFacts").createIndex(
       { organizationId: 1, storeId: 1, occurredOn: 1, productId: 1 },
@@ -52,6 +94,10 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       },
       { unique: true, name: "recommendations_input_unique" },
     ),
+    db.collection("recommendations").createIndex(
+      { organizationId: 1, periodKey: 1, status: 1, storeId: 1, inputRevision: 1 },
+      { name: "recommendations_network_period_status" },
+    ),
     db.collection("recommendationRuns").createIndex(
       {
         storeId: 1,
@@ -68,6 +114,14 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
     db.collection("decisionLogs").createIndex(
       { storeId: 1, createdAt: -1 },
       { name: "decision_logs_store_created" },
+    ),
+    db.collection("aiActionPlans").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      { unique: true, name: "ai_action_plans_scope_key_unique" },
+    ),
+    db.collection("aiActionPlans").createIndex(
+      { organizationId: 1, storeId: 1, status: 1, createdAt: -1 },
+      { name: "ai_action_plans_scope_status_created" },
     ),
     db.collection("departments").createIndex(
       { organizationId: 1, storeId: 1, key: 1 },
@@ -157,7 +211,12 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { unique: true, name: "experiment_analyses_version_unique" },
     ),
     db.collection("experimentAnalyses").createIndex(
-      { experimentId: 1, dataRevision: 1, engineVersion: 1 },
+      {
+        experimentId: 1,
+        dataRevision: 1,
+        engineVersion: 1,
+        controlRevisionKey: 1,
+      },
       { unique: true, name: "experiment_analyses_input_unique" },
     ),
     db.collection("experimentAnalyses").createIndex(

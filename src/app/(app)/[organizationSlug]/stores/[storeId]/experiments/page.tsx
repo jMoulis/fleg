@@ -5,6 +5,7 @@ import { FlaskConical, Plus } from "lucide-react";
 
 import { ExperimentList } from "@/components/experiments/experiment-list";
 import { buttonVariants } from "@/components/ui/button";
+import { requireExperimentControlContexts } from "@/server/auth/experiment-controls";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { getExperimentWorkspace } from "@/server/services/experiment-service";
 
@@ -27,6 +28,17 @@ export default async function ExperimentsPage({ params }: ExperimentsPageProps) 
     requestHeaders,
   );
   const workspace = await getExperimentWorkspace(context);
+  await requireExperimentControlContexts({
+    primaryContext: context,
+    controlStoreIds: [
+      ...new Set(
+        workspace.experiments.flatMap(
+          (experiment) => experiment.baselineConfig.controlStoreIds,
+        ),
+      ),
+    ],
+    requestHeaders,
+  });
   const baseHref = `/${organizationSlug}/stores/${storeId}/experiments`;
   const canWrite = context.permissions.includes("experiments.write");
 

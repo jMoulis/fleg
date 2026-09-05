@@ -106,6 +106,15 @@ export const experimentBaselineConfigSchema = z
         message: "Un magasin contrôle ne peut être sélectionné qu'une fois",
       });
     }
+
+    if (needsControlStore && config.trendNormalization) {
+      context.addIssue({
+        code: "custom",
+        path: ["trendNormalization"],
+        message:
+          "La tendance est déjà portée par les magasins témoins pour cette méthode",
+      });
+    }
   });
 export type ExperimentBaselineConfig = z.infer<
   typeof experimentBaselineConfigSchema
@@ -200,6 +209,15 @@ export const experimentFixtureOptionSchema = z.object({
 });
 export type ExperimentFixtureOption = z.infer<
   typeof experimentFixtureOptionSchema
+>;
+
+export const experimentControlStoreOptionSchema = z.object({
+  id: storeIdSchema,
+  code: z.string().min(1),
+  name: z.string().min(1),
+});
+export type ExperimentControlStoreOption = z.infer<
+  typeof experimentControlStoreOptionSchema
 >;
 
 export const experimentSchema = experimentDefinitionSchema.safeExtend({

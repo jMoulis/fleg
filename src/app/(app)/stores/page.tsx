@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function StoresPage() {
   return (
-    <main className="min-h-svh bg-muted/35">
+    <main id="main-content" tabIndex={-1} className="min-h-svh bg-muted/35">
       <header className="border-b bg-background">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-5 sm:px-8">
           <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">

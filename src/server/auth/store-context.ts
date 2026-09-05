@@ -92,16 +92,16 @@ export async function requireStoreContext(
 
 export async function requireAuthorizedStoreSet(
   storeIds: string[],
-  requiredPermission: StorePermission,
+  requiredPermissions: StorePermission | StorePermission[],
   requestHeaders: Headers,
 ): Promise<AuthorizedStoreContext[]> {
-  const contexts: AuthorizedStoreContext[] = [];
+  const permissions = Array.isArray(requiredPermissions)
+    ? requiredPermissions
+    : [requiredPermissions];
 
-  for (const storeId of storeIds) {
-    contexts.push(
-      await requireStoreContext(storeId, [requiredPermission], requestHeaders),
-    );
-  }
-
-  return contexts;
+  return Promise.all(
+    storeIds.map((storeId) =>
+      requireStoreContext(storeId, permissions, requestHeaders),
+    ),
+  );
 }

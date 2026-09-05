@@ -9,6 +9,7 @@ import {
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import { LayoutVersionConflictError } from "@/server/repositories/layout-repository";
 import { createStoreLayoutVersion } from "@/server/services/layout-service";
 
@@ -48,6 +49,13 @@ export async function POST(request: Request, routeContext: RouteContext) {
       error instanceof StoreAccessDeniedError;
     const invalid = error instanceof z.ZodError;
     const conflict = error instanceof LayoutVersionConflictError;
+    reportUnexpectedApiError({
+      error,
+      expected: unauthorized || invalid || conflict,
+      requestId,
+      route: "/api/stores/[storeId]/layout/versions",
+      method: "POST",
+    });
 
     return NextResponse.json(
       apiErrorSchema.parse({
@@ -71,4 +79,3 @@ export async function POST(request: Request, routeContext: RouteContext) {
     );
   }
 }
-

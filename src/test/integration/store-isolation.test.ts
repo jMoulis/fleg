@@ -91,6 +91,40 @@ describe("store authorization isolation", () => {
     ).toThrow(StoreAccessDeniedError);
   });
 
+  it("does not infer cross-store analytics rights from analytics read access", () => {
+    expect(() =>
+      authorizeStoreAccess({
+        userId: "manager-a",
+        store: storeA,
+        organizationRole: "member",
+        membership: managerA,
+        requiredPermissions: ["analytics.read", "analytics.compare_stores"],
+      }),
+    ).toThrow(StoreAccessDeniedError);
+  });
+
+  it("requires both experiment and analytics comparison rights for control stores", () => {
+    expect(() =>
+      authorizeStoreAccess({
+        userId: "manager-a",
+        store: storeA,
+        organizationRole: "member",
+        membership: {
+          ...managerA,
+          permissions: [
+            "analytics.read",
+            "experiments.read",
+            "experiments.compare_stores",
+          ],
+        },
+        requiredPermissions: [
+          "experiments.compare_stores",
+          "analytics.compare_stores",
+        ],
+      }),
+    ).toThrow(StoreAccessDeniedError);
+  });
+
   it("grants organization admins the explicit organization store", () => {
     expect(
       authorizeStoreAccess({

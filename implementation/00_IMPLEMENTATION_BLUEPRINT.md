@@ -30,7 +30,7 @@ This slice proves tenancy, permissions, data ingestion, analytics, UX, auditabil
 - MongoDB Atlas + official Node.js driver
 - Better Auth + MongoDB adapter + Organization plugin
 - Zod
-- AI SDK for Copilot and tool orchestration
+- Official OpenAI SDK with the Responses API for Copilot orchestration
 - Charting library selected at implementation time based on accessibility, responsive behavior and bundle size
 - Data-grid library selected for desktop product matrix; mobile must use purpose-built cards/list views rather than compressing a desktop grid
 

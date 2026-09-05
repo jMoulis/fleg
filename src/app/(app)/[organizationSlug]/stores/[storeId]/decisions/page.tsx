@@ -40,14 +40,14 @@ export default async function DecisionsPage({ params }: DecisionsPageProps) {
     headers(),
   ]);
   const context = await requireStoreContext(storeId, ["analytics.read"], requestHeaders);
-  const decisions = await listDecisionLog(context);
+  const decisions = await listDecisionLog({ context, requestHeaders });
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <p className="text-sm font-semibold text-primary">Traçabilité</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em]">Journal des décisions</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Snapshots immuables des recommandations, conclusions de tests et arbitrages managers.
+        Snapshots immuables des recommandations, plans IA, conclusions de tests et arbitrages managers.
       </p>
 
       {decisions.length === 0 ? (
@@ -55,7 +55,7 @@ export default async function DecisionsPage({ params }: DecisionsPageProps) {
           <CardContent className="flex flex-col items-center py-14 text-center">
             <History aria-hidden="true" className="size-8 text-muted-foreground" />
             <h2 className="mt-4 font-semibold">Aucune décision enregistrée</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Les décisions prises depuis les fiches produits et les tests apparaîtront ici.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Les décisions prises depuis les fiches produits, le Copilote et les tests apparaîtront ici.</p>
           </CardContent>
         </Card>
       ) : (
@@ -78,7 +78,7 @@ export default async function DecisionsPage({ params }: DecisionsPageProps) {
                     <p className="mt-4 rounded-xl bg-muted/60 p-3 text-sm leading-6">{decision.rationale}</p>
                   ) : null}
                 </>
-              ) : (
+              ) : decision.entryType === "experiment_conclusion" ? (
                 <>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -108,6 +108,29 @@ export default async function DecisionsPage({ params }: DecisionsPageProps) {
                       ))}
                     </div>
                   ) : null}
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <Badge className="mb-2" variant="outline">Plan d’action IA</Badge>
+                      <Link
+                        className="block font-semibold underline-offset-4 hover:underline"
+                        href={`/${organizationSlug}/stores/${storeId}/copilot`}
+                      >
+                        {decision.actionPlanSnapshot.title}
+                      </Link>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {decision.actionPlanSnapshot.actions.length} action{decision.actionPlanSnapshot.actions.length > 1 ? "s" : ""} proposée{decision.actionPlanSnapshot.actions.length > 1 ? "s" : ""} · aucune exécution automatique
+                      </p>
+                    </div>
+                    <Badge>
+                      {decision.decision === "approved" ? "Approuvé" : "Refusé"}
+                    </Badge>
+                  </div>
+                  <p className="mt-4 rounded-xl bg-muted/60 p-3 text-sm leading-6">
+                    {decision.rationale}
+                  </p>
                 </>
               )}
               <p className="mt-4 text-xs text-muted-foreground">

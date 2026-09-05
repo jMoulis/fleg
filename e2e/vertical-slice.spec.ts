@@ -13,6 +13,25 @@ const fixtureByProject = {
   "desktop-1440": { fileName: "11_2025.xlsx", periodKey: "2025-11" },
 } as const;
 
+test("HARD-01 expose une navigation clavier et réduit les mouvements", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/sign-in");
+
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("link", { name: "Aller au contenu principal" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeFocused();
+  await expect
+    .poll(() =>
+      page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior),
+    )
+    .toBe("auto");
+});
+
 test("E2E-01 transforme un export Mercalys en décision manager", async ({
   page,
 }, testInfo) => {

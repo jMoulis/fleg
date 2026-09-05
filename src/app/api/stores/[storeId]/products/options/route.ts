@@ -6,6 +6,7 @@ import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { getAppDb } from "@/server/db/mongo-client";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import { ProductRepository } from "@/server/repositories/product-repository";
 
 export const runtime = "nodejs";
@@ -36,6 +37,13 @@ export async function GET(request: Request, routeContext: RouteContext) {
     const unauthorized =
       error instanceof AuthenticationRequiredError ||
       error instanceof StoreAccessDeniedError;
+    reportUnexpectedApiError({
+      error,
+      expected: unauthorized,
+      requestId,
+      route: "/api/stores/[storeId]/products/options",
+      method: "GET",
+    });
 
     return NextResponse.json(
       apiErrorSchema.parse({

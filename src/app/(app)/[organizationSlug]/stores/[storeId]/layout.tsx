@@ -17,9 +17,21 @@ export default async function StoreLayout({
   params,
 }: StoreLayoutProps) {
   const { organizationSlug, storeId } = await params;
+  let canCompareStores = false;
+  let canUseAi = false;
 
   try {
-    await requireStoreContext(storeId, ["stores.read"], await headers());
+    const context = await requireStoreContext(
+      storeId,
+      ["stores.read"],
+      await headers(),
+    );
+    canCompareStores =
+      context.permissions.includes("analytics.read") &&
+      context.permissions.includes("analytics.compare_stores");
+    canUseAi =
+      context.permissions.includes("analytics.read") &&
+      context.permissions.includes("ai.use");
   } catch (error) {
     if (error instanceof AuthenticationRequiredError) {
       redirect("/sign-in");
@@ -33,7 +45,12 @@ export default async function StoreLayout({
   }
 
   return (
-    <StoreAppShell organizationSlug={organizationSlug} storeId={storeId}>
+    <StoreAppShell
+      organizationSlug={organizationSlug}
+      storeId={storeId}
+      canCompareStores={canCompareStores}
+      canUseAi={canUseAi}
+    >
       {children}
     </StoreAppShell>
   );

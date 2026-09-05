@@ -16,6 +16,8 @@
     "test:watch": "vitest",
     "pretest:e2e": "npm run build:e2e",
     "test:e2e": "playwright test",
+    "pretest:e2e:ai": "npm run build:e2e",
+    "test:e2e:ai": "RUN_LIVE_AI_E2E=true playwright test e2e/copilot-live.spec.ts --project=desktop-1440",
     "test:e2e:headed": "playwright test --headed",
     "check": "npm run lint && npm run typecheck && npm run test",
     "seed:demo": "tsx src/scripts/seed-demo.ts"
@@ -30,6 +32,7 @@
     "lucide-react": "^1.39.0",
     "mongodb": "7.5",
     "next": "16.3.4",
+    "openai": "^7.10.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "read-excel-file": "^9.3.10",

@@ -22,6 +22,17 @@ Audit:
 - markdown edits,
 - TG publication,
 - recommendation approval/rejection,
+- AI action-plan draft creation and approval/rejection,
 - AI-created drafts.
 
 Audit record: organizationId, storeId, actorId, action, entityType/id, before/after, timestamp, requestId.
+
+## HTTP and operational safeguards
+
+- browser responses send anti-framing, MIME sniffing, referrer and unused-feature restrictions;
+- application APIs are marked `Cache-Control: no-store`;
+- unexpected server failures are emitted as structured, request-correlated logs;
+- known secrets and credentials are redacted before logging;
+- the public readiness endpoint never exposes connection strings or exception details.
+
+Operational runbook: `docs/18_OPERATIONS.md`.

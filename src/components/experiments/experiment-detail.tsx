@@ -652,6 +652,38 @@ export function ExperimentDetail({
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p className="leading-6 text-muted-foreground">{baselineMethodDescriptions[experiment.baselineConfig.method]}</p>
+              {baseline.controlComparison ? (
+                <div className="rounded-xl border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Témoins retenus
+                    </p>
+                    <Badge variant="outline">
+                      {baseline.controlComparison.includedStoreCount}/{baseline.controlComparison.requestedStoreIds.length}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {baseline.controlComparison.stores.map((store) => (
+                      <div className="rounded-lg bg-muted/55 px-3 py-2" key={store.storeId}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium">{store.storeName}</span>
+                          <Badge variant={store.eligible ? "secondary" : "outline"}>
+                            {store.eligible ? "Inclus" : "Exclu"}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Produits correspondants {store.matchedProductCount}/{store.requestedProductCount} · révision {store.dataRevision}
+                        </p>
+                        {store.warnings.map((warning) => (
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground" key={warning}>
+                            {warning}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <DefinitionRow
                 label="Historique disponible"
                 value={`${baseline.availableComparablePeriods}/${baseline.requestedComparablePeriods} période(s)`}
@@ -963,6 +995,12 @@ function AnalysisResult({ analysis }: { analysis: ExperimentAnalysis }) {
         </CardContent>
       </Card>
 
+      {analysis.baseline.controlComparison ? (
+        <ControlComparisonResult
+          comparison={analysis.baseline.controlComparison}
+        />
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -1101,6 +1139,61 @@ function AnalysisResult({ analysis }: { analysis: ExperimentAnalysis }) {
         </CardContent>
       </Card>
     </section>
+  );
+}
+
+function ControlComparisonResult({
+  comparison,
+}: {
+  comparison: NonNullable<ExperimentAnalysis["baseline"]["controlComparison"]>;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>Lecture du magasin témoin</CardTitle>
+            <CardDescription>
+              {comparison.method === "difference_in_differences"
+                ? "Effet = évolution du magasin testé − évolution moyenne des témoins."
+                : "L’évolution relative moyenne des témoins est appliquée à la référence du magasin testé."}
+            </CardDescription>
+          </div>
+          <Badge variant="secondary">
+            {comparison.includedStoreCount}/{comparison.requestedStoreIds.length} témoin(s)
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ResultValue
+            label="Testé avant"
+            value={formatMoney(comparison.treatmentBefore?.revenueCents ?? null)}
+          />
+          <ResultValue
+            label="Testé après"
+            value={formatMoney(comparison.treatmentAfter?.revenueCents ?? null)}
+          />
+          <ResultValue
+            label="Témoins avant"
+            value={formatMoney(comparison.controlAverageBefore?.revenueCents ?? null)}
+          />
+          <ResultValue
+            label="Témoins après"
+            value={formatMoney(comparison.controlAverageAfter?.revenueCents ?? null)}
+          />
+        </div>
+        <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.035] p-4">
+          <p className="text-xs font-medium text-primary">Effet CA estimé après contrôle</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {formatMoney(comparison.effectEstimate?.revenueCents ?? null)}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            La sélection des témoins est manuelle et l’hypothèse de tendances comparables reste à interpréter avec les facteurs terrain.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -88,7 +88,7 @@ export type EvaluationEngineConfig = z.infer<
 
 export const defaultEvaluationEngineConfig: EvaluationEngineConfig =
   evaluationEngineConfigSchema.parse({
-    engineVersion: "experiment-evaluation-v1",
+    engineVersion: "experiment-evaluation-v2",
     mediumHistoryPeriods: 2,
     highHistoryPeriods: 4,
     highBaselineCoefficientOfVariation: 0.15,
@@ -138,6 +138,8 @@ export const analysisWarningSchema = z.object({
     "EXPLICIT_COSTS_UNKNOWN",
     "EXECUTION_DEVIATIONS",
     "CONFOUNDERS_RECORDED",
+    "CONTROL_STORES_EXCLUDED",
+    "CONTROL_COMPARISON_ASSUMPTION",
   ]),
   severity: z.enum(["info", "warning"]),
   message: z.string().min(1),
@@ -152,6 +154,15 @@ export const experimentAnalysisSchema = z.object({
   analysisVersion: z.number().int().positive(),
   engineVersion: z.string().min(1),
   dataRevision: z.number().int().nonnegative(),
+  controlRevisionKey: z.string().min(1).default("none"),
+  controlDataRevisions: z
+    .array(
+      z.object({
+        storeId: storeIdSchema,
+        dataRevision: z.number().int().nonnegative(),
+      }),
+    )
+    .default([]),
   analyzedAt: z.iso.datetime(),
   createdBy: z.string().min(1),
   periodWindow: z.object({
@@ -170,6 +181,7 @@ export const experimentAnalysisSchema = z.object({
   evidenceRefs: z.array(
     z.object({
       source: z.enum(["salesFacts", "markdownFacts"]),
+      storeId: storeIdSchema.optional(),
       periodKeys: z.array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)),
       recordCount: z.number().int().nonnegative(),
       dataRevision: z.number().int().nonnegative(),

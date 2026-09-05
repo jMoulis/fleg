@@ -9,6 +9,7 @@ import {
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import { recordRecommendationDecision } from "@/server/services/decision-service";
 
 export const runtime = "nodejs";
@@ -46,6 +47,13 @@ export async function POST(request: Request, routeContext: RouteContext) {
       error instanceof AuthenticationRequiredError ||
       error instanceof StoreAccessDeniedError;
     const invalid = error instanceof z.ZodError;
+    reportUnexpectedApiError({
+      error,
+      expected: unauthorized || invalid,
+      requestId,
+      route: "/api/stores/[storeId]/recommendations/[recommendationId]/decision",
+      method: "POST",
+    });
 
     return NextResponse.json(
       apiErrorSchema.parse({

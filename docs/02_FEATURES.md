@@ -117,3 +117,42 @@ Acceptance criteria for EXP-05:
 - only one active conclusion exists per scoped experiment;
 - the mobile result exposes the primary result before the conclusion controls, while desktop keeps the evidence analysis beside the decision panel;
 - experiment conclusions and their immutable analysis snapshot are visible in the store Decision Log.
+
+Acceptance criteria for EXP-06:
+- control-store baselines are selectable only when at least one other same-organization store is explicitly authorized;
+- every control-store read requires `experiments.compare_stores` and `analytics.compare_stores` on the treatment store plus experiment and analytics read access on every frozen control store;
+- product matching uses canonical normalized product identity and excludes a control explicitly when any tested product is unmatched;
+- a control is included only when its complete before/after monthly windows are available; exclusions and reasons remain visible;
+- direct control-store comparison applies the control's relative before/after movement to the treatment baseline;
+- difference-in-differences uses `(treatment after - treatment before) - (control after - control before)` and never claims causal certainty;
+- analyses snapshot every control data revision and re-analysis creates a new version when treatment or control inputs change;
+- evaluation, conclusion, experiment reads and Decision Log reads reauthorize the exact frozen control-store set after permission changes.
+
+Acceptance criteria for NET-01:
+- network access requires both store analytics read access and the explicit cross-store comparison permission for every selected store;
+- a request containing one unauthorized store or stores from different organizations is rejected in full, never silently reduced;
+- network totals include only the server-authorized store set and preserve missing prior-year, markdown and target coverage as unknown rather than zero;
+- store ranking uses revenue per confirmed effective commercial meter and never falls back to raw revenue;
+- stores without confirmed layout geometry remain visible in totals and comparison but are excluded from the normalized ranking;
+- desktop and mobile views expose store-level revenue, margin, year-over-year, markdown, target attainment and current prioritized-action counts;
+- the one-store case remains useful for totals and clearly explains that comparison needs at least two authorized stores.
+
+Acceptance criteria for AI-01:
+- the server exposes a stable catalog of typed read-only tools for store KPIs, product metrics/history, markdown drivers, space allocations, commercial events, recommendation explanation and authorized-store comparison;
+- every tool input and output is validated with strict Zod schemas and every result is explicitly marked `readOnly: true`;
+- store identifiers never appear in model-controlled store-tool inputs; the authorized context is injected only by the server;
+- store tools require both `ai.use` and `analytics.read`, while network comparison additionally requires `analytics.compare_stores` on every exact authorized store context;
+- outputs carry scoped evidence references, data revisions/calculation versions when applicable, explicit limitations and observed/calculated/inferred field semantics;
+- monthly granularity, missing history, incomplete normalization and manual-only markdown coverage remain visible instead of being silently inferred;
+- recommendation explanation reconstructs the deterministic recommendation without persisting a run or changing business state;
+- no mutation or draft-action-plan tool is present in AI-01.
+
+Acceptance criteria for AI-02:
+- the store and network Copilot endpoints validate bounded conversations with strict Zod schemas before invoking the model provider;
+- store chat derives its store scope from `requireStoreAiContext`, while network chat reauthorizes the exact submitted store set before every comparison;
+- neither store identifiers nor authorization context are present in model-controlled tool inputs;
+- only the AI-01 read tools are exposed, tool loops are bounded, and no write, approval or draft-action-plan tool is available;
+- every answer displays the tools consulted, evidence periods/revisions/calculation versions, observed/calculated/inferred semantics and all returned limitations;
+- store and network interfaces expose responsive empty, loading, configuration and error states without exposing the provider API key;
+- provider responses use server-only configuration, disable response storage and preserve required reasoning items during stateless tool continuation;
+- cross-store questions in store mode are redirected to the authorized network mode, while a one-store network scope remains explicit about its limitation.

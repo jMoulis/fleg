@@ -40,12 +40,20 @@ GET `/api/stores/:storeId/experiments/:experimentId/analyses`
 POST `/api/stores/:storeId/experiments/:experimentId/conclude`
 POST `/api/stores/:storeId/commercial-events/:eventId/create-experiment`
 
+For `control_store` and `difference_in_differences`, create/update, read,
+evaluation, analysis history and conclusion reauthorize the exact frozen control
+store set. The treatment store requires both `experiments.compare_stores` and
+`analytics.compare_stores`; every control store requires `experiments.read` and
+`analytics.read`. One unauthorized, missing or cross-organization store rejects
+the whole operation.
+
 ## Markdown
 GET/POST `/api/stores/:storeId/markdown`
 
 ## AI
 POST `/api/stores/:storeId/ai/chat`
 POST `/api/network/ai/chat` with explicit cross-store permission.
+POST `/api/stores/:storeId/ai/action-plans/:actionPlanId/decision` with `recommendations.approve`, rationale and idempotency key. This decision never executes the proposed actions.
 
 ## Error envelope
 ```ts

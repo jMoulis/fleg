@@ -72,9 +72,13 @@ Example:
 ### 4. Control store / matched store
 When authorized multi-store data exists, compare with one or more similar stores that did not execute the test.
 
+The current monthly engine applies the average relative before/after movement of eligible controls to the treatment-store baseline. A zero control denominator blocks this method instead of inventing a factor.
+
 ### 5. Difference-in-differences
-Later, when granular history and stable controls exist:
+With complete monthly before/after windows and stable controls:
 `effect = (treatment_after - treatment_before) - (control_after - control_before)`.
+
+Controls are matched through canonical normalized product identity. A store with an unmatched tested product or an incomplete period window is excluded with an explicit reason. The analysis snapshots the requested controls, included controls, evidence windows and each store data revision.
 
 The UI must never display causal certainty if the method does not support it.
 
@@ -221,6 +225,8 @@ Persist immutable snapshots of:
 
 Never recalculate historical experiments silently after analytics logic changes. Re-analysis creates a new `analysisVersion`.
 
+For cross-store methods, analysis input identity includes the treatment data revision, engine version and a deterministic key of every control data revision. Evaluation, conclusion and reads of immutable analysis snapshots reauthorize the exact frozen control-store set.
+
 ## MVP scope
 The first useful implementation must support:
 1. create test.
@@ -234,4 +240,4 @@ The first useful implementation must support:
 9. manager verdict and rollout/retest decision.
 10. experiment history searchable by product, fixture and test type.
 
-Control stores, true difference-in-differences and statistical intervals are post-MVP enhancements.
+EXP-06 extends this MVP with authorized control-store and difference-in-differences evaluation. Statistical intervals remain a later enhancement; the UI exposes evidence quality and assumptions without presenting causal certainty.

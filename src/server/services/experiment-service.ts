@@ -6,6 +6,7 @@ import type {
   ExperimentStartInput,
   ExperimentUpdateInput,
 } from "@/domain/experiments/schemas";
+import { controlStoreSetMatches } from "@/domain/experiments/store-scope";
 import { experimentFixtureOptionSchema } from "@/domain/experiments/schemas";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
@@ -23,16 +24,15 @@ function assertControlAuthorization(input: {
   controlContexts: AuthorizedStoreContext[];
   controlStoreIds: string[];
 }): void {
-  const expected = [...input.controlStoreIds].sort();
-  const authorized = input.controlContexts.map(({ storeId }) => storeId).sort();
-  const sameStores =
-    expected.length === authorized.length &&
-    expected.every((storeId, index) => storeId === authorized[index]);
-  const sameOrganization = input.controlContexts.every(
-    ({ organizationId }) => organizationId === input.context.organizationId,
-  );
-
-  if (!sameStores || !sameOrganization) throw new StoreAccessDeniedError();
+  if (
+    !controlStoreSetMatches({
+      primaryContext: input.context,
+      controlContexts: input.controlContexts,
+      requestedStoreIds: input.controlStoreIds,
+    })
+  ) {
+    throw new StoreAccessDeniedError();
+  }
 }
 
 export async function listExperiments(context: AuthorizedStoreContext) {

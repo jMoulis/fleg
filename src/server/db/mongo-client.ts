@@ -2,16 +2,21 @@ import "server-only";
 
 import { Db, MongoClient, ServerApiVersion } from "mongodb";
 
+import { ensureFoundationIndexesForDb } from "@/server/db/foundation-indexes";
 import { getServerEnv } from "@/server/env";
 
 declare global {
   var flMongoClientPromise: Promise<MongoClient> | undefined;
+  var flFoundationIndexesPromise: Promise<void> | undefined;
 }
 
 function createMongoClient(): MongoClient {
-  const { MONGODB_URI } = getServerEnv();
+  const environment = getServerEnv();
 
-  return new MongoClient(MONGODB_URI, {
+  return new MongoClient(environment.MONGODB_URI, {
+    connectTimeoutMS: environment.MONGODB_CONNECT_TIMEOUT_MS,
+    maxPoolSize: environment.MONGODB_MAX_POOL_SIZE,
+    serverSelectionTimeoutMS: environment.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
     serverApi: {
       version: ServerApiVersion.v1,
       strict: true,
@@ -22,7 +27,13 @@ function createMongoClient(): MongoClient {
 
 export function getMongoClient(): Promise<MongoClient> {
   if (!globalThis.flMongoClientPromise) {
-    globalThis.flMongoClientPromise = createMongoClient().connect();
+    const connectionPromise = createMongoClient().connect();
+    globalThis.flMongoClientPromise = connectionPromise;
+    void connectionPromise.catch(() => {
+      if (globalThis.flMongoClientPromise === connectionPromise) {
+        globalThis.flMongoClientPromise = undefined;
+      }
+    });
   }
 
   return globalThis.flMongoClientPromise;
@@ -35,7 +46,20 @@ export async function getAuthDb(): Promise<Db> {
 
 export async function getAppDb(): Promise<Db> {
   const [client, env] = await Promise.all([getMongoClient(), getServerEnv()]);
-  return client.db(env.MONGODB_APP_DB);
+  const db = client.db(env.MONGODB_APP_DB);
+
+  if (!globalThis.flFoundationIndexesPromise) {
+    const indexesPromise = ensureFoundationIndexesForDb(db);
+    globalThis.flFoundationIndexesPromise = indexesPromise;
+    void indexesPromise.catch(() => {
+      if (globalThis.flFoundationIndexesPromise === indexesPromise) {
+        globalThis.flFoundationIndexesPromise = undefined;
+      }
+    });
+  }
+
+  await globalThis.flFoundationIndexesPromise;
+  return db;
 }
 
 export async function pingMongo(): Promise<void> {

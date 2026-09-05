@@ -5,7 +5,7 @@
 - `fl_cockpit_app`
 
 ## Core collections
-`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `periodTargets`, `importJobs`, `recommendationRuns`, `recommendations`, `decisionLogs`, `layoutVersions`, `allocationPlans`, `markdownFacts`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `auditLogs`.
+`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `periodTargets`, `importJobs`, `recommendationRuns`, `recommendations`, `aiActionPlans`, `decisionLogs`, `layoutVersions`, `allocationPlans`, `markdownFacts`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `auditLogs`.
 
 ## Required fields
 All store-scoped business records carry `organizationId`, `storeId`; department records also carry `departmentId` where applicable. Derived records include `calculationVersion`, `inputRevision`, `generatedAt`.
@@ -13,16 +13,25 @@ All store-scoped business records carry `organizationId`, `storeId`; department 
 ## Minimum indexes
 ```ts
 stores:            { organizationId: 1, code: 1 } unique
+stores:            { organizationId: 1, active: 1, name: 1 }
 storeMemberships:  { storeId: 1, userId: 1 } unique
+storeMemberships:  { userId: 1, active: 1, organizationId: 1, storeId: 1 }
 products:          { storeId: 1, normalizedLabel: 1 }
+products:          { organizationId: 1, storeId: 1, active: 1, label: 1 }
 productAliases:    { storeId: 1, source: 1, externalKey: 1 } unique
 salesFacts:        { storeId: 1, periodKey: 1, productId: 1 } unique
+salesFacts:        { organizationId: 1, storeId: 1, periodKey: 1 }
+storeSettings:     { organizationId: 1, storeId: 1 } unique
+periodTargets:     { organizationId: 1, storeId: 1, periodKey: 1 } unique
 markdownFacts:     { organizationId: 1, storeId: 1, occurredOn: 1, productId: 1 }
 markdownFacts:     { organizationId: 1, storeId: 1, periodKey: 1, productId: 1 }
 markdownCommands:  { organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
 importJobs:        { storeId: 1, fingerprint: 1 } unique
 recommendations:   { storeId: 1, periodKey: 1, productId: 1 }
+recommendations:   { organizationId: 1, periodKey: 1, status: 1, storeId: 1, inputRevision: 1 }
 decisionLogs:      { storeId: 1, createdAt: -1 }
+aiActionPlans:     { organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
+aiActionPlans:     { organizationId: 1, storeId: 1, status: 1, createdAt: -1 }
 layoutVersions:    { storeId: 1, departmentId: 1, version: -1 }
 allocationPlans:   { storeId: 1, layoutVersionId: 1, version: -1 }
 commercialEvents:  { organizationId: 1, storeId: 1, fixtureId: 1, startsOn: 1, endsOn: 1, status: 1 }
@@ -31,11 +40,13 @@ experiments:        { organizationId: 1, storeId: 1, status: 1, plannedStartAt: 
 experiments:        { organizationId: 1, storeId: 1, productIds: 1, plannedStartAt: -1 }
 experimentCommands:{ organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
 experimentAnalyses:{ experimentId: 1, analysisVersion: 1 } unique
-experimentAnalyses:{ experimentId: 1, dataRevision: 1, engineVersion: 1 } unique
+experimentAnalyses:{ experimentId: 1, dataRevision: 1, engineVersion: 1, controlRevisionKey: 1 } unique
 experimentConclusions:{ organizationId: 1, storeId: 1, experimentId: 1, active: 1 } unique when active
 experimentConclusions:{ organizationId: 1, storeId: 1, idempotencyKey: 1 } unique
 auditLogs:         { organizationId: 1, storeId: 1, createdAt: -1 }
 ```
+
+The application ensures this index set once per process before returning the first application database handle. A rejected bootstrap is evicted so a later readiness attempt can recover. `GET /api/health` is the pre-traffic warm-up and confirms both MongoDB connectivity and index readiness.
 
 ## Sales fact example
 ```ts

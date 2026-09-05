@@ -5,9 +5,13 @@ import {
   experimentResponseSchema,
   experimentStartInputSchema,
 } from "@/domain/experiments/schemas";
+import { requireExperimentControlContexts } from "@/server/auth/experiment-controls";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { experimentErrorResponse } from "@/server/http/experiment-error-response";
-import { startExperiment } from "@/server/services/experiment-service";
+import {
+  getExperiment,
+  startExperiment,
+} from "@/server/services/experiment-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +33,12 @@ export async function POST(request: Request, routeContext: RouteContext) {
       request.headers,
     );
     const startInput = experimentStartInputSchema.parse(await request.json());
+    const currentExperiment = await getExperiment({ context, experimentId });
+    await requireExperimentControlContexts({
+      primaryContext: context,
+      controlStoreIds: currentExperiment.baselineConfig.controlStoreIds,
+      requestHeaders: request.headers,
+    });
     const experiment = await startExperiment({
       context,
       experimentId,
@@ -39,6 +49,9 @@ export async function POST(request: Request, routeContext: RouteContext) {
       experimentResponseSchema.parse({ experiment, requestId }),
     );
   } catch (error) {
-    return experimentErrorResponse(error, requestId);
+    return experimentErrorResponse(error, requestId, {
+      route: "/api/stores/[storeId]/experiments/[experimentId]/start",
+      method: "POST",
+    });
   }
 }

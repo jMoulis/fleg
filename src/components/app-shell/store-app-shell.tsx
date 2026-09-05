@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
+  Bot,
   ChevronDown,
   Leaf,
+  Network,
   Store,
 } from "lucide-react";
 
@@ -13,12 +15,16 @@ import { cn } from "@/lib/utils";
 interface StoreAppShellProps {
   organizationSlug: string;
   storeId: string;
+  canCompareStores: boolean;
+  canUseAi: boolean;
   children: ReactNode;
 }
 
 export function StoreAppShell({
   organizationSlug,
   storeId,
+  canCompareStores,
+  canUseAi,
   children,
 }: StoreAppShellProps) {
   const dashboardHref = `/${organizationSlug}/stores/${storeId}/dashboard`;
@@ -37,17 +43,41 @@ export function StoreAppShell({
             </div>
           </Link>
 
-          <Link
-            href="/stores"
-            className={cn(
-              buttonVariants({ variant: "outline" }),
-              "min-w-0 max-w-[15rem] justify-start",
-            )}
-          >
-            <Store aria-hidden="true" />
-            <span className="truncate">Magasin autorisé</span>
-            <ChevronDown aria-hidden="true" className="ml-auto" />
-          </Link>
+          <div className="flex items-center gap-2">
+            {canUseAi ? (
+              <Link
+                href={`/${organizationSlug}/stores/${storeId}/copilot`}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon" }),
+                  "md:hidden",
+                )}
+                aria-label="Ouvrir le Copilote analytique"
+              >
+                <Bot aria-hidden="true" />
+              </Link>
+            ) : null}
+            {canCompareStores ? (
+              <Link
+                href={`/${organizationSlug}/network`}
+                className={buttonVariants({ variant: "ghost" })}
+                aria-label="Ouvrir la vue réseau"
+              >
+                <Network aria-hidden="true" />
+                <span className="hidden sm:inline">Réseau</span>
+              </Link>
+            ) : null}
+            <Link
+              href="/stores"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "min-w-0 max-w-[15rem] justify-start",
+              )}
+            >
+              <Store aria-hidden="true" />
+              <span className="truncate">Magasin autorisé</span>
+              <ChevronDown aria-hidden="true" className="ml-auto" />
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -56,15 +86,19 @@ export function StoreAppShell({
           <StoreNavigation
             organizationSlug={organizationSlug}
             storeId={storeId}
+            canUseAi={canUseAi}
             variant="desktop"
           />
         </aside>
-        <div className="min-w-0 flex-1">{children}</div>
+        <div id="main-content" tabIndex={-1} className="min-w-0 flex-1">
+          {children}
+        </div>
       </div>
 
       <StoreNavigation
         organizationSlug={organizationSlug}
         storeId={storeId}
+        canUseAi={canUseAi}
         variant="mobile"
       />
     </div>

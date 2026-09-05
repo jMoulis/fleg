@@ -10,6 +10,7 @@ import {
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import {
   CommercialEventConflictError,
   CommercialEventScheduleConflictError,
@@ -43,7 +44,7 @@ export async function GET(request: Request, routeContext: RouteContext) {
       commercialEventsResponseSchema.parse({ events, requestId }),
     );
   } catch (error) {
-    return commercialEventErrorResponse(error, requestId);
+    return commercialEventErrorResponse(error, requestId, "GET");
   }
 }
 
@@ -71,11 +72,15 @@ export async function POST(request: Request, routeContext: RouteContext) {
       { status: 201 },
     );
   } catch (error) {
-    return commercialEventErrorResponse(error, requestId);
+    return commercialEventErrorResponse(error, requestId, "POST");
   }
 }
 
-function commercialEventErrorResponse(error: unknown, requestId: string) {
+function commercialEventErrorResponse(
+  error: unknown,
+  requestId: string,
+  method: "GET" | "POST",
+) {
   const unauthorized =
     error instanceof AuthenticationRequiredError ||
     error instanceof StoreAccessDeniedError;
@@ -84,6 +89,13 @@ function commercialEventErrorResponse(error: unknown, requestId: string) {
     error instanceof InvalidCommercialEventReferenceError;
   const scheduleConflict = error instanceof CommercialEventScheduleConflictError;
   const conflict = error instanceof CommercialEventConflictError;
+  reportUnexpectedApiError({
+    error,
+    expected: unauthorized || invalid || scheduleConflict || conflict,
+    requestId,
+    route: "/api/stores/[storeId]/commercial-events",
+    method,
+  });
 
   return NextResponse.json(
     apiErrorSchema.parse({

@@ -7,6 +7,7 @@ import { recommendationsResponseSchema } from "@/domain/recommendations/schemas"
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import { getRecommendations } from "@/server/services/recommendation-service";
 
 export const runtime = "nodejs";
@@ -43,6 +44,13 @@ export async function GET(request: Request, routeContext: RouteContext) {
       error instanceof AuthenticationRequiredError ||
       error instanceof StoreAccessDeniedError;
     const invalid = error instanceof z.ZodError;
+    reportUnexpectedApiError({
+      error,
+      expected: unauthorized || invalid,
+      requestId,
+      route: "/api/stores/[storeId]/recommendations",
+      method: "GET",
+    });
 
     return NextResponse.json(
       apiErrorSchema.parse({

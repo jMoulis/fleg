@@ -85,6 +85,10 @@ export const baselineWarningCodeSchema = z.enum([
   "TREND_CONTROL_TOO_SMALL",
   "TREND_CONTROL_UNSTABLE",
   "TREND_FACTOR_OUT_OF_RANGE",
+  "CONTROL_DATA_PENDING",
+  "CONTROL_PRODUCT_MAPPING_INCOMPLETE",
+  "CONTROL_PERIOD_DATA_INCOMPLETE",
+  "NO_ELIGIBLE_CONTROL_STORE",
 ]);
 export type BaselineWarningCode = z.infer<
   typeof baselineWarningCodeSchema
@@ -117,6 +121,39 @@ export type ComparableBaselineWindow = z.infer<
   typeof comparableBaselineWindowSchema
 >;
 
+export const controlStoreBaselineEvidenceSchema = z.object({
+  storeId: z.string().regex(/^[a-f\d]{24}$/i),
+  storeName: z.string().min(1),
+  dataRevision: z.number().int().nonnegative(),
+  requestedProductCount: z.number().int().nonnegative(),
+  matchedProductCount: z.number().int().nonnegative(),
+  recordCount: z.number().int().nonnegative(),
+  eligible: z.boolean(),
+  warnings: z.array(z.string().min(1)),
+  before: baselineAggregateSchema.nullable(),
+  after: baselineAggregateSchema.nullable(),
+  change: baselineAggregateSchema.nullable(),
+  evidencePeriodKeys: z.array(periodKeySchema),
+});
+export type ControlStoreBaselineEvidence = z.infer<
+  typeof controlStoreBaselineEvidenceSchema
+>;
+
+export const controlComparisonSchema = z.object({
+  method: z.enum(["control_store", "difference_in_differences"]),
+  requestedStoreIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).min(1),
+  includedStoreCount: z.number().int().nonnegative(),
+  treatmentBefore: baselineAggregateSchema.nullable(),
+  treatmentAfter: baselineAggregateSchema.nullable(),
+  controlAverageBefore: baselineAggregateSchema.nullable(),
+  controlAverageAfter: baselineAggregateSchema.nullable(),
+  controlAverageChange: baselineAggregateSchema.nullable(),
+  expectedWithoutTest: baselineAggregateSchema.nullable(),
+  effectEstimate: baselineAggregateSchema.nullable(),
+  stores: z.array(controlStoreBaselineEvidenceSchema).min(1),
+});
+export type ControlComparison = z.infer<typeof controlComparisonSchema>;
+
 export const experimentBaselineSchema = z.object({
   method: baselineMethodSchema,
   grain: z.literal("month"),
@@ -148,6 +185,7 @@ export const experimentBaselineSchema = z.object({
   windows: z.array(comparableBaselineWindowSchema),
   evidencePeriodKeys: z.array(periodKeySchema),
   warnings: z.array(baselineWarningSchema),
+  controlComparison: controlComparisonSchema.nullable().default(null),
 });
 export type ExperimentBaseline = z.infer<typeof experimentBaselineSchema>;
 

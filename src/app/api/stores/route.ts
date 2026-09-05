@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import { storesResponseSchema } from "@/domain/stores/schemas";
 import { AuthenticationRequiredError } from "@/server/auth/session";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import { listAuthorizedStores } from "@/server/services/store-access-service";
 
 export const runtime = "nodejs";
@@ -19,6 +20,13 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     const unauthorized = error instanceof AuthenticationRequiredError;
+    reportUnexpectedApiError({
+      error,
+      expected: unauthorized,
+      requestId,
+      route: "/api/stores",
+      method: "GET",
+    });
     const response = apiErrorSchema.parse({
       code: unauthorized ? "AUTHENTICATION_REQUIRED" : "SERVICE_UNAVAILABLE",
       message: unauthorized

@@ -79,6 +79,7 @@ describe("experiment schemas", () => {
           ...base.baselineConfig,
           method: "control_store",
           controlStoreIds: ["66d000000000000000000002"],
+          trendNormalization: false,
         },
       }).success,
     ).toBe(true);

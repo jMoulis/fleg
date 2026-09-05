@@ -5,6 +5,7 @@ import { decisionLogResponseSchema } from "@/domain/decisions/schemas";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import { listDecisionLog } from "@/server/services/decision-service";
 
 export const runtime = "nodejs";
@@ -24,7 +25,10 @@ export async function GET(request: Request, routeContext: RouteContext) {
       ["analytics.read"],
       request.headers,
     );
-    const decisions = await listDecisionLog(context);
+    const decisions = await listDecisionLog({
+      context,
+      requestHeaders: request.headers,
+    });
 
     return NextResponse.json(
       decisionLogResponseSchema.parse({ decisions, requestId }),
@@ -33,6 +37,13 @@ export async function GET(request: Request, routeContext: RouteContext) {
     const unauthorized =
       error instanceof AuthenticationRequiredError ||
       error instanceof StoreAccessDeniedError;
+    reportUnexpectedApiError({
+      error,
+      expected: unauthorized,
+      requestId,
+      route: "/api/stores/[storeId]/decisions",
+      method: "GET",
+    });
 
     return NextResponse.json(
       apiErrorSchema.parse({

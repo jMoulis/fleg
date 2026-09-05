@@ -45,6 +45,7 @@ Maximize **post-markdown gross margin per scarce effective display capacity**, w
 4. `docs/04_ARCHITECTURE.md`
 5. `docs/05_DATA_MODEL.md`
 6. `docs/14_BUILD_PLAN.md`
+7. `docs/18_OPERATIONS.md`
 
 
 ## Implementation Blueprint

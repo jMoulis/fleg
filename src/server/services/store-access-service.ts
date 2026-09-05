@@ -1,8 +1,14 @@
 import "server-only";
 
+import { buildNetworkScope } from "@/domain/network/store-scope";
+import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { storeSummarySchema, type StoreSummary } from "@/domain/stores/schemas";
 import { getAuth } from "@/server/auth/auth";
 import { requireSession } from "@/server/auth/session";
+import {
+  requireAuthorizedStoreSet,
+  requireStoreContext,
+} from "@/server/auth/store-context";
 import { getAppDb } from "@/server/db/mongo-client";
 import {
   StoreRepository,
@@ -82,4 +88,48 @@ export async function listAuthorizedStores(
     .map((store) => withOrganizationSlug(store, organizations))
     .filter((store): store is StoreSummary => store !== null)
     .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+}
+
+export async function listComparableStoresForOrganization(
+  organizationSlug: string,
+  requestHeaders: Headers,
+) {
+  const candidates = (await listAuthorizedStores(requestHeaders)).filter(
+    (store) => store.organizationSlug === organizationSlug,
+  );
+  const authorized = await Promise.all(
+    candidates.map(async (store) => {
+      try {
+        const context = await requireStoreContext(
+          store.id,
+          ["analytics.read", "analytics.compare_stores"],
+          requestHeaders,
+        );
+        return { store, context };
+      } catch (error) {
+        if (error instanceof StoreAccessDeniedError) return null;
+        throw error;
+      }
+    }),
+  );
+
+  return authorized.filter(
+    (
+      entry,
+    ): entry is NonNullable<(typeof authorized)[number]> => entry !== null,
+  );
+}
+
+export async function requireNetworkStoreSet(
+  storeIds: string[],
+  requestHeaders: Headers,
+) {
+  const contexts = await requireAuthorizedStoreSet(
+    storeIds,
+    ["analytics.read", "analytics.compare_stores"],
+    requestHeaders,
+  );
+
+  buildNetworkScope(contexts);
+  return contexts;
 }

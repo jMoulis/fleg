@@ -157,6 +157,7 @@ export class ExperimentAnalysisRepository {
       experimentId,
       dataRevision: input.analysis.dataRevision,
       engineVersion: input.analysis.engineVersion,
+      controlRevisionKey: input.analysis.controlRevisionKey,
     };
     const existing = await this.analyses.findOne(logicalFilter);
     if (existing) return toExperimentAnalysis(existing);
@@ -223,6 +224,8 @@ export class ExperimentAnalysisRepository {
             analysisVersion: analysis.analysisVersion,
             engineVersion: analysis.engineVersion,
             dataRevision: analysis.dataRevision,
+            controlRevisionKey: analysis.controlRevisionKey,
+            controlDataRevisions: analysis.controlDataRevisions,
             analyzedAt,
             createdBy: analysis.createdBy,
             periodWindow: analysis.periodWindow,
@@ -272,6 +275,7 @@ export class ExperimentAnalysisRepository {
               analysisId,
               analysisVersion,
               dataRevision: analysis.dataRevision,
+              controlDataRevisions: analysis.controlDataRevisions,
               evidenceQuality: analysis.evidenceQuality.grade,
             },
             requestId: input.requestId,

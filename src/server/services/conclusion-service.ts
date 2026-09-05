@@ -4,6 +4,8 @@ import {
   suggestExperimentVerdict,
   type ExperimentConclusionInput,
 } from "@/domain/experiments/conclusion";
+import { controlStoreSetMatches } from "@/domain/experiments/store-scope";
+import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 import { getAppDb, getMongoClient } from "@/server/db/mongo-client";
 import { ExperimentAnalysisRepository } from "@/server/repositories/experiment-analysis-repository";
@@ -30,6 +32,7 @@ export async function getActiveExperimentConclusion(input: {
 
 export async function concludeExperiment(input: {
   context: AuthorizedStoreContext;
+  controlContexts?: AuthorizedStoreContext[];
   experimentId: string;
   conclusionInput: ExperimentConclusionInput;
   requestId: string;
@@ -42,6 +45,16 @@ export async function concludeExperiment(input: {
     input.experimentId,
   );
   if (!experiment) throw new ExperimentNotFoundError();
+  const controlContexts = input.controlContexts ?? [];
+  if (
+    !controlStoreSetMatches({
+      primaryContext: input.context,
+      controlContexts,
+      requestedStoreIds: experiment.baselineConfig.controlStoreIds,
+    })
+  ) {
+    throw new StoreAccessDeniedError();
+  }
   if (experiment.status === "concluded") {
     const existing = await conclusionRepository.findActiveForExperiment({
       context: input.context,
@@ -76,6 +89,32 @@ export async function concludeExperiment(input: {
   if (latestAnalysis.dataRevision !== currentDataRevision) {
     throw new ExperimentTransitionError(
       "Les données ont changé depuis cette analyse. Recalculez-la avant de conclure",
+    );
+  }
+  const analysisControlRevisionByStoreId = new Map(
+    latestAnalysis.controlDataRevisions.map(({ storeId, dataRevision }) => [
+      storeId,
+      dataRevision,
+    ]),
+  );
+  const currentControlDataRevisions = await Promise.all(
+    controlContexts.map(async (context) => ({
+      storeId: context.storeId,
+      dataRevision: await new ExperimentBaselineRepository(db).getDataRevision(
+        context,
+      ),
+    })),
+  );
+  if (
+    currentControlDataRevisions.length !==
+      latestAnalysis.controlDataRevisions.length ||
+    currentControlDataRevisions.some(
+      ({ storeId, dataRevision }) =>
+        analysisControlRevisionByStoreId.get(storeId) !== dataRevision,
+    )
+  ) {
+    throw new ExperimentTransitionError(
+      "Les données d’un magasin témoin ont changé depuis cette analyse. Recalculez-la avant de conclure",
     );
   }
 

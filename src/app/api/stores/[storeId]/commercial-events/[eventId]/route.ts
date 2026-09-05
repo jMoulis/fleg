@@ -9,6 +9,7 @@ import {
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
 import {
   CommercialEventConflictError,
   CommercialEventScheduleConflictError,
@@ -63,6 +64,13 @@ function commercialEventErrorResponse(error: unknown, requestId: string) {
     error instanceof InvalidCommercialEventReferenceError;
   const scheduleConflict = error instanceof CommercialEventScheduleConflictError;
   const conflict = error instanceof CommercialEventConflictError;
+  reportUnexpectedApiError({
+    error,
+    expected: unauthorized || invalid || scheduleConflict || conflict,
+    requestId,
+    route: "/api/stores/[storeId]/commercial-events/[eventId]",
+    method: "PATCH",
+  });
 
   return NextResponse.json(
     apiErrorSchema.parse({

@@ -39,6 +39,7 @@ import {
   experimentResponseSchema,
   experimentTypeSchema,
   type BaselineMethod,
+  type ExperimentControlStoreOption,
   type Experiment,
   type ExperimentFixtureOption,
   type ExperimentMetric,
@@ -70,6 +71,7 @@ import { cn } from "@/lib/utils";
 interface ExperimentWizardProps {
   baseHref: string;
   commercialEvents: CommercialEvent[];
+  controlStores: ExperimentControlStoreOption[];
   fixtures: ExperimentFixtureOption[];
   initialExperiment?: Experiment;
   products: ProductOption[];
@@ -92,6 +94,7 @@ interface WizardDraft {
   baselineMethod: BaselineMethod;
   comparablePeriods: string;
   trendNormalization: boolean;
+  controlStoreIds: string[];
   primaryMetric: ExperimentMetric;
   secondaryMetrics: ExperimentMetric[];
   guardrailMetrics: ExperimentMetric[];
@@ -112,6 +115,8 @@ const availableBaselineMethods: BaselineMethod[] = [
   "prior_comparable_periods",
   "prior_year",
   "internal_category_control",
+  "control_store",
+  "difference_in_differences",
 ];
 
 const availableMetrics: ExperimentMetric[] = [
@@ -128,6 +133,10 @@ function splitLines(value: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function isControlMethod(method: BaselineMethod): boolean {
+  return method === "control_store" || method === "difference_in_differences";
 }
 
 function eurosToCents(value: string): number | null {
@@ -157,6 +166,7 @@ function defaultDraft(): WizardDraft {
     baselineMethod: "prior_comparable_periods",
     comparablePeriods: "4",
     trendNormalization: true,
+    controlStoreIds: [],
     primaryMetric: "revenue",
     secondaryMetrics: ["gross_margin_cents"],
     guardrailMetrics: ["markdown_cents"],
@@ -183,6 +193,7 @@ function draftFromExperiment(experiment: Experiment): WizardDraft {
     baselineMethod: experiment.baselineConfig.method,
     comparablePeriods: String(experiment.baselineConfig.comparablePeriods),
     trendNormalization: experiment.baselineConfig.trendNormalization,
+    controlStoreIds: experiment.baselineConfig.controlStoreIds,
     primaryMetric: experiment.primaryMetric,
     secondaryMetrics: experiment.secondaryMetrics,
     guardrailMetrics: experiment.guardrailMetrics,
@@ -213,6 +224,7 @@ function apiMessage(payload: unknown): string | null {
 export function ExperimentWizard({
   baseHref,
   commercialEvents,
+  controlStores,
   fixtures,
   initialExperiment,
   products,
@@ -237,6 +249,10 @@ export function ExperimentWizard({
   const eventById = useMemo(
     () => new Map(commercialEvents.map((event) => [event.id, event])),
     [commercialEvents],
+  );
+  const controlStoreById = useMemo(
+    () => new Map(controlStores.map((store) => [store.id, store])),
+    [controlStores],
   );
 
   function update<K extends keyof WizardDraft>(key: K, value: WizardDraft[K]) {
@@ -267,6 +283,13 @@ export function ExperimentWizard({
     }
     if (index === 2 && (!draft.startDate || draft.startDate > draft.endDate)) {
       return "La fin du test ne peut pas précéder son début.";
+    }
+    if (
+      index === 2 &&
+      isControlMethod(draft.baselineMethod) &&
+      draft.controlStoreIds.length === 0
+    ) {
+      return "Sélectionnez au moins un magasin témoin explicitement autorisé.";
     }
     return null;
   }
@@ -352,7 +375,7 @@ export function ExperimentWizard({
         method: draft.baselineMethod,
         comparablePeriods: Number(draft.comparablePeriods),
         trendNormalization: draft.trendNormalization,
-        controlStoreIds: [],
+        controlStoreIds: draft.controlStoreIds,
       },
       expectedRelativeEffect: expectedEffect,
       explicitCostsCents: eurosToCents(draft.explicitCostsEuros),
@@ -676,29 +699,86 @@ export function ExperimentWizard({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="baseline-method">Méthode de comparaison</Label>
-                <Select onValueChange={(value) => update("baselineMethod", baselineMethodSchema.parse(value))} value={draft.baselineMethod}>
+                <Select
+                  onValueChange={(value) => {
+                    const method = baselineMethodSchema.parse(value);
+                    setDraft((current) => ({
+                      ...current,
+                      baselineMethod: method,
+                      controlStoreIds: isControlMethod(method)
+                        ? current.controlStoreIds
+                        : [],
+                      trendNormalization: isControlMethod(method)
+                        ? false
+                        : current.trendNormalization,
+                    }));
+                    setError(null);
+                  }}
+                  value={draft.baselineMethod}
+                >
                   <SelectTrigger className="h-10 w-full" id="baseline-method">
                     <SelectValue>{baselineMethodLabels[draft.baselineMethod]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {availableBaselineMethods.map((method) => (
-                      <SelectItem
-                        disabled={method !== "prior_comparable_periods"}
-                        key={method}
-                        value={method}
-                      >
-                        {baselineMethodLabels[method]}
-                        {method !== "prior_comparable_periods"
-                          ? " — prochaine version"
-                          : ""}
-                      </SelectItem>
-                    ))}
+                    {availableBaselineMethods.map((method) => {
+                      const supported =
+                        method === "prior_comparable_periods" ||
+                        (isControlMethod(method) && controlStores.length > 0);
+                      return (
+                        <SelectItem disabled={!supported} key={method} value={method}>
+                          {baselineMethodLabels[method]}
+                          {!supported
+                            ? isControlMethod(method)
+                              ? " — aucun témoin autorisé"
+                              : " — prochaine version"
+                            : ""}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 <p className="text-sm leading-5 text-muted-foreground">
                   {baselineMethodDescriptions[draft.baselineMethod]}
                 </p>
               </div>
+              {isControlMethod(draft.baselineMethod) ? (
+                <fieldset className="rounded-xl border p-4">
+                  <legend className="px-1 text-sm font-medium">
+                    Magasins témoins
+                  </legend>
+                  <p className="mb-3 text-xs leading-5 text-muted-foreground">
+                    Seuls les magasins de la même organisation avec les droits d’analyse requis sont proposés.
+                  </p>
+                  <div className="grid gap-2">
+                    {controlStores.map((store) => (
+                      <label
+                        className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm"
+                        key={store.id}
+                      >
+                        <input
+                          checked={draft.controlStoreIds.includes(store.id)}
+                          className="size-4 accent-primary"
+                          onChange={(event) =>
+                            update(
+                              "controlStoreIds",
+                              event.target.checked
+                                ? [...draft.controlStoreIds, store.id]
+                                : draft.controlStoreIds.filter(
+                                    (storeId) => storeId !== store.id,
+                                  ),
+                            )
+                          }
+                          type="checkbox"
+                        />
+                        <span>
+                          <span className="block font-medium">{store.name}</span>
+                          <span className="block text-xs text-muted-foreground">{store.code}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
               <Alert>
                 <CalendarRange aria-hidden="true" />
                 <AlertTitle>Granularité mensuelle actuelle</AlertTitle>
@@ -712,13 +792,23 @@ export function ExperimentWizard({
                 <Label htmlFor="comparable-periods">Nombre de périodes comparables</Label>
                 <Input id="comparable-periods" max="24" min="1" onChange={(event) => update("comparablePeriods", event.target.value)} type="number" value={draft.comparablePeriods} />
               </div>
-              <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm">
-                <input checked={draft.trendNormalization} className="mt-0.5 size-4 accent-primary" onChange={(event) => update("trendNormalization", event.target.checked)} type="checkbox" />
-                <span>
-                  <span className="block font-medium">Corriger la tendance générale du rayon</span>
-                  <span className="mt-1 block text-muted-foreground">Cette option sera appliquée seulement si le dénominateur est suffisamment stable.</span>
-                </span>
-              </label>
+              {!isControlMethod(draft.baselineMethod) ? (
+                <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm">
+                  <input checked={draft.trendNormalization} className="mt-0.5 size-4 accent-primary" onChange={(event) => update("trendNormalization", event.target.checked)} type="checkbox" />
+                  <span>
+                    <span className="block font-medium">Corriger la tendance générale du rayon</span>
+                    <span className="mt-1 block text-muted-foreground">Cette option sera appliquée seulement si le dénominateur est suffisamment stable.</span>
+                  </span>
+                </label>
+              ) : (
+                <Alert>
+                  <Target aria-hidden="true" />
+                  <AlertTitle>Tendance portée par les témoins</AlertTitle>
+                  <AlertDescription>
+                    Aucune seconde correction de tendance n’est ajoutée au calcul multi-magasins.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </>
         ) : null}
@@ -790,7 +880,7 @@ export function ExperimentWizard({
               <ReviewBlock title="Hypothèse" value={draft.hypothesis} />
               <ReviewBlock title="Traitement" value={`${draft.treatmentSummary}${draft.fixtureId ? ` · ${fixtureById.get(draft.fixtureId) ?? draft.fixtureId}` : ""}`} />
               <ReviewBlock title="Période" value={`${draft.startDate} → ${draft.endDate}`} />
-              <ReviewBlock title="Référence" value={`${baselineMethodLabels[draft.baselineMethod]} · ${draft.comparablePeriods} période(s) · tendance ${draft.trendNormalization ? "corrigée" : "non corrigée"}`} />
+              <ReviewBlock title="Référence" value={`${baselineMethodLabels[draft.baselineMethod]} · ${draft.comparablePeriods} période(s) · ${isControlMethod(draft.baselineMethod) ? `${draft.controlStoreIds.map((id) => controlStoreById.get(id)?.name ?? "Témoin indisponible").join(", ") || "aucun témoin"}` : `tendance ${draft.trendNormalization ? "corrigée" : "non corrigée"}`}`} />
               <ReviewBlock title="Critère principal" value={experimentMetricLabels[draft.primaryMetric]} />
               <div className="rounded-xl border border-primary/25 bg-primary/[0.035] p-4 text-sm">
                 <p className="flex items-center gap-2 font-medium text-primary">
