@@ -1,9 +1,12 @@
 import { defineConfig } from "@playwright/test";
 
+import { authenticationStatePath } from "./e2e/global-setup";
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
 
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   timeout: 180_000,
@@ -16,6 +19,7 @@ export default defineConfig({
   ],
   use: {
     baseURL,
+    storageState: authenticationStatePath,
     actionTimeout: 30_000,
     navigationTimeout: 30_000,
     screenshot: "only-on-failure",

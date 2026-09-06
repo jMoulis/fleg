@@ -30,17 +30,21 @@ import {
   type CopilotMessage,
   type CopilotToolTrace,
   type NetworkCopilotToolTrace,
+  type StoreCopilotIntent,
   type StoreCopilotToolName,
 } from "@/domain/ai/copilot";
 import type { AiEvidenceRef } from "@/domain/ai/tools";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import { cn } from "@/lib/utils";
 
+const draftActionPlanQuestion =
+  "Prépare un plan d’action priorisé pour le mois prochain.";
+
 const storeSuggestedQuestions = [
   "Pourquoi la marge a-t-elle évolué sur cette période ?",
   "Quels produits devrais-je prioriser le mois prochain ?",
   "Que devrait quitter la TG1 ?",
-  "Prépare un plan d’action priorisé pour le mois prochain.",
+  draftActionPlanQuestion,
 ] as const;
 
 const networkSuggestedQuestions = [
@@ -367,7 +371,10 @@ function CopilotWorkspace({
     });
   }, [messages, pending]);
 
-  async function submitQuestion(question: string) {
+  async function submitQuestion(
+    question: string,
+    intent: StoreCopilotIntent = "analysis",
+  ) {
     const content = question.trim();
     if (!content || pending || !providerConfigured) return;
 
@@ -393,6 +400,7 @@ function CopilotWorkspace({
           ...requestScope,
           messages: apiMessages,
           ...(initialPeriod ? { period: initialPeriod } : {}),
+          ...(scope === "store" ? { intent } : {}),
         }),
       });
       const payload: unknown = await response.json();
@@ -554,7 +562,15 @@ function CopilotWorkspace({
                         key={question}
                         type="button"
                         disabled={!providerConfigured || pending}
-                        onClick={() => void submitQuestion(question)}
+                        onClick={() =>
+                          void submitQuestion(
+                            question,
+                            scope === "store" &&
+                              question === draftActionPlanQuestion
+                              ? "draft_action_plan"
+                              : "analysis",
+                          )
+                        }
                         className="rounded-xl border bg-background p-3 text-left text-sm leading-5 transition-colors hover:border-primary/35 hover:bg-primary/[0.035] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {question}

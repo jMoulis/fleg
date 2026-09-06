@@ -1,8 +1,15 @@
 import { MongoServerError, type Db } from "mongodb";
 
+interface ListedIndex {
+  name?: string;
+  key?: Record<string, unknown>;
+  sparse?: boolean;
+  partialFilterExpression?: Record<string, unknown>;
+}
+
 async function migrateExperimentAnalysisInputIndex(db: Db): Promise<void> {
   const analyses = db.collection("experimentAnalyses");
-  let indexes: Array<{ name?: string; key?: Record<string, unknown> }> = [];
+  let indexes: ListedIndex[] = [];
 
   try {
     indexes = await analyses.listIndexes().toArray();
@@ -17,8 +24,45 @@ async function migrateExperimentAnalysisInputIndex(db: Db): Promise<void> {
   }
 }
 
+async function migrateLayoutOptionalUniqueIndexes(db: Db): Promise<void> {
+  const layouts = db.collection("layoutVersions");
+  let indexes: ListedIndex[] = [];
+
+  try {
+    indexes = await layouts.listIndexes().toArray();
+  } catch (error) {
+    if (!(error instanceof MongoServerError) || error.code !== 26) throw error;
+  }
+
+  const optionalIndexes = [
+    {
+      field: "seedKey",
+      name: "layout_versions_scope_seed_unique",
+    },
+    {
+      field: "idempotencyKey",
+      name: "layout_versions_scope_idempotency_unique",
+    },
+  ] as const;
+
+  for (const definition of optionalIndexes) {
+    const current = indexes.find(({ name }) => name === definition.name);
+    const fieldFilter = current?.partialFilterExpression?.[definition.field];
+    const hasStringPartialFilter =
+      typeof fieldFilter === "object" &&
+      fieldFilter !== null &&
+      "$type" in fieldFilter &&
+      fieldFilter.$type === "string";
+
+    if (current && (current.sparse || !hasStringPartialFilter)) {
+      await layouts.dropIndex(definition.name);
+    }
+  }
+}
+
 export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
   await migrateExperimentAnalysisInputIndex(db);
+  await migrateLayoutOptionalUniqueIndexes(db);
   await Promise.all([
     db.collection("stores").createIndex(
       { organizationId: 1, code: 1 },
@@ -135,7 +179,7 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { organizationId: 1, storeId: 1, seedKey: 1 },
       {
         unique: true,
-        sparse: true,
+        partialFilterExpression: { seedKey: { $type: "string" } },
         name: "layout_versions_scope_seed_unique",
       },
     ),
@@ -147,7 +191,7 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { organizationId: 1, storeId: 1, idempotencyKey: 1 },
       {
         unique: true,
-        sparse: true,
+        partialFilterExpression: { idempotencyKey: { $type: "string" } },
         name: "layout_versions_scope_idempotency_unique",
       },
     ),

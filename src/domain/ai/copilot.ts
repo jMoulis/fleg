@@ -45,10 +45,17 @@ export const copilotMessageSchema = z
   .strict();
 export type CopilotMessage = z.infer<typeof copilotMessageSchema>;
 
+export const storeCopilotIntentSchema = z.enum([
+  "analysis",
+  "draft_action_plan",
+]);
+export type StoreCopilotIntent = z.infer<typeof storeCopilotIntentSchema>;
+
 export const storeCopilotRequestSchema = z
   .object({
     messages: z.array(copilotMessageSchema).min(1).max(20),
     period: periodKeySchema.optional(),
+    intent: storeCopilotIntentSchema.default("analysis"),
   })
   .strict()
   .superRefine((input, context) => {
@@ -154,13 +161,20 @@ export const copilotModelFunctionCallSchema = z
   })
   .passthrough();
 
-export const STORE_COPILOT_PROMPT_VERSION = "store-copilot-v2";
+export const STORE_COPILOT_PROMPT_VERSION = "store-copilot-v3";
 export const NETWORK_COPILOT_PROMPT_VERSION = "network-copilot-v1";
 
-export function buildStoreCopilotInstructions(period?: string): string {
+export function buildStoreCopilotInstructions(
+  period?: string,
+  intent: StoreCopilotIntent = "analysis",
+): string {
   const periodInstruction = period
     ? `La période sélectionnée dans l’interface est ${period}. Utilise-la par défaut pour les outils qui acceptent une période.`
     : "Aucune période n’est imposée par l’interface. Laisse les outils résoudre la dernière période disponible si la question ne précise rien.";
+  const intentInstruction =
+    intent === "draft_action_plan"
+      ? "L’utilisateur a explicitement demandé la création d’un plan d’action en brouillon. Consulte les preuves nécessaires puis appelle createDraftActionPlan dans cette réponse, sans demander une confirmation supplémentaire."
+      : "Ne crée un plan d’action que si la formulation de l’utilisateur le demande explicitement.";
 
   return [
     "Tu es le Copilote analytique F&L d’un seul magasin.",
@@ -172,6 +186,7 @@ export function buildStoreCopilotInstructions(period?: string): string {
     "Les montants reçus sont stockés en centimes mais doivent être présentés en euros. Les ratios reçus sont décimaux et doivent être présentés en pourcentage.",
     "Si les preuves sont insuffisantes, dis-le clairement et propose la donnée manquante à collecter.",
     "Tu disposes d’outils de lecture et d’un unique outil d’écriture limité, createDraftActionPlan.",
+    intentInstruction,
     "N’appelle createDraftActionPlan que si l’utilisateur demande explicitement de préparer, créer ou enregistrer un plan d’action. Consulte d’abord au moins un outil de lecture pertinent et ne crée aucun plan sans preuve retournée par ces outils.",
     "Le plan créé reste un brouillon non exécuté. Tu ne peux ni l’approuver, ni le refuser, ni appliquer ses actions. Après création, indique clairement qu’une décision managériale séparée est requise.",
     "Pour toute autre demande de modification, publication ou validation, explique que tu peux analyser ou préparer un brouillon, mais que tu ne peux rien appliquer directement.",
@@ -240,7 +255,10 @@ export interface CopilotModelRequest {
   instructions: string;
   maxOutputTokens: number;
   safetyIdentifier: string;
-  toolChoice: "auto" | "none";
+  toolChoice:
+    | "auto"
+    | "none"
+    | { type: "function"; name: StoreCopilotToolName };
 }
 
 export class CopilotToolLoopError extends Error {
@@ -284,7 +302,10 @@ export async function orchestrateStoreCopilot(input: {
   ) => Promise<StoreAiReadToolResult | CreateDraftActionPlanResult>;
 }): Promise<StoreCopilotResult> {
   const request = storeCopilotRequestSchema.parse(input.request);
-  const instructions = buildStoreCopilotInstructions(request.period);
+  const instructions = buildStoreCopilotInstructions(
+    request.period,
+    request.intent,
+  );
   const conversation: unknown[] = request.messages.map((message) => ({
     role: message.role,
     content: message.content,
@@ -294,12 +315,27 @@ export async function orchestrateStoreCopilot(input: {
   let actionPlan: AiActionPlan | null = null;
 
   for (let round = 0; round <= input.maxToolRounds; round += 1) {
+    const hasGroundingEvidence = groundingResults.some(
+      (result) => result.evidence.length > 0,
+    );
+    const forcedDraftToolChoice =
+      request.intent === "draft_action_plan" && !actionPlan
+        ? {
+            type: "function" as const,
+            name: hasGroundingEvidence
+              ? ("createDraftActionPlan" as const)
+              : ("getStoreKpis" as const),
+          }
+        : null;
     const turn = await input.createModelTurn({
       input: [...conversation],
       instructions,
       maxOutputTokens: input.maxOutputTokens,
       safetyIdentifier: input.safetyIdentifier,
-      toolChoice: round === input.maxToolRounds ? "none" : "auto",
+      toolChoice:
+        round === input.maxToolRounds || actionPlan
+          ? "none"
+          : (forcedDraftToolChoice ?? "auto"),
     });
 
     if (turn.functionCalls.length === 0) {

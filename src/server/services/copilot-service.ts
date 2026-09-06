@@ -27,7 +27,7 @@ import { createDraftActionPlanToolDefinition } from "@/domain/ai/action-plans";
 import { aiReadToolDefinitions } from "@/domain/ai/tools";
 import { NetworkStoreSetError } from "@/domain/network/store-scope";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
-import { getCopilotEnv } from "@/server/env";
+import { getCopilotEnv, type CopilotEnv } from "@/server/env";
 import {
   executeNetworkAiReadTool,
   executeStoreAiReadTool,
@@ -38,6 +38,15 @@ export class CopilotConfigurationError extends Error {
   constructor() {
     super("Le fournisseur IA du Copilote n’est pas configuré");
     this.name = "CopilotConfigurationError";
+  }
+}
+
+export class CopilotProviderResponseError extends Error {
+  constructor(status: string, reason?: string) {
+    super(
+      `Le fournisseur IA a renvoyé une réponse ${status}${reason ? ` (${reason})` : ""}`,
+    );
+    this.name = "CopilotProviderResponseError";
   }
 }
 
@@ -94,6 +103,7 @@ function createOpenAiTurnFactory(input: {
   client: OpenAI;
   model: string;
   tools: FunctionTool[];
+  reasoningEffort: CopilotEnv["OPENAI_REASONING_EFFORT"];
 }) {
   return async function createModelTurn(
     request: CopilotModelRequest,
@@ -106,10 +116,18 @@ function createOpenAiTurnFactory(input: {
       tool_choice: request.toolChoice,
       parallel_tool_calls: false,
       max_output_tokens: request.maxOutputTokens,
+      reasoning: { effort: input.reasoningEffort },
       safety_identifier: request.safetyIdentifier,
       include: ["reasoning.encrypted_content"],
       store: false,
     });
+
+    if (response.status !== "completed") {
+      throw new CopilotProviderResponseError(
+        response.status ?? "sans statut",
+        response.incomplete_details?.reason,
+      );
+    }
 
     const functionCalls = response.output.flatMap((item) => {
       if (item.type !== "function_call") return [];
@@ -151,6 +169,7 @@ export async function runStoreCopilot(input: {
     client,
     model: environment.OPENAI_MODEL,
     tools: buildStoreTools(),
+    reasoningEffort: environment.OPENAI_REASONING_EFFORT,
   });
 
   return orchestrateStoreCopilot({
@@ -212,6 +231,7 @@ export async function runNetworkCopilot(input: {
     client,
     model: environment.OPENAI_MODEL,
     tools: buildNetworkTools(),
+    reasoningEffort: environment.OPENAI_REASONING_EFFORT,
   });
 
   return orchestrateNetworkCopilot({

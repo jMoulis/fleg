@@ -162,34 +162,32 @@ export class MarkdownRepository {
     const session = this.client.startSession();
     try {
       const result = await session.withTransaction(async () => {
-        const [product, department, store] = await Promise.all([
-          this.products.findOne(
-            {
-              _id: new ObjectId(createInput.productId),
-              organizationId: scope.organizationId,
-              storeId,
-              active: true,
-            },
-            { projection: { _id: 1 }, session },
-          ),
-          this.departments.findOne(
-            {
-              organizationId: scope.organizationId,
-              storeId,
-              key: "fruit_vegetable",
-              active: true,
-            },
-            { projection: { _id: 1 }, session },
-          ),
-          this.stores.findOne(
-            {
-              _id: storeId,
-              organizationId: scope.organizationId,
-              active: true,
-            },
-            { projection: { _id: 1 }, session },
-          ),
-        ]);
+        const product = await this.products.findOne(
+          {
+            _id: new ObjectId(createInput.productId),
+            organizationId: scope.organizationId,
+            storeId,
+            active: true,
+          },
+          { projection: { _id: 1 }, session },
+        );
+        const department = await this.departments.findOne(
+          {
+            organizationId: scope.organizationId,
+            storeId,
+            key: "fruit_vegetable",
+            active: true,
+          },
+          { projection: { _id: 1 }, session },
+        );
+        const store = await this.stores.findOne(
+          {
+            _id: storeId,
+            organizationId: scope.organizationId,
+            active: true,
+          },
+          { projection: { _id: 1 }, session },
+        );
         if (!product) {
           throw new MarkdownReferenceError(
             "Le produit n’appartient pas au magasin autorisé",

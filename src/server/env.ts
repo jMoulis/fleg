@@ -73,13 +73,16 @@ export const copilotEnvSchema = z.object({
     .int()
     .min(256)
     .max(4_000)
-    .default(1_200),
+    .default(2_400),
   OPENAI_MAX_TOOL_ROUNDS: z.coerce
     .number()
     .int()
     .min(1)
     .max(8)
     .default(4),
+  OPENAI_REASONING_EFFORT: z
+    .enum(["minimal", "low", "medium", "high"])
+    .default("low"),
   OPENAI_TIMEOUT_MS: z.coerce
     .number()
     .int()

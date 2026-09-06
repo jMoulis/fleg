@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import * as z from "zod";
 
 import {
   CopilotToolLoopError,
@@ -20,12 +19,31 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+class InvalidNetworkAiChatRequestError extends Error {
+  constructor() {
+    super("La requête de conversation réseau est invalide");
+    this.name = "InvalidNetworkAiChatRequestError";
+  }
+}
+
+async function parseNetworkAiChatRequest(request: Request) {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    throw new InvalidNetworkAiChatRequestError();
+  }
+
+  const result = networkCopilotRequestSchema.safeParse(body);
+  if (!result.success) throw new InvalidNetworkAiChatRequestError();
+  return result.data;
+}
+
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID();
 
   try {
-    const body: unknown = await request.json();
-    const chat = networkCopilotRequestSchema.parse(body);
+    const chat = await parseNetworkAiChatRequest(request);
     const contexts = await requireNetworkAiContexts(
       chat.storeIds,
       request.headers,
@@ -41,8 +59,7 @@ export async function POST(request: Request) {
       error instanceof AuthenticationRequiredError ||
       error instanceof StoreAccessDeniedError ||
       error instanceof NetworkStoreSetError;
-    const invalid =
-      error instanceof z.ZodError || error instanceof SyntaxError;
+    const invalid = error instanceof InvalidNetworkAiChatRequestError;
     const notConfigured = error instanceof CopilotConfigurationError;
     const toolLoopFailed = error instanceof CopilotToolLoopError;
     reportUnexpectedApiError({

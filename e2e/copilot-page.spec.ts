@@ -1,17 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-const credentials = {
-  email: process.env.E2E_EMAIL ?? "admin@fleg.local",
-  password: process.env.E2E_PASSWORD ?? "FlegDemo!2026",
-};
-
 test("AI-01 ouvre le Copilote avec une configuration serveur valide", async ({
   page,
 }, testInfo) => {
-  await page.goto("/sign-in");
-  await page.getByLabel("Adresse e-mail").fill(credentials.email);
-  await page.getByLabel("Mot de passe").fill(credentials.password);
-  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.goto("/stores");
   await expect(page).toHaveURL(/\/stores$/);
   await page.getByRole("button", { name: "Ouvrir le cockpit" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);

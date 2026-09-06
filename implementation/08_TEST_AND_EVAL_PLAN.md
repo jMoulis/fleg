@@ -29,6 +29,23 @@ Generate adversarial tests that substitute random/foreign `storeId`, `organizati
 
 Run at mobile and desktop viewport sizes.
 
+## E2E release recipe
+
+Playwright creates one authenticated Better Auth state at suite startup and reuses it across isolated browser contexts. The generated state is stored only under the ignored `test-results/` directory.
+
+The non-billed release suite runs on mobile and desktop and covers:
+
+- `REL-01`: create a new layout version and save an allocation draft;
+- `REL-02`: publish and complete a TG operation, then record markdown;
+- `REL-03`: plan, start and finish an experiment;
+- `REL-04`: open the authorized network dashboard;
+- `AI-01`: open the configured Copilot page without exposing server secrets;
+- the original Mercalys import-to-decision vertical slice and accessibility checks.
+
+Run `npm run check` followed by `npm run test:e2e`. These scenarios intentionally mutate only the seeded demo store and use unique markers or periods so repeated runs remain traceable.
+
+The real-provider suite remains explicit and opt-in: `npm run test:e2e:ai`. It sends demo analytics to the configured OpenAI project and verifies both a multi-tool grounded answer and an evidence-backed action-plan draft. Approval must leave `executionStatus: not_executed`.
+
 ## AI-01 contract and isolation tests
 - strict tool inputs reject model-supplied tenant identifiers and duplicates;
 - the catalog contains only the eight approved read tools;

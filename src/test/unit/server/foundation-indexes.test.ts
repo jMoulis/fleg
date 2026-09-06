@@ -32,4 +32,56 @@ describe("foundation indexes", () => {
       ]),
     );
   });
+
+  it("replaces legacy sparse layout indexes with string partial indexes", async () => {
+    const droppedNames: string[] = [];
+    const createdOptions = new Map<string, Record<string, unknown>>();
+    const collection = (name: string) => ({
+      createIndex: async (
+        _key: Record<string, number>,
+        options: Record<string, unknown> & { name: string },
+      ) => {
+        createdOptions.set(options.name, options);
+        return options.name;
+      },
+      listIndexes: () => ({
+        toArray: async () =>
+          name === "layoutVersions"
+            ? [
+                {
+                  name: "layout_versions_scope_seed_unique",
+                  sparse: true,
+                },
+                {
+                  name: "layout_versions_scope_idempotency_unique",
+                  sparse: true,
+                },
+              ]
+            : [],
+      }),
+      dropIndex: async (indexName: string) => {
+        droppedNames.push(indexName);
+      },
+    });
+    const db = { collection } as unknown as Db;
+
+    await ensureFoundationIndexesForDb(db);
+
+    expect(droppedNames).toEqual([
+      "layout_versions_scope_seed_unique",
+      "layout_versions_scope_idempotency_unique",
+    ]);
+    expect(
+      createdOptions.get("layout_versions_scope_seed_unique"),
+    ).toMatchObject({
+      unique: true,
+      partialFilterExpression: { seedKey: { $type: "string" } },
+    });
+    expect(
+      createdOptions.get("layout_versions_scope_idempotency_unique"),
+    ).toMatchObject({
+      unique: true,
+      partialFilterExpression: { idempotencyKey: { $type: "string" } },
+    });
+  });
 });

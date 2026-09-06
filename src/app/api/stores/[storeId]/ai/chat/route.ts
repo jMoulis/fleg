@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import * as z from "zod";
 
 import {
   CopilotToolLoopError,
+  storeCopilotRequestSchema,
   storeCopilotResponseSchema,
 } from "@/domain/ai/copilot";
 import { apiErrorSchema } from "@/domain/api/schemas";
@@ -22,16 +22,36 @@ interface RouteContext {
   params: Promise<{ storeId: string }>;
 }
 
+class InvalidStoreAiChatRequestError extends Error {
+  constructor() {
+    super("La requête de conversation magasin est invalide");
+    this.name = "InvalidStoreAiChatRequestError";
+  }
+}
+
+async function parseStoreAiChatRequest(request: Request) {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    throw new InvalidStoreAiChatRequestError();
+  }
+
+  const result = storeCopilotRequestSchema.safeParse(body);
+  if (!result.success) throw new InvalidStoreAiChatRequestError();
+  return result.data;
+}
+
 export async function POST(request: Request, routeContext: RouteContext) {
   const requestId = crypto.randomUUID();
 
   try {
     const { storeId } = await routeContext.params;
     const context = await requireStoreAiContext(storeId, request.headers);
-    const body: unknown = await request.json();
+    const chat = await parseStoreAiChatRequest(request);
     const result = await runStoreCopilot({
       context,
-      request: body,
+      request: chat,
       requestId,
     });
 
@@ -43,8 +63,7 @@ export async function POST(request: Request, routeContext: RouteContext) {
     const unauthorized =
       error instanceof AuthenticationRequiredError ||
       error instanceof StoreAccessDeniedError;
-    const invalid =
-      error instanceof z.ZodError || error instanceof SyntaxError;
+    const invalid = error instanceof InvalidStoreAiChatRequestError;
     const notConfigured = error instanceof CopilotConfigurationError;
     const toolLoopFailed = error instanceof CopilotToolLoopError;
     reportUnexpectedApiError({

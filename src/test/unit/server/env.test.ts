@@ -105,8 +105,9 @@ describe("parseCopilotEnv", () => {
   it("keeps the API key optional and applies bounded defaults", () => {
     expect(parseCopilotEnv({})).toEqual({
       OPENAI_MODEL: "gpt-5-mini",
-      OPENAI_MAX_OUTPUT_TOKENS: 1_200,
+      OPENAI_MAX_OUTPUT_TOKENS: 2_400,
       OPENAI_MAX_TOOL_ROUNDS: 4,
+      OPENAI_REASONING_EFFORT: "low",
       OPENAI_TIMEOUT_MS: 30_000,
     });
     expect(parseCopilotEnv({ OPENAI_API_KEY: "  " }).OPENAI_API_KEY).toBe(
@@ -121,12 +122,14 @@ describe("parseCopilotEnv", () => {
         OPENAI_MODEL: "model-test",
         OPENAI_MAX_OUTPUT_TOKENS: "600",
         OPENAI_MAX_TOOL_ROUNDS: "2",
+        OPENAI_REASONING_EFFORT: "minimal",
         OPENAI_TIMEOUT_MS: "10000",
       }),
     ).toMatchObject({
       OPENAI_API_KEY: "test-key",
       OPENAI_MODEL: "model-test",
       OPENAI_MAX_TOOL_ROUNDS: 2,
+      OPENAI_REASONING_EFFORT: "minimal",
     });
     expect(() =>
       parseCopilotEnv({ OPENAI_MAX_TOOL_ROUNDS: "100" }),

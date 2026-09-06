@@ -3,11 +3,6 @@ import { join } from "node:path";
 
 import { expect, test } from "@playwright/test";
 
-const credentials = {
-  email: process.env.E2E_EMAIL ?? "admin@fleg.local",
-  password: process.env.E2E_PASSWORD ?? "FlegDemo!2026",
-};
-
 const fixtureByProject = {
   "mobile-390": { fileName: "10_2025.xlsx", periodKey: "2025-10" },
   "desktop-1440": { fileName: "11_2025.xlsx", periodKey: "2025-11" },
@@ -17,6 +12,7 @@ test("HARD-01 expose une navigation clavier et réduit les mouvements", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.context().clearCookies();
   await page.goto("/sign-in");
 
   await page.keyboard.press("Tab");
@@ -46,11 +42,7 @@ test("E2E-01 transforme un export Mercalys en décision manager", async ({
   let storeId = "";
 
   await test.step("connexion et sélection du seul magasin autorisé", async () => {
-    await page.goto("/sign-in");
-    await page.getByLabel("Adresse e-mail").fill(credentials.email);
-    await page.getByLabel("Mot de passe").fill(credentials.password);
-    await page.getByRole("button", { name: "Se connecter" }).click();
-
+    await page.goto("/stores");
     await expect(page).toHaveURL(/\/stores$/);
     await expect(
       page.getByRole("heading", { name: "Choisissez votre magasin" }),

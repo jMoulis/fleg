@@ -66,6 +66,12 @@ describe("store Copilot contract", () => {
         messages: [{ role: "assistant", content: "Réponse précédente" }],
       }).success,
     ).toBe(false);
+    expect(
+      storeCopilotRequestSchema.safeParse({
+        messages: [{ role: "user", content: "Prépare un plan" }],
+        intent: "execute_actions",
+      }).success,
+    ).toBe(false);
   });
 
   it("makes the read-only and evidence boundaries explicit in the prompt", () => {
@@ -76,6 +82,12 @@ describe("store Copilot contract", () => {
     expect(prompt).toContain("N’invente aucun chiffre");
     expect(prompt).toContain("ne peux rien appliquer");
     expect(prompt).toContain("comparaison entre magasins");
+
+    const draftPrompt = buildStoreCopilotInstructions(
+      "2026-08",
+      "draft_action_plan",
+    );
+    expect(draftPrompt).toContain("sans demander une confirmation supplémentaire");
   });
 
   it("executes a typed tool call and returns its visible evidence trace", async () => {
@@ -262,7 +274,7 @@ describe("store Copilot contract", () => {
         limitations: [],
         sourceQuestion: "Prépare un plan d’action",
         model: "model-test",
-        promptVersion: "store-copilot-v2",
+        promptVersion: "store-copilot-v3",
         createdByUserId: "manager-a",
         createdAt: "2026-09-05T10:00:00.000Z",
         updatedAt: "2026-09-05T10:00:00.000Z",
@@ -319,6 +331,7 @@ describe("store Copilot contract", () => {
       request: {
         messages: [{ role: "user", content: "Prépare un plan d’action" }],
         period: "2026-08",
+        intent: "draft_action_plan",
       },
       model: "model-test",
       maxOutputTokens: 500,
@@ -344,6 +357,15 @@ describe("store Copilot contract", () => {
       "getStoreKpis",
       "createDraftActionPlan",
     ]);
+    expect(createModelTurn.mock.calls[0]?.[0].toolChoice).toEqual({
+      type: "function",
+      name: "getStoreKpis",
+    });
+    expect(createModelTurn.mock.calls[1]?.[0].toolChoice).toEqual({
+      type: "function",
+      name: "createDraftActionPlan",
+    });
+    expect(createModelTurn.mock.calls[2]?.[0].toolChoice).toBe("none");
   });
 
   it("refuses a draft tool call when no read evidence was collected", async () => {

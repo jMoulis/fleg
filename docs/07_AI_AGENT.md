@@ -31,7 +31,7 @@ Every result contains:
 The AI-01 executor performs no write, audit mutation or recommendation-run persistence. Provider orchestration and the Copilot interface belong to AI-02.
 
 ### AI-02 Copilot contract
-AI-02 connects the provider through the official OpenAI SDK and the Responses API. `OPENAI_MODEL`, output-token budget, tool-round budget and timeout are explicit server configuration; the API key never enters a React payload or browser bundle. Responses are created with storage disabled, and stateless tool continuation preserves the full replayable provider output, including encrypted reasoning items where required.
+AI-02 connects the provider through the official OpenAI SDK and the Responses API. `OPENAI_MODEL`, output-token budget, reasoning effort, tool-round budget and timeout are explicit server configuration; the API key never enters a React payload or browser bundle. The output-token budget includes both visible output and reasoning tokens, and incomplete provider responses are handled as provider failures rather than invalid user conversations. Responses are created with storage disabled, and stateless tool continuation preserves the full replayable provider output, including encrypted reasoning items where required.
 
 Store chat accepts only a bounded `messages` history and an optional business period. The route derives the authorized store from the URL and server session, then exposes only the seven store-scoped AI-01 read tools. A request cannot place `storeId` inside a model-controlled tool argument.
 
@@ -48,7 +48,7 @@ Both interfaces show:
 No AI-02 read request writes a business document, recommendation run or audit record.
 
 ### AI-03 draft and approval contract
-AI-03 adds `createDraftActionPlan` only to the store Copilot. The model may call it only after an explicit user request and after at least one store read tool has returned evidence. Its input contains plan wording, action kind, expected effect and confidence, but never tenant identifiers or authorization fields.
+AI-03 adds `createDraftActionPlan` only to the store Copilot. The model may call it only after an explicit user request and after at least one store read tool has returned evidence. The dedicated UI action transmits a bounded `draft_action_plan` intent: the server forces a deterministic KPI read first, then the draft tool, so the model cannot replace an already explicit request with another confirmation question. Its input contains plan wording, action kind, expected effect and confidence, but never tenant identifiers or authorization fields.
 
 The server injects `organizationId`, `storeId`, actor, model and prompt version. It also replaces any model-supplied notion of evidence with the exact evidence, semantics, limitations and data revisions returned earlier in the same bounded tool loop. A plan with no deterministic evidence is refused.
 
