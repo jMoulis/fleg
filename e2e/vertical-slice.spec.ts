@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { expect, test } from "@playwright/test";
 
+import { primaryDemoStoreLabel, selectPrimaryDemoStore } from "./demo-store";
+
 const fixtureByProject = {
   "mobile-390": { fileName: "10_2025.xlsx", periodKey: "2025-10" },
   "desktop-1440": { fileName: "11_2025.xlsx", periodKey: "2025-11" },
@@ -41,15 +43,16 @@ test("E2E-01 transforme un export Mercalys en décision manager", async ({
   );
   let storeId = "";
 
-  await test.step("connexion et sélection du seul magasin autorisé", async () => {
+  await test.step("connexion et sélection explicite du magasin principal", async () => {
     await page.goto("/stores");
     await expect(page).toHaveURL(/\/stores$/);
     await expect(
       page.getByRole("heading", { name: "Choisissez votre magasin" }),
     ).toBeVisible();
+    await selectPrimaryDemoStore(page);
     await expect(
       page.getByRole("combobox", { name: "Magasin actif" }),
-    ).toContainText("Magasin F&L Démo · DEMO-01");
+    ).toContainText(primaryDemoStoreLabel);
     await page.getByRole("button", { name: "Ouvrir le cockpit" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
     const storeIdMatch = page.url().match(/\/stores\/([a-f\d]{24})\//i);

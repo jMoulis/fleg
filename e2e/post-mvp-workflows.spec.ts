@@ -4,10 +4,23 @@ import {
   type Page,
   test,
 } from "@playwright/test";
+import { join } from "node:path";
+
+import {
+  getDemoStorePair,
+  importFixtureIntoStore,
+  selectPrimaryDemoStore,
+} from "./demo-store";
+
+const networkFixtureByProject = {
+  "mobile-390": "10_2025.xlsx",
+  "desktop-1440": "11_2025.xlsx",
+} as const;
 
 async function signInToStore(page: Page) {
   await page.goto("/stores");
   await expect(page).toHaveURL(/\/stores$/);
+  await selectPrimaryDemoStore(page);
   const openCockpitButton = page.getByRole("button", {
     name: "Ouvrir le cockpit",
   });
@@ -187,6 +200,16 @@ test("REL-03 planifie, démarre et termine une expérience", async ({
     .getByLabel("Effet opérationnel attendu")
     .fill("Améliorer la conversion à trafic et prix constants.");
   await page.getByRole("button", { name: "Continuer" }).click();
+  await page.locator("#baseline-method").click();
+  await page
+    .getByRole("option", { name: "Différence de différences", exact: true })
+    .click();
+  const controlStore = page
+    .getByRole("group", { name: "Magasins témoins" })
+    .locator("label")
+    .filter({ hasText: "DEMO-02" });
+  await expect(controlStore).toContainText("Magasin F&L Témoin");
+  await controlStore.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Continuer" }).click();
   await page.getByLabel("Effet attendu (%)").fill("5");
   await page.getByLabel("Coûts explicites (€)").fill("10");
@@ -236,17 +259,35 @@ test("REL-03 planifie, démarre et termine une expérience", async ({
 test("REL-04 ouvre la vue réseau dans le périmètre autorisé", async ({
   page,
 }, testInfo) => {
-  await signInToStore(page);
-  await page.getByRole("link", { name: "Ouvrir la vue réseau" }).click();
+  const { storeBaseUrl } = await signInToStore(page);
+  const stores = await getDemoStorePair(page);
+  const projectName = testInfo.project.name as keyof typeof networkFixtureByProject;
+  const fileName = networkFixtureByProject[projectName];
+  const fixturePath = join(
+    process.cwd(),
+    "assets",
+    "import_excel_files_examples",
+    fileName,
+  );
+  const periods = await Promise.all(
+    [stores.primary, stores.control].map((store) =>
+      importFixtureIntoStore({ fileName, fixturePath, page, storeId: store.id }),
+    ),
+  );
+  expect(new Set(periods).size).toBe(1);
+  const organizationBaseUrl = storeBaseUrl.replace(/\/stores\/[a-f\d]{24}$/i, "");
+  await page.goto(`${organizationBaseUrl}/network?period=${periods[0]}`);
 
   await expect(page).toHaveURL(/\/network/);
   await expect(
     page.getByRole("heading", { name: "Tableau de bord réseau" }),
   ).toBeVisible();
-  await expect(page.getByText(/magasin explicitement autorisé/)).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "Indicateurs réseau" }),
-  ).toBeVisible();
+  await expect(page.getByText("2 magasins explicitement autorisés")).toBeVisible();
+  const indicators = page.getByRole("region", { name: "Indicateurs réseau" });
+  await expect(indicators).toBeVisible();
+  await expect(indicators.getByText("2/2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: stores.primary.name }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: stores.control.name }).first()).toBeVisible();
 
   const comparison = page.getByRole("table");
   if (testInfo.project.name === "desktop-1440") {

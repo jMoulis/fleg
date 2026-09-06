@@ -1,10 +1,13 @@
 import { expect, test } from "@playwright/test";
 
+import { selectPrimaryDemoStore } from "./demo-store";
+
 test("AI-01 ouvre le Copilote avec une configuration serveur valide", async ({
   page,
 }, testInfo) => {
   await page.goto("/stores");
   await expect(page).toHaveURL(/\/stores$/);
+  await selectPrimaryDemoStore(page);
   await page.getByRole("button", { name: "Ouvrir le cockpit" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 

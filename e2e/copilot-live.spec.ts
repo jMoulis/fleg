@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { aiActionPlanDecisionResponseSchema } from "@/domain/ai/action-plans";
 import { storeCopilotResponseSchema } from "@/domain/ai/copilot";
+import { selectPrimaryDemoStore } from "./demo-store";
 
 test.skip(
   process.env.RUN_LIVE_AI_E2E !== "true",
@@ -13,6 +14,7 @@ test("AI-02 répond avec des preuves après plusieurs appels d’outils", async 
 }) => {
   await page.goto("/stores");
   await expect(page).toHaveURL(/\/stores$/);
+  await selectPrimaryDemoStore(page);
   await page.getByRole("button", { name: "Ouvrir le cockpit" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.getByRole("link", { name: "Copilote", exact: true }).click();
@@ -47,6 +49,7 @@ test("AI-03 crée un brouillon fondé sur des preuves puis exige une décision",
 }) => {
   await page.goto("/stores");
   await expect(page).toHaveURL(/\/stores$/);
+  await selectPrimaryDemoStore(page);
   await page.getByRole("button", { name: "Ouvrir le cockpit" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.getByRole("link", { name: "Copilote", exact: true }).click();
