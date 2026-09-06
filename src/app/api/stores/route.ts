@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 
 import { apiErrorSchema } from "@/domain/api/schemas";
+import {
+  storeAdminResponseSchema,
+  storeCreateInputSchema,
+} from "@/domain/admin/schemas";
 import { storesResponseSchema } from "@/domain/stores/schemas";
+import { requireOrganizationAdminById } from "@/server/auth/organization-admin-context";
 import { AuthenticationRequiredError } from "@/server/auth/session";
+import { adminApiErrorResponse } from "@/server/http/admin-api-error";
 import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
+import { createStore } from "@/server/services/organization-admin-service";
 import { listAuthorizedStores } from "@/server/services/store-access-service";
 
 export const runtime = "nodejs";
@@ -36,5 +43,30 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(response, { status: unauthorized ? 401 : 503 });
+  }
+}
+
+export async function POST(request: Request) {
+  const requestId = crypto.randomUUID();
+
+  try {
+    const createInput = storeCreateInputSchema.parse(await request.json());
+    const context = await requireOrganizationAdminById(
+      createInput.organizationId,
+      request.headers,
+    );
+    const store = await createStore({ context, createInput, requestId });
+
+    return NextResponse.json(
+      storeAdminResponseSchema.parse({ store, requestId }),
+      { status: 201 },
+    );
+  } catch (error) {
+    return adminApiErrorResponse({
+      error,
+      requestId,
+      route: "/api/stores",
+      method: "POST",
+    });
   }
 }

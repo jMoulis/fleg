@@ -3,13 +3,22 @@ import { Leaf, ShieldCheck } from "lucide-react";
 
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { authenticationCallbackPathSchema } from "@/domain/auth/schemas";
 
 export const metadata: Metadata = {
   title: "Connexion — F&L Cockpit",
   description: "Accédez à vos magasins autorisés dans F&L Cockpit.",
 };
 
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const query = await searchParams;
+  const callbackUrl = authenticationCallbackPathSchema.catch("/stores").parse(
+    query.callbackUrl,
+  );
   return (
     <main id="main-content" tabIndex={-1} className="grid min-h-svh bg-background lg:grid-cols-[1.05fr_0.95fr]">
       <section className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
@@ -55,7 +64,7 @@ export default function SignInPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <SignInForm />
+              <SignInForm callbackUrl={callbackUrl} />
             </CardContent>
           </Card>
         </div>

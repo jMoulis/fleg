@@ -3,6 +3,16 @@
 ## F01 Authentication & onboarding
 Email/password initially; architecture compatible with additional Better Auth providers. Organization creation/join. Store creation. Invite members. Assign store roles.
 
+Acceptance criteria for administration and onboarding:
+- an authenticated user can create a Better Auth organization and its first store without relying on seed data;
+- an organization owner or admin can create, rename, deactivate and reactivate its stores;
+- store creation also provisions an independent reference layout and remains idempotent;
+- invitations create organization membership only; store access is assigned separately through an explicit role and permission set;
+- organization members without an active store membership cannot discover or access that store;
+- owners and organization admins keep implicit access to every store in their organization, while ordinary members are restricted to their active store memberships;
+- store and membership mutations validate optimistic/idempotency inputs and append an audit record;
+- all administration pages and APIs authorize from the server session and Better Auth organization membership.
+
 ## F02 Store switcher
 Persistent global store context. Authorized stores only. Network mode for authorized users.
 

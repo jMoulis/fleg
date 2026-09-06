@@ -276,7 +276,10 @@ test("REL-04 ouvre la vue réseau dans le périmètre autorisé", async ({
   );
   expect(new Set(periods).size).toBe(1);
   const organizationBaseUrl = storeBaseUrl.replace(/\/stores\/[a-f\d]{24}$/i, "");
-  await page.goto(`${organizationBaseUrl}/network?period=${periods[0]}`);
+  const networkQuery = new URLSearchParams({ period: periods[0] });
+  networkQuery.append("storeId", stores.primary.id);
+  networkQuery.append("storeId", stores.control.id);
+  await page.goto(`${organizationBaseUrl}/network?${networkQuery.toString()}`);
 
   await expect(page).toHaveURL(/\/network/);
   await expect(

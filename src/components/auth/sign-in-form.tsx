@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { signInInputSchema } from "@/domain/auth/schemas";
 import { authClient } from "@/lib/auth-client";
 
-export function SignInForm() {
+export function SignInForm({ callbackUrl = "/stores" }: { callbackUrl?: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -49,7 +49,7 @@ export function SignInForm() {
       return;
     }
 
-    router.replace("/stores");
+    router.replace(callbackUrl);
     router.refresh();
   }
 

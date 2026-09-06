@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Leaf,
   Network,
+  Settings2,
   Store,
 } from "lucide-react";
 
@@ -16,6 +17,7 @@ interface StoreAppShellProps {
   organizationSlug: string;
   storeId: string;
   canCompareStores: boolean;
+  canManageOrganization: boolean;
   canUseAi: boolean;
   children: ReactNode;
 }
@@ -24,6 +26,7 @@ export function StoreAppShell({
   organizationSlug,
   storeId,
   canCompareStores,
+  canManageOrganization,
   canUseAi,
   children,
 }: StoreAppShellProps) {
@@ -44,6 +47,18 @@ export function StoreAppShell({
           </Link>
 
           <div className="flex items-center gap-2">
+            {canManageOrganization ? (
+              <Link
+                href={`/${organizationSlug}/admin`}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon" }),
+                  "shrink-0",
+                )}
+                aria-label="Administrer l’organisation"
+              >
+                <Settings2 aria-hidden="true" />
+              </Link>
+            ) : null}
             {canUseAi ? (
               <Link
                 href={`/${organizationSlug}/stores/${storeId}/copilot`}

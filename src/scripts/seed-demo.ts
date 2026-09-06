@@ -12,6 +12,7 @@ import {
 } from "mongodb";
 import * as z from "zod";
 
+import { defaultStorePermissionsByRole } from "@/domain/admin/schemas";
 import { buildReferenceLayoutVersion } from "@/domain/space/reference-seed";
 import { storePermissionValues } from "@/domain/stores/schemas";
 import { ensureFoundationIndexesForDb } from "@/server/db/foundation-indexes";
@@ -32,6 +33,13 @@ const seedEnvironmentSchema = z.object({
   SEED_DEMO_EMAIL: z.email().default("admin@fleg.local"),
   SEED_DEMO_PASSWORD: z.string().min(8).max(128).default("FlegDemo!2026"),
   SEED_DEMO_USER_NAME: z.string().trim().min(1).default("Administrateur F&L"),
+  SEED_DEMO_MANAGER_EMAIL: z.email().default("manager@fleg.local"),
+  SEED_DEMO_MANAGER_PASSWORD: z
+    .string()
+    .min(8)
+    .max(128)
+    .default("FlegManager!2026"),
+  SEED_DEMO_MANAGER_NAME: z.string().trim().min(1).default("Manager F&L"),
   SEED_DEMO_ORGANIZATION_NAME: z
     .string()
     .trim()
@@ -344,6 +352,41 @@ async function run() {
       });
     }
 
+    const normalizedManagerEmail =
+      env.SEED_DEMO_MANAGER_EMAIL.toLocaleLowerCase("fr-FR");
+    const existingManager = await authDb
+      .collection<UserDocument>("user")
+      .findOne({ email: normalizedManagerEmail });
+    const managerCreated = existingManager === null;
+    const managerUserId = existingManager
+      ? existingManager._id.toString()
+      : (
+          await auth.api.signUpEmail({
+            body: {
+              email: normalizedManagerEmail,
+              password: env.SEED_DEMO_MANAGER_PASSWORD,
+              name: env.SEED_DEMO_MANAGER_NAME,
+            },
+          })
+        ).user.id;
+    const existingManagerOrganizationMembership = await authDb
+      .collection("member")
+      .findOne({
+        organizationId: { $in: idCandidates(organizationId) },
+        userId: { $in: idCandidates(managerUserId) },
+      });
+    const managerOrganizationMembershipCreated =
+      existingManagerOrganizationMembership === null;
+    if (managerOrganizationMembershipCreated) {
+      await auth.api.addMember({
+        body: {
+          organizationId,
+          userId: managerUserId,
+          role: "member",
+        },
+      });
+    }
+
     await ensureFoundationIndexesForDb(appDb);
     const referenceLayoutSource = JSON.parse(
       await readFile(
@@ -372,6 +415,31 @@ async function run() {
         }),
       );
     }
+    const managerStoreMembershipResult = await appDb
+      .collection("storeMemberships")
+      .updateOne(
+        {
+          storeId: new ObjectId(seededStores[0]!.id),
+          userId: managerUserId,
+        },
+        {
+          $set: {
+            organizationId,
+            role: "department_manager",
+            permissions: [
+              ...defaultStorePermissionsByRole.department_manager,
+            ],
+            active: true,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            storeId: new ObjectId(seededStores[0]!.id),
+            userId: managerUserId,
+            createdAt: new Date(),
+          },
+        },
+        { upsert: true },
+      );
 
     console.log(
       JSON.stringify(
@@ -384,6 +452,18 @@ async function run() {
               ? env.SEED_DEMO_PASSWORD
               : "inchangé (utilisateur déjà présent)",
             created: signedUp,
+          },
+          manager: {
+            id: managerUserId,
+            email: normalizedManagerEmail,
+            password: managerCreated
+              ? env.SEED_DEMO_MANAGER_PASSWORD
+              : "inchangé (utilisateur déjà présent)",
+            created: managerCreated,
+            organizationMembershipCreated:
+              managerOrganizationMembershipCreated,
+            primaryStoreMembershipCreated:
+              managerStoreMembershipResult.upsertedCount === 1,
           },
           organization: {
             id: organizationId,

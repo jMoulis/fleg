@@ -16,6 +16,8 @@ stores:            { organizationId: 1, code: 1 } unique
 stores:            { organizationId: 1, active: 1, name: 1 }
 storeMemberships:  { storeId: 1, userId: 1 } unique
 storeMemberships:  { userId: 1, active: 1, organizationId: 1, storeId: 1 }
+storeAdminCommands: { organizationId: 1, idempotencyKey: 1 } unique
+storeMembershipCommands: { organizationId: 1, idempotencyKey: 1 } unique
 products:          { storeId: 1, normalizedLabel: 1 }
 products:          { organizationId: 1, storeId: 1, active: 1, label: 1 }
 productAliases:    { storeId: 1, source: 1, externalKey: 1 } unique

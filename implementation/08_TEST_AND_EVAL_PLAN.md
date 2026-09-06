@@ -35,6 +35,8 @@ Playwright creates one authenticated Better Auth state at suite startup and reus
 
 The non-billed release suite runs on mobile and desktop and covers:
 
+- `ADM-01`: create a store, grant an ordinary member explicit viewer access, then verify both positive discovery and denial on a non-assigned store;
+- `ONB-01`: create an organization and its first store, then replay the same command to verify idempotency;
 - `REL-01`: create a new layout version and save an allocation draft;
 - `REL-02`: publish and complete a TG operation, then record markdown;
 - `REL-03`: plan, start and finish a difference-in-differences experiment with an explicitly authorized control store;
@@ -42,7 +44,7 @@ The non-billed release suite runs on mobile and desktop and covers:
 - `AI-01`: open the configured Copilot page without exposing server secrets;
 - the original Mercalys import-to-decision vertical slice and accessibility checks.
 
-Run `npm run seed:demo`, then `npm run check` followed by `npm run test:e2e`. The seed creates two stores in the same Better Auth organization, grants the demo account an explicit store membership on each and creates an independent reference layout per store. The scenarios use unique markers or idempotent import periods so repeated runs remain traceable.
+Run `npm run seed:demo`, then `npm run check` followed by `npm run test:e2e`. The seed creates two stores in the same Better Auth organization, grants the demo owner an explicit store membership on each, creates an ordinary manager restricted to the primary store and creates an independent reference layout per store. The scenarios use unique markers or idempotent commands/import periods so repeated runs remain traceable.
 
 The real-provider suite remains explicit and opt-in: `npm run test:e2e:ai`. It sends demo analytics to the configured OpenAI project and verifies both a multi-tool grounded answer and an evidence-backed action-plan draft. Approval must leave `executionStatus: not_executed`.
 

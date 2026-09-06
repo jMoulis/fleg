@@ -80,6 +80,14 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { userId: 1, active: 1, organizationId: 1, storeId: 1 },
       { name: "store_memberships_user_active_scope" },
     ),
+    db.collection("storeAdminCommands").createIndex(
+      { organizationId: 1, idempotencyKey: 1 },
+      { unique: true, name: "store_admin_commands_scope_key_unique" },
+    ),
+    db.collection("storeMembershipCommands").createIndex(
+      { organizationId: 1, idempotencyKey: 1 },
+      { unique: true, name: "store_membership_commands_scope_key_unique" },
+    ),
     db.collection("productAliases").createIndex(
       { storeId: 1, source: 1, externalKey: 1 },
       { unique: true, name: "product_aliases_store_source_key_unique" },

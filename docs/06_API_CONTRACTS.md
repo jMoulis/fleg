@@ -5,11 +5,27 @@ All store routes validate session + store authorization.
 ## Auth
 Better Auth handlers per official integration.
 
+## Organizations and invitations
+GET `/api/organizations` lists only organizations where the authenticated user is owner or admin.
+
+POST `/api/organizations` creates a Better Auth organization and its first store from a UUID idempotency key.
+
+POST `/api/organizations/:organizationId/invitations` is restricted to organization owners/admins and creates an organization-level invitation. It does not grant store access.
+
+GET `/api/invitations/:invitationId` exposes a pending invitation only to its authenticated recipient.
+
+POST `/api/invitations/:invitationId/accept` accepts the invitation for its authenticated recipient. Store access must then be assigned by an organization owner/admin.
+
 ## Stores
-GET `/api/stores`
-POST `/api/stores`
-GET/PATCH `/api/stores/:storeId`
-GET/POST `/api/stores/:storeId/members`
+GET `/api/stores` lists only stores authorized for the authenticated user.
+
+POST `/api/stores` is restricted to organization owners/admins and creates a store, its fruit-and-vegetable department and its first reference layout. The body carries `organizationId`, `code`, `name` and a UUID idempotency key.
+
+GET/PATCH `/api/stores/:storeId` is restricted to owners/admins of the store organization. PATCH uses `basedOnUpdatedAt` for optimistic concurrency and supports rename, deactivation and reactivation.
+
+GET `/api/stores/:storeId/members` returns the organization administration workspace for owners/admins, including all stores, Better Auth members, pending invitations and explicit store memberships.
+
+POST `/api/stores/:storeId/members` assigns or replaces one ordinary organization member's store role, permission set and active state. Active access requires `stores.read`; the mutation is audited and idempotent.
 
 ## Imports
 POST `/api/stores/:storeId/imports/preview`

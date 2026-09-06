@@ -1,0 +1,97 @@
+import { NextResponse } from "next/server";
+import * as z from "zod";
+
+import { OrganizationAdminAccessDeniedError } from "@/domain/admin/authorization";
+import { apiErrorSchema } from "@/domain/api/schemas";
+import { AuthenticationRequiredError } from "@/server/auth/session";
+import { reportUnexpectedApiError } from "@/server/http/api-error-monitor";
+import {
+  StoreAdminConflictError,
+  StoreAdminReferenceError,
+} from "@/server/repositories/store-admin-repository";
+
+function authApiStatus(error: unknown): number | null {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("statusCode" in error) ||
+    typeof error.statusCode !== "number"
+  ) {
+    return null;
+  }
+  return error.statusCode >= 400 && error.statusCode < 500
+    ? error.statusCode
+    : null;
+}
+
+export function adminApiErrorResponse(input: {
+  error: unknown;
+  requestId: string;
+  route: string;
+  method: string;
+}) {
+  const error = input.error;
+  const unauthenticated = error instanceof AuthenticationRequiredError;
+  const unauthorized =
+    error instanceof OrganizationAdminAccessDeniedError ||
+    error instanceof StoreAdminReferenceError;
+  const invalid = error instanceof z.ZodError;
+  const conflict = error instanceof StoreAdminConflictError;
+  const providerStatus = authApiStatus(error);
+  const expected =
+    unauthenticated ||
+    unauthorized ||
+    invalid ||
+    conflict ||
+    providerStatus !== null;
+  const status = unauthenticated
+    ? 401
+    : unauthorized
+      ? 404
+        : invalid
+        ? 400
+        : conflict
+          ? 409
+          : (providerStatus ?? 503);
+  const code = unauthenticated
+    ? "AUTHENTICATION_REQUIRED"
+    : unauthorized
+      ? "ORGANIZATION_NOT_FOUND_OR_FORBIDDEN"
+      : invalid
+        ? "INVALID_ADMIN_COMMAND"
+        : conflict
+          ? error instanceof StoreAdminConflictError
+            ? error.code
+            : "STORE_ADMIN_CONFLICT"
+          : providerStatus !== null
+            ? "IDENTITY_COMMAND_REJECTED"
+            : "ADMIN_COMMAND_FAILED";
+  const message = unauthenticated
+    ? "Authentification requise"
+    : unauthorized
+      ? "Organisation ou ressource introuvable"
+      : invalid
+        ? "Le formulaire contient des valeurs invalides"
+        : conflict
+          ? error instanceof StoreAdminConflictError
+            ? error.message
+            : "La ressource a été modifiée simultanément"
+          : providerStatus !== null
+            ? error instanceof Error
+              ? error.message
+              : "L’opération d’identité a été refusée"
+            : "L’opération d’administration n’a pas pu être terminée";
+
+  reportUnexpectedApiError({
+    error,
+    expected,
+    requestId: input.requestId,
+    route: input.route,
+    method: input.method,
+  });
+
+  return NextResponse.json(
+    apiErrorSchema.parse({ code, message, requestId: input.requestId }),
+    { status },
+  );
+}

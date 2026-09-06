@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AlertCircle, ArrowRight, Store } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import {
@@ -104,6 +105,12 @@ export function StoreSelector() {
           <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
             Demandez à un administrateur de vous ajouter à un magasin de votre organisation.
           </p>
+          <Link
+            className={buttonVariants({ className: "mt-6", variant: "outline" })}
+            href="/onboarding"
+          >
+            Créer ou administrer une organisation
+          </Link>
         </CardContent>
       </Card>
     );

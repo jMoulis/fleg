@@ -7,6 +7,7 @@
 | AUTH-01 | Auth | Better Auth + Mongo adapter + Organization plugin | P0 | FND-02 |
 | AUTH-02 | Auth | Stores/storeMemberships + `requireStoreContext` | P0 | AUTH-01 |
 | AUTH-03 | Auth | Store switcher + isolation tests | P0 | AUTH-02 |
+| ADM-01 | Administration | Organization/store onboarding, invitations, roles and explicit store permissions | P1 | AUTH-03 |
 | IMP-01 | Import | Upload + parser + Mercalys column mapping | P0 | AUTH-03 |
 | IMP-02 | Import | Aggregate-row detector + preview reconciliation | P0 | IMP-01 |
 | IMP-03 | Import | Product/alias resolution queue | P0 | IMP-02 |

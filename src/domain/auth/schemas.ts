@@ -9,3 +9,12 @@ export const signInInputSchema = z.object({
 });
 
 export type SignInInput = z.infer<typeof signInInputSchema>;
+
+export const authenticationCallbackPathSchema = z
+  .string()
+  .max(500)
+  .refine(
+    (value) => value.startsWith("/") && !value.startsWith("//"),
+    "Chemin de retour invalide",
+  )
+  .default("/stores");
