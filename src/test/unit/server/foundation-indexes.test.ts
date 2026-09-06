@@ -32,6 +32,7 @@ describe("foundation indexes", () => {
         "products_scope_active_label",
         "sales_facts_scope_period",
         "store_settings_scope_unique",
+        "store_configuration_commands_scope_key_unique",
         "recommendations_network_period_status",
       ]),
     );

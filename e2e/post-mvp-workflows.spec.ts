@@ -335,3 +335,51 @@ test("REL-04 ouvre la vue réseau dans le périmètre autorisé", async ({
     await expect(comparison).toBeHidden();
   }
 });
+
+test("REL-05 configure un objectif et versionne les coefficients magasin", async ({
+  page,
+}, testInfo) => {
+  const { storeBaseUrl } = await signInToStore(page);
+  const periodKey = testInfo.project.name === "mobile-390" ? "2038-01" : "2038-02";
+  await page.goto(`${storeBaseUrl}/settings`);
+  await expect(
+    page.getByRole("heading", { name: "Paramètres magasin" }),
+  ).toBeVisible();
+
+  await page.locator("#target-period").fill(periodKey);
+  await page.locator("#target-revenue").fill("1234.56");
+  const targetResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/targets") &&
+      response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Enregistrer l’objectif" }).click();
+  const targetResponse = await targetResponsePromise;
+  expect(targetResponse.status()).toBe(200);
+  await expect(targetResponse.json()).resolves.toMatchObject({
+    target: {
+      periodKey,
+      targetRevenueCents: 123_456,
+    },
+  });
+  await expect(page.getByText(`Objectif ${periodKey} enregistré.`)).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: new RegExp(`${periodKey}\\s+1\\s235\\s€`),
+    }),
+  ).toBeVisible();
+
+  await page.locator("#abcAThreshold").fill(
+    testInfo.project.name === "mobile-390" ? "79" : "80",
+  );
+  const settingsResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/settings") &&
+      response.request().method() === "PATCH",
+  );
+  await page
+    .getByRole("button", { name: "Enregistrer les coefficients" })
+    .click();
+  expect((await settingsResponsePromise).status()).toBe(200);
+  await expect(page.getByText(/Réglages enregistrés · révision \d+/)).toBeVisible();
+});

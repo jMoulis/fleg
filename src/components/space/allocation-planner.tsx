@@ -59,6 +59,7 @@ interface AllocationPlannerProps {
   capacities: ShelfCapacity[];
   products: AllocationProduct[];
   basis: AllocationBasis;
+  defaultConfig: AllocationConfig;
   initialPlan: AllocationPlan | null;
   canWrite: boolean;
 }
@@ -89,6 +90,7 @@ export function AllocationPlanner({
   capacities,
   products,
   basis,
+  defaultConfig,
   initialPlan,
   canWrite,
 }: AllocationPlannerProps) {
@@ -97,11 +99,7 @@ export function AllocationPlanner({
     initialPlan?.allocations ?? [],
   );
   const [config, setConfig] = useState<AllocationConfig>(
-    initialPlan?.config ?? {
-      minimumFacingWidthM: 0.25,
-      targetProductsPerShelf: 2,
-      facingIncrementM: 0.05,
-    },
+    initialPlan?.config ?? defaultConfig,
   );
   const [source, setSource] = useState<"manager" | "heuristic">(
     initialPlan?.source ?? "manager",
@@ -794,7 +792,7 @@ export function AllocationPlanner({
       ) : null}
 
       {canWrite ? (
-        <div className="sticky bottom-[4.35rem] z-20 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur md:bottom-3">
+        <div className="rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur md:sticky md:bottom-3 md:z-20">
           <div className="flex items-center justify-between gap-4">
             <p className="hidden text-sm text-muted-foreground sm:block">
               Version suivante : {initialPlan ? initialPlan.version + 1 : 1}

@@ -13,6 +13,7 @@ import {
   FlaskConical,
   PackageX,
   Ruler,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -35,6 +36,12 @@ const navigation = [
   { label: "Imports", segment: "imports", icon: FileSpreadsheet },
   { label: "Décisions", segment: "decisions", icon: History, desktopOnly: true },
   {
+    label: "Paramètres",
+    segment: "settings",
+    icon: SlidersHorizontal,
+    desktopOnly: true,
+  },
+  {
     label: "Copilote",
     segment: "copilot",
     icon: Bot,
@@ -56,7 +63,7 @@ export function StoreNavigation({
     return (
       <nav
         aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-8 border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 isolate grid w-full max-w-[100vw] grid-cols-8 border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
       >
         {navigation
           .filter(

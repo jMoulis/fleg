@@ -903,7 +903,7 @@ export function ExperimentWizard({
         </Alert>
       ) : null}
 
-      <div className="sticky bottom-[4.35rem] z-10 mt-4 flex items-center justify-between gap-2 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur md:bottom-4">
+      <div className="mt-4 flex items-center justify-between gap-2 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur md:sticky md:bottom-4 md:z-10">
         <Button disabled={step === 0 || pending} onClick={() => { setStep((current) => Math.max(0, current - 1)); setError(null); }} type="button" variant="outline">
           <ArrowLeft aria-hidden="true" /> Retour
         </Button>

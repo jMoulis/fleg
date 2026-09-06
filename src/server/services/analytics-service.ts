@@ -9,6 +9,7 @@ import { periodKeySchema } from "@/domain/imports/schemas";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 import { getAppDb } from "@/server/db/mongo-client";
 import { AnalyticsRepository } from "@/server/repositories/analytics-repository";
+import { StoreConfigurationRepository } from "@/server/repositories/store-configuration-repository";
 
 async function resolvePeriod(
   repository: AnalyticsRepository,
@@ -26,17 +27,22 @@ export async function getDashboardMetrics(
   context: AuthorizedStoreContext,
   requestedPeriod?: string,
 ) {
-  const repository = new AnalyticsRepository(await getAppDb());
+  const db = await getAppDb();
+  const repository = new AnalyticsRepository(db);
   const periodKey = await resolvePeriod(repository, context, requestedPeriod);
 
   if (!periodKey) {
     return null;
   }
 
-  const [facts, dataRevision, config] = await Promise.all([
+  const [facts, dataRevision, config, targetRevenueCents] = await Promise.all([
     repository.findFacts(context, [periodKey, shiftMonth(periodKey, -12)]),
     repository.getDataRevision(context),
     repository.getConfig(context),
+    new StoreConfigurationRepository(db).getTargetRevenueCents(
+      context,
+      periodKey,
+    ),
   ]);
 
   return calculateDashboard({
@@ -45,6 +51,7 @@ export async function getDashboardMetrics(
     priorYearFacts: facts.filter(
       (fact) => fact.periodKey === shiftMonth(periodKey, -12),
     ),
+    targetRevenueCents,
     dataRevision,
     config,
   });

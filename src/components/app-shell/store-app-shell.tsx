@@ -6,6 +6,7 @@ import {
   Leaf,
   Network,
   Settings2,
+  SlidersHorizontal,
   Store,
 } from "lucide-react";
 
@@ -33,7 +34,7 @@ export function StoreAppShell({
   const dashboardHref = `/${organizationSlug}/stores/${storeId}/dashboard`;
 
   return (
-    <div className="min-h-svh bg-muted/35 pb-20 md:pb-0">
+    <div className="min-h-svh overflow-x-clip bg-muted/35 pb-20 md:pb-0">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href={dashboardHref} className="flex items-center gap-3">
@@ -46,7 +47,17 @@ export function StoreAppShell({
             </div>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href={`/${organizationSlug}/stores/${storeId}/settings`}
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "shrink-0 md:hidden",
+              )}
+              aria-label="Ouvrir les paramètres du magasin"
+            >
+              <SlidersHorizontal aria-hidden="true" />
+            </Link>
             {canManageOrganization ? (
               <Link
                 href={`/${organizationSlug}/admin`}
@@ -83,14 +94,18 @@ export function StoreAppShell({
             ) : null}
             <Link
               href="/stores"
+              aria-label="Magasin autorisé"
               className={cn(
                 buttonVariants({ variant: "outline" }),
-                "min-w-0 max-w-[15rem] justify-start",
+                "min-w-0 max-w-[15rem] justify-start max-sm:size-9 max-sm:px-0",
               )}
             >
               <Store aria-hidden="true" />
-              <span className="truncate">Magasin autorisé</span>
-              <ChevronDown aria-hidden="true" className="ml-auto" />
+              <span className="truncate max-sm:hidden">Magasin autorisé</span>
+              <ChevronDown
+                aria-hidden="true"
+                className="ml-auto max-sm:hidden"
+              />
             </Link>
           </div>
         </div>

@@ -112,6 +112,7 @@ export default async function AllocationPage({
         basis={workspace.basis}
         canWrite={context.permissions.includes("allocations.write")}
         capacities={workspace.capacities}
+        defaultConfig={workspace.defaultConfig}
         initialPlan={workspace.plan}
         layoutVersion={workspace.layout.version}
         layoutVersionId={workspace.layout.id}

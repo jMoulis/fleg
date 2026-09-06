@@ -9,6 +9,7 @@ import {
   type BaselineSalesFact,
   type BaselineEngineConfig,
 } from "@/domain/experiments/baseline";
+import { configVersion } from "@/domain/configuration/versions";
 import type { ControlStoreBaselineInput } from "@/domain/experiments/control-baseline";
 import { buildExperimentScope } from "@/domain/experiments/store-scope";
 import { controlStoreSetMatches } from "@/domain/experiments/store-scope";
@@ -28,6 +29,7 @@ interface SalesFactDocument {
 interface StoreSettingsDocument {
   organizationId: string;
   storeId: ObjectId;
+  revision?: number;
   experiments?: {
     baseline?: Record<string, unknown>;
   };
@@ -105,13 +107,20 @@ export class ExperimentBaselineRepository {
         organizationId: scope.organizationId,
         storeId: new ObjectId(scope.storeId),
       },
-      { projection: { experiments: 1 } },
+      { projection: { experiments: 1, revision: 1 } },
     );
 
-    return baselineEngineConfigSchema.parse({
+    const config = baselineEngineConfigSchema.parse({
       ...defaultBaselineEngineConfig,
       ...(settings?.experiments?.baseline ?? {}),
     });
+    return {
+      ...config,
+      engineVersion: configVersion(
+        defaultBaselineEngineConfig.engineVersion,
+        settings?.revision,
+      ),
+    };
   }
 
   async findControlStoreInputs(input: {

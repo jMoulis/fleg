@@ -205,6 +205,58 @@
         "structured redacted request-correlated error logs",
         "documented readiness deployment and recovery procedures"
       ]
+    },
+    {
+      "id": "PREV3-01",
+      "epic": "configuration",
+      "title": "Store targets and configurable business coefficients",
+      "priority": "P1",
+      "acceptance": [
+        "authorized monthly store target management",
+        "strict bounded schemas for configurable coefficients",
+        "store-scoped settings.write and targets.write authorization",
+        "idempotent or optimistic audited mutations",
+        "shared target source for store and network analytics",
+        "responsive states and isolation tests"
+      ]
+    },
+    {
+      "id": "PREV3-02",
+      "epic": "decisions",
+      "title": "Realized outcomes and before-after follow-up",
+      "priority": "P1",
+      "acceptance": [
+        "scheduled recommendation follow-up",
+        "observed realized result separated from interpretation",
+        "versioned before-after evidence",
+        "permissioned idempotent audited writes"
+      ]
+    },
+    {
+      "id": "PREV3-03",
+      "epic": "space",
+      "title": "Must-stock suitability and markdown-aware allocation constraints",
+      "priority": "P1",
+      "acceptance": [
+        "explicit store-scoped product constraints",
+        "must-stock and locked allocations preserved",
+        "incompatible fixtures rejected",
+        "observed markdown included without invented values",
+        "versioned coefficients evidence and limitations"
+      ]
+    },
+    {
+      "id": "PREV3-04",
+      "epic": "media",
+      "title": "Manual photo attachments",
+      "priority": "P2",
+      "acceptance": [
+        "authorized store layout fixture and event attachments",
+        "validated metadata and object access",
+        "explicit type size retention and deletion policy",
+        "audited mutations",
+        "no automatic geometry mutation"
+      ]
     }
   ]
 }

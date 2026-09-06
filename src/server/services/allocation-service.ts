@@ -11,6 +11,7 @@ import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 import { getAppDb, getMongoClient } from "@/server/db/mongo-client";
 import { AllocationRepository } from "@/server/repositories/allocation-repository";
 import { ProductRepository } from "@/server/repositories/product-repository";
+import { StoreConfigurationRepository } from "@/server/repositories/store-configuration-repository";
 import {
   getDashboardMetrics,
   getProductMetrics,
@@ -77,9 +78,11 @@ async function getAllocationProducts(
 export async function getAllocationWorkspace(
   context: AuthorizedStoreContext,
 ) {
-  const [{ layout }, productWorkspace] = await Promise.all([
+  const db = await getAppDb();
+  const [{ layout }, productWorkspace, settings] = await Promise.all([
     getCurrentStoreLayout(context),
     getAllocationProducts(context),
+    new StoreConfigurationRepository(db).getSettings(context),
   ]);
 
   if (!layout) {
@@ -87,17 +90,19 @@ export async function getAllocationWorkspace(
       layout: null,
       plan: null,
       capacities: [],
+      defaultConfig: settings.space.allocation,
       ...productWorkspace,
     };
   }
 
-  const repository = new AllocationRepository(await getAppDb());
+  const repository = new AllocationRepository(db);
   const plan = await repository.getLatestForLayout(context, layout.id);
 
   return {
     layout,
     plan,
     capacities: flattenLayoutCapacity(layout),
+    defaultConfig: settings.space.allocation,
     ...productWorkspace,
   };
 }
