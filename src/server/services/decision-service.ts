@@ -5,6 +5,7 @@ import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 import { requireExperimentControlContexts } from "@/server/auth/experiment-controls";
 import { getAppDb, getMongoClient } from "@/server/db/mongo-client";
 import { DecisionRepository } from "@/server/repositories/decision-repository";
+import { RecommendationFollowUpRepository } from "@/server/repositories/recommendation-follow-up-repository";
 
 export async function recordRecommendationDecision(input: {
   context: AuthorizedStoreContext;
@@ -16,14 +17,15 @@ export async function recordRecommendationDecision(input: {
   return new DecisionRepository(db, client).recordRecommendationDecision(input);
 }
 
-export async function listDecisionLog(input: {
+export async function getDecisionWorkspace(input: {
   context: AuthorizedStoreContext;
   requestHeaders: Headers;
 }) {
   const [db, client] = await Promise.all([getAppDb(), getMongoClient()]);
-  const decisions = await new DecisionRepository(db, client).listForStore(
-    input.context,
-  );
+  const [decisions, followUps] = await Promise.all([
+    new DecisionRepository(db, client).listForStore(input.context),
+    new RecommendationFollowUpRepository(db).listForStore(input.context),
+  ]);
   const controlStoreIds = [
     ...new Set(
       decisions.flatMap((decision) =>
@@ -44,5 +46,12 @@ export async function listDecisionLog(input: {
     requestHeaders: input.requestHeaders,
   });
 
-  return decisions;
+  return { decisions, followUps };
+}
+
+export async function listDecisionLog(input: {
+  context: AuthorizedStoreContext;
+  requestHeaders: Headers;
+}) {
+  return (await getDecisionWorkspace(input)).decisions;
 }

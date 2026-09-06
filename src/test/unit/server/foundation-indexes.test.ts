@@ -34,6 +34,9 @@ describe("foundation indexes", () => {
         "store_settings_scope_unique",
         "store_configuration_commands_scope_key_unique",
         "recommendations_network_period_status",
+        "recommendation_follow_ups_decision_unique",
+        "recommendation_follow_ups_scope_due",
+        "recommendation_follow_up_commands_scope_key_unique",
       ]),
     );
   });
