@@ -38,3 +38,39 @@
 | AI-02 | AI | Copilot UI + evidence | P1 | AI-01 |
 | AI-03 | AI | Draft action plans + approval boundary | P2 | AI-02, DEC-01 |
 | HARD-01 | Hardening | Accessibility, perf, indexes, monitoring | P1 | ongoing |
+| PREV3-01 | Configuration | Store targets + configurable business coefficients | P1 | ADM-01, ANA-01 |
+| PREV3-02 | Decisions | Realized outcomes + before/after follow-up | P1 | PREV3-01, DEC-01 |
+| PREV3-03 | Space | Must-stock, suitability + markdown-aware constraints | P1 | PREV3-01, SPC-03, MD-01 |
+| PREV3-04 | Media | Manual store/layout/fixture/event photo attachments | P2 | SPC-01, TG-01 |
+
+## Pre-V3 gate acceptance
+
+### PREV3-01
+
+- authorized managers can maintain monthly store revenue targets without direct database access;
+- store-configurable analytics, recommendation, experiment and space coefficients have strict Zod contracts, documented defaults and bounded values;
+- reads and writes derive store scope from the authenticated server context and require `settings.write` or `targets.write` as appropriate;
+- mutations use optimistic concurrency or idempotency and append an audit record;
+- dashboard and network target coverage consume the same versioned target source;
+- responsive loading, empty, success and error states are covered by tests.
+
+### PREV3-02
+
+- a manager can schedule and record a realized result for an accepted or modified recommendation;
+- follow-up preserves the original recommendation snapshot and separates observed results from interpretation;
+- before/after periods, inputs, revisions and limitations remain inspectable;
+- outcome writes are permissioned, idempotent and audited.
+
+### PREV3-03
+
+- product must-stock and fixture-suitability constraints are explicit store data, never inferred from React state;
+- allocation proposals preserve locked and must-stock lines and reject incompatible fixtures;
+- available markdown evidence contributes to expected post-markdown economics without inventing missing loss data;
+- every coefficient and limitation is visible and versioned with the allocation draft.
+
+### PREV3-04
+
+- managers can attach and remove manual photos from authorized stores, layouts, fixtures and commercial events;
+- metadata and object access are store-scoped, validated and audited;
+- supported type, size, retention and deletion behavior are explicit;
+- photos never modify layout geometry automatically.
