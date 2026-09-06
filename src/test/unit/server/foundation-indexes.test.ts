@@ -27,6 +27,8 @@ describe("foundation indexes", () => {
         "store_memberships_user_active_scope",
         "store_admin_commands_scope_key_unique",
         "store_membership_commands_scope_key_unique",
+        "notification_deliveries_key_unique",
+        "notification_deliveries_invitation_latest",
         "products_scope_active_label",
         "sales_facts_scope_period",
         "store_settings_scope_unique",

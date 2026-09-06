@@ -68,9 +68,9 @@ test("ADM-01 crée un magasin et attribue un accès explicitement isolé", async
     active: true,
   });
 
-  await page.getByLabel("Adresse e-mail").fill(
-    `invite-${marker.toLocaleLowerCase("fr-FR")}@example.test`,
-  );
+  const invitedEmail = `invite-${marker.toLocaleLowerCase("fr-FR")}@example.test`;
+  const invitedPassword = `Invitation!${marker}2026`;
+  await page.getByLabel("Adresse e-mail").fill(invitedEmail);
   const invitationResponsePromise = page.waitForResponse(
     (response) =>
       response.url().includes("/api/organizations/") &&
@@ -80,13 +80,24 @@ test("ADM-01 crée un magasin et attribue un accès explicitement isolé", async
   await page.getByRole("button", { name: "Créer le lien" }).click();
   const invitationResponse = await invitationResponsePromise;
   expect(invitationResponse.status()).toBe(201);
-  organizationInvitationResponseSchema.parse(await invitationResponse.json());
+  const invitation = organizationInvitationResponseSchema.parse(
+    await invitationResponse.json(),
+  );
+  expect(invitation.delivery).toEqual({ mode: "manual", status: "manual" });
   await expect(
     page.getByRole("button", { name: "Copier le lien d’acceptation" }),
   ).toBeVisible();
 
   const origin = new URL(page.url()).origin;
-  const managerContext = await browser.newContext({ baseURL: origin });
+  const emptyStorageState = { cookies: [], origins: [] };
+  const projectIpSuffix = testInfo.project.name === "mobile-390" ? 10 : 20;
+  const managerContext = await browser.newContext({
+    baseURL: origin,
+    storageState: emptyStorageState,
+    extraHTTPHeaders: {
+      "x-forwarded-for": `192.0.2.${projectIpSuffix}`,
+    },
+  });
   const managerPage = await managerContext.newPage();
   try {
     await managerPage.goto("/sign-in");
@@ -114,6 +125,48 @@ test("ADM-01 crée un magasin et attribue un accès explicitement isolé", async
     expect(forbiddenControlResponse.status()).toBe(404);
   } finally {
     await managerContext.close();
+  }
+
+  const invitedContext = await browser.newContext({
+    baseURL: origin,
+    storageState: emptyStorageState,
+    extraHTTPHeaders: {
+      "x-forwarded-for": `192.0.2.${projectIpSuffix + 1}`,
+    },
+  });
+  const invitedPage = await invitedContext.newPage();
+  try {
+    await invitedPage.goto(invitation.acceptPath);
+    await expect(
+      invitedPage.getByRole("heading", { name: "Rejoindre Réseau F&L Démo" }),
+    ).toBeVisible();
+    await invitedPage.getByLabel("Nom complet").fill(`Invité ${marker}`);
+    await invitedPage.getByLabel("Mot de passe", { exact: true }).fill(
+      invitedPassword,
+    );
+    await invitedPage.getByLabel("Confirmer le mot de passe").fill(
+      invitedPassword,
+    );
+    await invitedPage.getByRole("button", { name: "Créer mon compte" }).click();
+    await expect(invitedPage).toHaveURL(/\/sign-in\?.*registered=1/);
+    await expect(invitedPage.getByText("Compte créé")).toBeVisible();
+
+    await invitedPage.getByLabel("Adresse e-mail").fill(invitedEmail);
+    await invitedPage.getByLabel("Mot de passe").fill(invitedPassword);
+    await invitedPage.getByRole("button", { name: "Se connecter" }).click();
+    await expect(invitedPage).toHaveURL(/\/invitations\//);
+    await invitedPage
+      .getByRole("button", { name: "Accepter l’invitation" })
+      .click();
+    await expect(invitedPage).toHaveURL(/\/stores$/);
+
+    const storesWithoutAssignment = await invitedPage.request.get("/api/stores");
+    expect(storesWithoutAssignment.status()).toBe(200);
+    expect(
+      storesResponseSchema.parse(await storesWithoutAssignment.json()).stores,
+    ).toHaveLength(0);
+  } finally {
+    await invitedContext.close();
   }
 });
 

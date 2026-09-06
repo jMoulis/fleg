@@ -2,9 +2,13 @@
   "name": "fleg",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
+    "build:standalone": "NEXT_OUTPUT=standalone next build --webpack",
     "build:e2e": "NEXT_DIST_DIR=.next-e2e next build --webpack",
     "build:turbopack": "next build",
     "start": "next start",
@@ -20,7 +24,9 @@
     "test:e2e:ai": "RUN_LIVE_AI_E2E=true playwright test e2e/copilot-live.spec.ts --project=desktop-1440",
     "test:e2e:headed": "playwright test --headed",
     "check": "npm run lint && npm run typecheck && npm run test",
-    "seed:demo": "tsx src/scripts/seed-demo.ts"
+    "seed:demo": "tsx src/scripts/seed-demo.ts",
+    "verify:preprod": "tsx src/scripts/verify-preproduction.ts",
+    "verify:deployment": "tsx src/scripts/verify-deployment.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

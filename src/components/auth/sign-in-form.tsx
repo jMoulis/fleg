@@ -2,7 +2,12 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, LoaderCircle } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  LoaderCircle,
+} from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,7 +22,13 @@ import { Input } from "@/components/ui/input";
 import { signInInputSchema } from "@/domain/auth/schemas";
 import { authClient } from "@/lib/auth-client";
 
-export function SignInForm({ callbackUrl = "/stores" }: { callbackUrl?: string }) {
+export function SignInForm({
+  callbackUrl = "/stores",
+  registrationCompleted = false,
+}: {
+  callbackUrl?: string;
+  registrationCompleted?: boolean;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -56,6 +67,15 @@ export function SignInForm({ callbackUrl = "/stores" }: { callbackUrl?: string }
   return (
     <form onSubmit={handleSubmit} noValidate>
       <FieldGroup>
+        {registrationCompleted ? (
+          <Alert>
+            <CheckCircle2 aria-hidden="true" />
+            <AlertTitle>Compte créé</AlertTitle>
+            <AlertDescription>
+              Connectez-vous pour accepter votre invitation.
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {error ? (
           <Alert variant="destructive">
             <AlertCircle aria-hidden="true" />

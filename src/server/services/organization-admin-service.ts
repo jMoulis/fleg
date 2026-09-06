@@ -24,6 +24,9 @@ import {
 } from "@/server/auth/organization-admin-context";
 import { requireSession } from "@/server/auth/session";
 import { getAppDb, getMongoClient } from "@/server/db/mongo-client";
+import { getInvitationEmailConfigurationStatus } from "@/server/env";
+import { reportServerError } from "@/server/observability/logger";
+import { InvitationDeliveryRepository } from "@/server/repositories/invitation-delivery-repository";
 import {
   StoreAdminReferenceError,
   StoreAdminRepository,
@@ -244,38 +247,94 @@ export async function createOrganizationInvitation(input: {
   const createInput = organizationInvitationCreateInputSchema.parse(
     input.rawInput,
   );
-  const auth = await getAuth();
-  const created = await auth.api.createInvitation({
-    headers: input.requestHeaders,
-    body: {
-      email: createInput.email,
-      role: createInput.role,
-      organizationId: input.context.organizationId,
-      resend: createInput.resend,
-    },
-  });
-  const invitation = organizationInvitationSchema.parse({
-    ...created,
-    expiresAt: created.expiresAt.toISOString(),
-  });
   const now = new Date();
-  await (await getAppDb()).collection("auditLogs").insertOne({
+  const auditLogs = (await getAppDb()).collection("auditLogs");
+  const auditAttempt = await auditLogs.insertOne({
     organizationId: input.context.organizationId,
     storeId: null,
     actorId: input.context.userId,
-    action: "organization.invitation.created",
+    action: "organization.invitation.creation_started",
     entityType: "organizationInvitation",
-    entityId: invitation.id,
+    entityId: input.requestId,
     before: null,
-    after: invitation,
+    after: { creationStatus: "started" },
     requestId: input.requestId,
     timestamp: now,
     createdAt: now,
   });
+  const auth = await getAuth();
+  let created;
+  try {
+    created = await auth.api.createInvitation({
+      headers: input.requestHeaders,
+      body: {
+        email: createInput.email,
+        role: createInput.role,
+        organizationId: input.context.organizationId,
+        resend: createInput.resend,
+      },
+    });
+  } catch (error) {
+    try {
+      await auditLogs.updateOne(
+        { _id: auditAttempt.insertedId },
+        {
+          $set: {
+            action: "organization.invitation.creation_failed",
+            after: { creationStatus: "failed" },
+          },
+        },
+      );
+    } catch (auditError) {
+      reportServerError({
+        event: "invitation.creation.audit_failed",
+        message: "L’échec de création d’invitation n’a pas pu compléter son audit",
+        requestId: input.requestId,
+        error: auditError,
+      });
+    }
+    throw error;
+  }
+  const invitation = organizationInvitationSchema.parse({
+    ...created,
+    expiresAt: created.expiresAt.toISOString(),
+  });
+  const emailConfiguration = getInvitationEmailConfigurationStatus();
+  const deliveryStatus = emailConfiguration.configured
+    ? ((await new InvitationDeliveryRepository(
+        await getAppDb(),
+      ).latestStatus(invitation.id)) ?? "failed")
+    : "manual";
+  try {
+    await auditLogs.updateOne(
+      { _id: auditAttempt.insertedId },
+      {
+        $set: {
+          action: "organization.invitation.created",
+          entityId: invitation.id,
+          after: {
+            ...invitation,
+            deliveryStatus,
+          },
+        },
+      },
+    );
+  } catch (error) {
+    reportServerError({
+      event: "invitation.creation.audit_failed",
+      message: "La création d’invitation n’a pas pu compléter son audit",
+      requestId: input.requestId,
+      error,
+    });
+  }
 
   return {
     invitation,
     acceptPath: `/invitations/${invitation.id}`,
+    delivery: {
+      mode: emailConfiguration.configured ? "email" : "manual",
+      status: deliveryStatus,
+    },
   };
 }
 

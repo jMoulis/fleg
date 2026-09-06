@@ -136,6 +136,14 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { organizationId: 1, storeId: 1, createdAt: -1 },
       { name: "audit_logs_org_store_created" },
     ),
+    db.collection("notificationDeliveries").createIndex(
+      { idempotencyKey: 1 },
+      { unique: true, name: "notification_deliveries_key_unique" },
+    ),
+    db.collection("notificationDeliveries").createIndex(
+      { invitationId: 1, attemptedAt: -1 },
+      { name: "notification_deliveries_invitation_latest" },
+    ),
     db.collection("recommendations").createIndex(
       {
         storeId: 1,

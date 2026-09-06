@@ -35,7 +35,7 @@ Playwright creates one authenticated Better Auth state at suite startup and reus
 
 The non-billed release suite runs on mobile and desktop and covers:
 
-- `ADM-01`: create a store, grant an ordinary member explicit viewer access, then verify both positive discovery and denial on a non-assigned store;
+- `ADM-01`: create a store, grant an ordinary member explicit viewer access, verify positive discovery and denial on a non-assigned store, then register and accept a new invitation without granting implicit store access;
 - `ONB-01`: create an organization and its first store, then replay the same command to verify idempotency;
 - `REL-01`: create a new layout version and save an allocation draft;
 - `REL-02`: publish and complete a TG operation, then record markdown;

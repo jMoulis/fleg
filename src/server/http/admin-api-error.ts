@@ -9,6 +9,10 @@ import {
   StoreAdminConflictError,
   StoreAdminReferenceError,
 } from "@/server/repositories/store-admin-repository";
+import {
+  InvitationRecipientExistsError,
+  InvitationRegistrationUnavailableError,
+} from "@/server/services/invitation-registration-service";
 
 function authApiStatus(error: unknown): number | null {
   if (
@@ -37,32 +41,43 @@ export function adminApiErrorResponse(input: {
     error instanceof StoreAdminReferenceError;
   const invalid = error instanceof z.ZodError;
   const conflict = error instanceof StoreAdminConflictError;
+  const invitationUnavailable =
+    error instanceof InvitationRegistrationUnavailableError;
+  const recipientExists = error instanceof InvitationRecipientExistsError;
   const providerStatus = authApiStatus(error);
   const expected =
     unauthenticated ||
     unauthorized ||
     invalid ||
     conflict ||
+    invitationUnavailable ||
+    recipientExists ||
     providerStatus !== null;
   const status = unauthenticated
     ? 401
     : unauthorized
       ? 404
+      : invitationUnavailable
+        ? 404
         : invalid
         ? 400
-        : conflict
+        : conflict || recipientExists
           ? 409
           : (providerStatus ?? 503);
   const code = unauthenticated
     ? "AUTHENTICATION_REQUIRED"
     : unauthorized
       ? "ORGANIZATION_NOT_FOUND_OR_FORBIDDEN"
+      : invitationUnavailable
+        ? "INVITATION_NOT_FOUND"
       : invalid
         ? "INVALID_ADMIN_COMMAND"
-        : conflict
+        : conflict || recipientExists
           ? error instanceof StoreAdminConflictError
             ? error.code
-            : "STORE_ADMIN_CONFLICT"
+            : recipientExists
+              ? "INVITATION_RECIPIENT_EXISTS"
+              : "STORE_ADMIN_CONFLICT"
           : providerStatus !== null
             ? "IDENTITY_COMMAND_REJECTED"
             : "ADMIN_COMMAND_FAILED";
@@ -70,12 +85,16 @@ export function adminApiErrorResponse(input: {
     ? "Authentification requise"
     : unauthorized
       ? "Organisation ou ressource introuvable"
+      : invitationUnavailable
+        ? error.message
       : invalid
         ? "Le formulaire contient des valeurs invalides"
-        : conflict
+        : conflict || recipientExists
           ? error instanceof StoreAdminConflictError
             ? error.message
-            : "La ressource a été modifiée simultanément"
+            : recipientExists
+              ? error.message
+              : "La ressource a été modifiée simultanément"
           : providerStatus !== null
             ? error instanceof Error
               ? error.message

@@ -1,0 +1,16 @@
+.git
+.next
+.next-e2e
+node_modules
+test-results
+playwright-report
+.env*
+!.env.example
+npm-debug.log*
+Dockerfile*
+docs
+implementation
+mockups
+assets
+e2e
+src/test

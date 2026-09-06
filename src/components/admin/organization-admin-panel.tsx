@@ -103,8 +103,10 @@ async function requestJson(url: string, init: RequestInit): Promise<unknown> {
 }
 
 export function OrganizationAdminPanel({
+  invitationEmailConfigured,
   workspace,
 }: {
+  invitationEmailConfigured: boolean;
   workspace: OrganizationAdminWorkspace;
 }) {
   const router = useRouter();
@@ -258,11 +260,14 @@ export function OrganizationAdminPanel({
                 Inviter dans l’organisation
               </CardTitle>
               <CardDescription>
-                Créez un lien Better Auth. Après acceptation, attribuez les magasins nécessaires.
+                {invitationEmailConfigured
+                  ? "Envoyez un lien sécurisé. Après acceptation, attribuez les magasins nécessaires."
+                  : "Créez un lien Better Auth à transmettre manuellement. Après acceptation, attribuez les magasins nécessaires."}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <InvitationForm
+                emailDeliveryConfigured={invitationEmailConfigured}
                 organizationId={workspace.organization.id}
                 onError={setError}
                 onSuccess={(message) => mutationCompleted(message)}
@@ -439,10 +444,12 @@ function StoreSettingsForm({
 }
 
 function InvitationForm({
+  emailDeliveryConfigured,
   organizationId,
   onError,
   onSuccess,
 }: {
+  emailDeliveryConfigured: boolean;
   organizationId: string;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
@@ -454,18 +461,30 @@ function InvitationForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const email = new FormData(form).get("email");
+    const formData = new FormData(form);
+    const email = formData.get("email");
+    const resend = formData.get("resend") === "on";
     setPending(true);
     try {
       const result = organizationInvitationResponseSchema.parse(
         await requestJson(`/api/organizations/${organizationId}/invitations`, {
           method: "POST",
-          body: JSON.stringify({ email, role, resend: false }),
+          body: JSON.stringify({ email, role, resend }),
         }),
       );
       setAcceptPath(result.acceptPath);
       form.reset();
-      onSuccess(`Invitation créée pour ${result.invitation.email}.`);
+      if (result.delivery.status === "failed") {
+        onError(
+          `Invitation créée pour ${result.invitation.email}, mais l’e-mail n’a pas été envoyé. Copiez le lien ou renvoyez l’invitation.`,
+        );
+      } else {
+        onSuccess(
+          result.delivery.status === "sent"
+            ? `Invitation envoyée à ${result.invitation.email}.`
+            : `Invitation créée pour ${result.invitation.email}.`,
+        );
+      }
     } catch (caught) {
       onError(caught instanceof Error ? caught.message : "Invitation impossible");
     } finally {
@@ -495,9 +514,13 @@ function InvitationForm({
           </SelectContent>
         </Select>
       </div>
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <input className="size-4 accent-primary" name="resend" type="checkbox" />
+        Renvoyer si une invitation est déjà en attente
+      </label>
       <Button disabled={pending} type="submit">
         {pending ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <MailPlus aria-hidden="true" />}
-        Créer le lien
+        {emailDeliveryConfigured ? "Envoyer l’invitation" : "Créer le lien"}
       </Button>
       {acceptPath ? (
         <Button onClick={copyLink} type="button" variant="outline">

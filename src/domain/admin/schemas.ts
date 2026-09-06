@@ -226,6 +226,10 @@ export const managedOrganizationsResponseSchema = z.object({
 export const organizationInvitationResponseSchema = z.object({
   invitation: organizationInvitationSchema,
   acceptPath: z.string().startsWith("/invitations/"),
+  delivery: z.object({
+    mode: z.enum(["manual", "email"]),
+    status: z.enum(["manual", "sent", "failed"]),
+  }),
   requestId: z.uuid(),
 });
 
@@ -249,5 +253,26 @@ export const recipientInvitationResponseSchema = z.object({
 
 export const invitationAcceptResponseSchema = z.object({
   organizationSlug: organizationSlugSchema,
+  requestId: z.uuid(),
+});
+
+export const invitationRegistrationContextSchema = z.object({
+  invitationId: z.string().min(1),
+  organizationName: z.string().min(1),
+  maskedEmail: z.string().min(3),
+  expiresAt: z.iso.datetime(),
+  recipientHasAccount: z.boolean(),
+});
+export type InvitationRegistrationContext = z.infer<
+  typeof invitationRegistrationContextSchema
+>;
+
+export const invitationRegistrationInputSchema = z.object({
+  name: z.string().trim().min(2).max(160),
+  password: z.string().min(12).max(128),
+});
+
+export const invitationRegistrationResponseSchema = z.object({
+  nextPath: z.string().startsWith("/sign-in?"),
   requestId: z.uuid(),
 });

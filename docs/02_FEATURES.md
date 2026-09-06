@@ -8,6 +8,8 @@ Acceptance criteria for administration and onboarding:
 - an organization owner or admin can create, rename, deactivate and reactivate its stores;
 - store creation also provisions an independent reference layout and remains idempotent;
 - invitations create organization membership only; store access is assigned separately through an explicit role and permission set;
+- a recipient without an account can register only from a valid pending invitation; public sign-up remains disabled;
+- a configured transactional provider sends the invitation with an idempotency key, records delivery outcome and preserves a manual-copy fallback;
 - organization members without an active store membership cannot discover or access that store;
 - owners and organization admins keep implicit access to every store in their organization, while ordinary members are restricted to their active store memberships;
 - store and membership mutations validate optimistic/idempotency inputs and append an audit record;

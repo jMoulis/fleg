@@ -14,6 +14,8 @@ POST `/api/organizations/:organizationId/invitations` is restricted to organizat
 
 GET `/api/invitations/:invitationId` exposes a pending invitation only to its authenticated recipient.
 
+POST `/api/invitations/:invitationId/register` creates credentials only when the opaque invitation is pending, unexpired and its recipient has no account. The recipient email comes from the invitation, never from the request body. It does not accept the invitation or grant store access.
+
 POST `/api/invitations/:invitationId/accept` accepts the invitation for its authenticated recipient. Store access must then be assigned by an organization owner/admin.
 
 ## Stores

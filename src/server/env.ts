@@ -65,6 +65,70 @@ const optionalApiKeySchema = z.preprocess(
   z.string().trim().min(1).optional(),
 );
 
+const optionalTrimmedStringSchema = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim().length === 0
+      ? undefined
+      : value,
+  z.string().trim().min(1).optional(),
+);
+
+const invitationEmailFromSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(320)
+  .refine((value) => !/[\r\n]/.test(value), "Expéditeur e-mail invalide")
+  .refine((value) => {
+    const friendlyAddress = /<([^<>]+)>$/.exec(value);
+    return z.email().safeParse(friendlyAddress?.[1] ?? value).success;
+  }, "Expéditeur e-mail invalide");
+
+export const invitationEmailEnvSchema = z
+  .object({
+    INVITATION_EMAIL_PROVIDER: z.enum(["manual", "resend"]).default("manual"),
+    RESEND_API_KEY: optionalTrimmedStringSchema,
+    INVITATION_EMAIL_FROM: z.preprocess(
+      (value) =>
+        typeof value === "string" && value.trim().length === 0
+          ? undefined
+          : value,
+      invitationEmailFromSchema.optional(),
+    ),
+    INVITATION_EMAIL_REPLY_TO: z.preprocess(
+      (value) =>
+        typeof value === "string" && value.trim().length === 0
+          ? undefined
+          : value,
+      z.email().optional(),
+    ),
+    INVITATION_EMAIL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(30_000)
+      .default(10_000),
+  })
+  .superRefine((input, context) => {
+    if (input.INVITATION_EMAIL_PROVIDER !== "resend") return;
+    if (!input.RESEND_API_KEY) {
+      context.addIssue({
+        code: "custom",
+        path: ["RESEND_API_KEY"],
+        message: "RESEND_API_KEY est requis avec le fournisseur Resend",
+      });
+    }
+    if (!input.INVITATION_EMAIL_FROM) {
+      context.addIssue({
+        code: "custom",
+        path: ["INVITATION_EMAIL_FROM"],
+        message: "INVITATION_EMAIL_FROM est requis avec le fournisseur Resend",
+      });
+    }
+  });
+
+export type InvitationEmailEnv = z.infer<typeof invitationEmailEnvSchema>;
+
 export const copilotEnvSchema = z.object({
   OPENAI_API_KEY: optionalApiKeySchema,
   OPENAI_MODEL: z.string().trim().min(1).default("gpt-5-mini"),
@@ -169,5 +233,32 @@ export function getCopilotConfigurationStatus(): {
   return {
     configured: Boolean(environment.OPENAI_API_KEY),
     model: environment.OPENAI_MODEL,
+  };
+}
+
+export function parseInvitationEmailEnv(
+  input: Record<string, string | undefined>,
+): InvitationEmailEnv {
+  const result = invitationEmailEnvSchema.safeParse(input);
+
+  if (!result.success) {
+    throw new EnvironmentValidationError(result.error.issues);
+  }
+
+  return result.data;
+}
+
+export function getInvitationEmailEnv(): InvitationEmailEnv {
+  return parseInvitationEmailEnv(process.env);
+}
+
+export function getInvitationEmailConfigurationStatus(): {
+  provider: InvitationEmailEnv["INVITATION_EMAIL_PROVIDER"];
+  configured: boolean;
+} {
+  const environment = getInvitationEmailEnv();
+  return {
+    provider: environment.INVITATION_EMAIL_PROVIDER,
+    configured: environment.INVITATION_EMAIL_PROVIDER === "resend",
   };
 }

@@ -11,6 +11,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   compress: true,
   poweredByHeader: false,
   async headers() {

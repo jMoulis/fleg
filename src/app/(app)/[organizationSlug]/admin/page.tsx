@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { OrganizationAdminAccessDeniedError } from "@/domain/admin/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
 import { requireOrganizationAdminBySlug } from "@/server/auth/organization-admin-context";
+import { getInvitationEmailConfigurationStatus } from "@/server/env";
 import { getOrganizationAdminWorkspace } from "@/server/services/organization-admin-service";
 
 export const metadata: Metadata = {
@@ -39,6 +40,8 @@ export default async function OrganizationAdminPage({
     context,
     requestHeaders,
   });
+  const invitationEmailConfigured =
+    getInvitationEmailConfigurationStatus().configured;
   const firstStore = workspace.stores.find(({ active }) => active);
 
   return (
@@ -80,7 +83,10 @@ export default async function OrganizationAdminPage({
             Créez les magasins, invitez les membres et attribuez uniquement les permissions nécessaires à chaque périmètre.
           </p>
         </div>
-        <OrganizationAdminPanel workspace={workspace} />
+        <OrganizationAdminPanel
+          invitationEmailConfigured={invitationEmailConfigured}
+          workspace={workspace}
+        />
       </main>
     </div>
   );

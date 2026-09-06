@@ -4,6 +4,7 @@ import {
   EnvironmentValidationError,
   parseAuthEnv,
   parseCopilotEnv,
+  parseInvitationEmailEnv,
   parseServerEnv,
   getImportEnv,
 } from "@/server/env";
@@ -134,5 +135,38 @@ describe("parseCopilotEnv", () => {
     expect(() =>
       parseCopilotEnv({ OPENAI_MAX_TOOL_ROUNDS: "100" }),
     ).toThrow(EnvironmentValidationError);
+  });
+});
+
+describe("parseInvitationEmailEnv", () => {
+  it("keeps manual link delivery as the safe local default", () => {
+    expect(parseInvitationEmailEnv({})).toEqual({
+      INVITATION_EMAIL_PROVIDER: "manual",
+      INVITATION_EMAIL_TIMEOUT_MS: 10_000,
+    });
+  });
+
+  it("requires complete Resend configuration and validates the sender", () => {
+    expect(() =>
+      parseInvitationEmailEnv({ INVITATION_EMAIL_PROVIDER: "resend" }),
+    ).toThrow(EnvironmentValidationError);
+    expect(() =>
+      parseInvitationEmailEnv({
+        INVITATION_EMAIL_PROVIDER: "resend",
+        RESEND_API_KEY: "re_test",
+        INVITATION_EMAIL_FROM: "invalid sender",
+      }),
+    ).toThrow(EnvironmentValidationError);
+    expect(
+      parseInvitationEmailEnv({
+        INVITATION_EMAIL_PROVIDER: "resend",
+        RESEND_API_KEY: "re_test",
+        INVITATION_EMAIL_FROM: "F&L Cockpit <invitation@example.com>",
+        INVITATION_EMAIL_TIMEOUT_MS: "4000",
+      }),
+    ).toMatchObject({
+      INVITATION_EMAIL_PROVIDER: "resend",
+      INVITATION_EMAIL_TIMEOUT_MS: 4_000,
+    });
   });
 });

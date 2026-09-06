@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; registered?: string }>;
 }) {
   const query = await searchParams;
   const callbackUrl = authenticationCallbackPathSchema.catch("/stores").parse(
@@ -64,7 +64,10 @@ export default async function SignInPage({
               </p>
             </CardHeader>
             <CardContent>
-              <SignInForm callbackUrl={callbackUrl} />
+              <SignInForm
+                callbackUrl={callbackUrl}
+                registrationCompleted={query.registered === "1"}
+              />
             </CardContent>
           </Card>
         </div>

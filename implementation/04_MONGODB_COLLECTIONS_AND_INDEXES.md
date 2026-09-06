@@ -18,6 +18,8 @@ storeMemberships:  { storeId: 1, userId: 1 } unique
 storeMemberships:  { userId: 1, active: 1, organizationId: 1, storeId: 1 }
 storeAdminCommands: { organizationId: 1, idempotencyKey: 1 } unique
 storeMembershipCommands: { organizationId: 1, idempotencyKey: 1 } unique
+notificationDeliveries: { idempotencyKey: 1 } unique
+notificationDeliveries: { invitationId: 1, attemptedAt: -1 }
 products:          { storeId: 1, normalizedLabel: 1 }
 products:          { organizationId: 1, storeId: 1, active: 1, label: 1 }
 productAliases:    { storeId: 1, source: 1, externalKey: 1 } unique
