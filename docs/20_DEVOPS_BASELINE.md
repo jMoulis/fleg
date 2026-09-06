@@ -9,6 +9,8 @@ Deux contrôles doivent réussir :
 - `Quality and build` installe strictement `package-lock.json`, puis exécute le lint, le typage, les tests unitaires et le build de production avec Node.js 24 ;
 - `End-to-end` démarre MongoDB 8 dans un conteneur jetable, injecte uniquement des identifiants de test, charge le jeu de démonstration et exécute la recette Playwright sur les formats mobile et desktop.
 
+Le script de seed accepte une configuration fournie entièrement par les variables du processus : `.env.local` reste pratique en local mais n'est pas requis dans un runner CI ou un conteneur.
+
 Les traces, captures et vidéos Playwright sont conservées sept jours uniquement en cas d'échec. Les appels OpenAI réels restent exclus de la CI générale : ils doivent être lancés explicitement avec `npm run test:e2e:ai` sur un environnement autorisé.
 
 Dependabot vérifie chaque semaine les dépendances npm et les actions GitHub. Toute mise à jour reste soumise aux mêmes contrôles CI avant fusion.

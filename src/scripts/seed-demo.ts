@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { loadEnvFile } from "node:process";
 
@@ -267,7 +268,8 @@ async function upsertDemoStore(input: {
 }
 
 async function run() {
-  loadEnvFile(process.env.SEED_ENV_FILE ?? ".env.local");
+  const environmentFile = process.env.SEED_ENV_FILE ?? ".env.local";
+  if (existsSync(environmentFile)) loadEnvFile(environmentFile);
   const env = seedEnvironmentSchema.parse(process.env);
   const client = new MongoClient(env.MONGODB_URI, {
     serverApi: {
