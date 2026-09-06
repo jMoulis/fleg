@@ -51,6 +51,32 @@ function recipeMarker(projectName: string) {
   return `${projectName}-${Date.now()}`;
 }
 
+async function importProjectFixture(input: {
+  page: Page;
+  projectName: string;
+  storeId: string;
+}) {
+  const projectName = input.projectName as keyof typeof networkFixtureByProject;
+  const fileName = networkFixtureByProject[projectName];
+
+  expect(fileName, `Fixture inconnue pour le projet ${input.projectName}`).toBeDefined();
+  if (!fileName) {
+    throw new Error(`Fixture inconnue pour le projet ${input.projectName}`);
+  }
+
+  return importFixtureIntoStore({
+    fileName,
+    fixturePath: join(
+      process.cwd(),
+      "assets",
+      "import_excel_files_examples",
+      fileName,
+    ),
+    page: input.page,
+    storeId: input.storeId,
+  });
+}
+
 function isolatedFutureWindow() {
   const epoch = Date.UTC(2040, 0, 1);
   const offsetDays = Math.floor(Date.now() / 1_000) % 5_000;
@@ -67,7 +93,12 @@ test("REL-01 versionne le plan et enregistre une allocation", async ({
   page,
 }, testInfo) => {
   const marker = recipeMarker(testInfo.project.name);
-  const { storeBaseUrl } = await signInToStore(page);
+  const { storeBaseUrl, storeId } = await signInToStore(page);
+  await importProjectFixture({
+    page,
+    projectName: testInfo.project.name,
+    storeId,
+  });
 
   await page.goto(`${storeBaseUrl}/space`);
   await expect(page.getByRole("heading", { name: "Espace" })).toBeVisible();
@@ -110,7 +141,12 @@ test("REL-02 publie une TG puis consigne une démarque", async ({
 }, testInfo) => {
   const marker = recipeMarker(testInfo.project.name);
   const window = isolatedFutureWindow();
-  const { storeBaseUrl } = await signInToStore(page);
+  const { storeBaseUrl, storeId } = await signInToStore(page);
+  await importProjectFixture({
+    page,
+    projectName: testInfo.project.name,
+    storeId,
+  });
 
   await page.goto(`${storeBaseUrl}/tg`);
   await expect(
