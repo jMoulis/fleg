@@ -15,6 +15,7 @@ import {
   type EvaluationEngineConfig,
   type ExperimentAnalysis,
 } from "@/domain/experiments/evaluation-schemas";
+import { configVersion } from "@/domain/configuration/versions";
 import { resolveExperimentStatus } from "@/domain/experiments/lifecycle";
 import type { Experiment } from "@/domain/experiments/schemas";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
@@ -41,6 +42,7 @@ interface ExperimentStatusDocument {
 interface StoreSettingsDocument {
   organizationId: string;
   storeId: ObjectId;
+  revision?: number;
   experiments?: {
     evaluation?: Record<string, unknown>;
   };
@@ -94,12 +96,19 @@ export class ExperimentAnalysisRepository {
         organizationId: context.organizationId,
         storeId: new ObjectId(context.storeId),
       },
-      { projection: { experiments: 1 } },
+      { projection: { experiments: 1, revision: 1 } },
     );
-    return evaluationEngineConfigSchema.parse({
+    const config = evaluationEngineConfigSchema.parse({
       ...defaultEvaluationEngineConfig,
       ...(settings?.experiments?.evaluation ?? {}),
     });
+    return {
+      ...config,
+      engineVersion: configVersion(
+        defaultEvaluationEngineConfig.engineVersion,
+        settings?.revision,
+      ),
+    };
   }
 
   async listForExperiment(input: {

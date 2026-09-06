@@ -8,6 +8,7 @@ import {
   defaultAnalyticsConfig,
   type AnalyticsConfig,
 } from "@/domain/analytics/schemas";
+import { configVersion } from "@/domain/configuration/versions";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 
 interface SalesFactDocument {
@@ -30,9 +31,10 @@ export class AnalyticsRepository {
     this.salesFacts = db.collection<SalesFactDocument>("salesFacts");
     this.products = db.collection<{ label: string }>("products");
     this.stores = db.collection<{ dataRevision: number }>("stores");
-    this.storeSettings = db.collection<{ analytics?: Record<string, unknown> }>(
-      "storeSettings",
-    );
+    this.storeSettings = db.collection<{
+      revision?: number;
+      analytics?: Record<string, unknown>;
+    }>("storeSettings");
   }
 
   async findLatestPeriod(
@@ -113,12 +115,19 @@ export class AnalyticsRepository {
         organizationId: context.organizationId,
         storeId: new ObjectId(context.storeId),
       },
-      { projection: { analytics: 1 } },
+      { projection: { analytics: 1, revision: 1 } },
     );
 
-    return analyticsConfigSchema.parse({
+    const config = analyticsConfigSchema.parse({
       ...defaultAnalyticsConfig,
       ...(settings?.analytics ?? {}),
     });
+    return {
+      ...config,
+      calculationVersion: configVersion(
+        defaultAnalyticsConfig.calculationVersion,
+        settings?.revision,
+      ),
+    };
   }
 }

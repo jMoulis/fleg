@@ -59,6 +59,7 @@ interface AllocationPlannerProps {
   capacities: ShelfCapacity[];
   products: AllocationProduct[];
   basis: AllocationBasis;
+  defaultConfig: AllocationConfig;
   initialPlan: AllocationPlan | null;
   canWrite: boolean;
 }
@@ -89,6 +90,7 @@ export function AllocationPlanner({
   capacities,
   products,
   basis,
+  defaultConfig,
   initialPlan,
   canWrite,
 }: AllocationPlannerProps) {
@@ -97,11 +99,7 @@ export function AllocationPlanner({
     initialPlan?.allocations ?? [],
   );
   const [config, setConfig] = useState<AllocationConfig>(
-    initialPlan?.config ?? {
-      minimumFacingWidthM: 0.25,
-      targetProductsPerShelf: 2,
-      facingIncrementM: 0.05,
-    },
+    initialPlan?.config ?? defaultConfig,
   );
   const [source, setSource] = useState<"manager" | "heuristic">(
     initialPlan?.source ?? "manager",

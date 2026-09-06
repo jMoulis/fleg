@@ -6,6 +6,7 @@ import {
   Leaf,
   Network,
   Settings2,
+  SlidersHorizontal,
   Store,
 } from "lucide-react";
 
@@ -47,6 +48,16 @@ export function StoreAppShell({
           </Link>
 
           <div className="flex items-center gap-2">
+            <Link
+              href={`/${organizationSlug}/stores/${storeId}/settings`}
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "shrink-0 md:hidden",
+              )}
+              aria-label="Ouvrir les paramètres du magasin"
+            >
+              <SlidersHorizontal aria-hidden="true" />
+            </Link>
             {canManageOrganization ? (
               <Link
                 href={`/${organizationSlug}/admin`}

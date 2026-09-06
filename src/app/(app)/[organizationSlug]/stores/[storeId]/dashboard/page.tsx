@@ -9,6 +9,7 @@ import {
   DatabaseZap,
   Scale,
   ShieldCheck,
+  Target,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +123,7 @@ export default async function StoreDashboardPage({
         </form>
       </div>
 
-      <section aria-label="Indicateurs magasin" className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Indicateurs magasin" className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           icon={BadgeEuro}
           label="Chiffre d’affaires"
@@ -150,6 +151,16 @@ export default async function StoreDashboardPage({
           label="Actions prioritaires"
           value={String(prioritized.length)}
           helper={`${recommendations.length} recommandations expliquées`}
+        />
+        <MetricCard
+          icon={Target}
+          label="Atteinte de l’objectif"
+          value={formatRatio(dashboard.targetAttainmentRatio)}
+          helper={
+            dashboard.targetRevenueCents === null
+              ? "Objectif mensuel non configuré"
+              : `Objectif ${formatMoney(dashboard.targetRevenueCents)}`
+          }
         />
       </section>
 

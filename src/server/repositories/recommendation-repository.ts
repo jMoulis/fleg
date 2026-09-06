@@ -9,6 +9,7 @@ import {
   type RecommendationConfig,
   type RecommendationDraft,
 } from "@/domain/recommendations/schemas";
+import { configVersion } from "@/domain/configuration/versions";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 
 interface RecommendationDocument
@@ -36,6 +37,7 @@ export class RecommendationRepository {
       db.collection<RecommendationDocument>("recommendations");
     this.recommendationRuns = db.collection("recommendationRuns");
     this.storeSettings = db.collection<{
+      revision?: number;
       recommendations?: Record<string, unknown>;
     }>("storeSettings");
   }
@@ -48,13 +50,20 @@ export class RecommendationRepository {
         organizationId: context.organizationId,
         storeId: new ObjectId(context.storeId),
       },
-      { projection: { recommendations: 1 } },
+      { projection: { recommendations: 1, revision: 1 } },
     );
 
-    return recommendationConfigSchema.parse({
+    const config = recommendationConfigSchema.parse({
       ...defaultRecommendationConfig,
       ...(settings?.recommendations ?? {}),
     });
+    return {
+      ...config,
+      modelVersion: configVersion(
+        defaultRecommendationConfig.modelVersion,
+        settings?.revision,
+      ),
+    };
   }
 
   async saveRun(input: {

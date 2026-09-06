@@ -31,10 +31,18 @@ export function calculateDashboard(input: {
   periodKey: string;
   facts: SalesFactValue[];
   priorYearFacts: SalesFactValue[];
+  targetRevenueCents?: number | null;
   dataRevision: number;
   config: AnalyticsConfig;
 }): DashboardMetrics | null {
-  const { periodKey, facts, priorYearFacts, dataRevision, config } = input;
+  const {
+    periodKey,
+    facts,
+    priorYearFacts,
+    targetRevenueCents = null,
+    dataRevision,
+    config,
+  } = input;
 
   if (facts.length === 0) {
     return null;
@@ -63,6 +71,11 @@ export function calculateDashboard(input: {
       priorYearRevenueCents === null
         ? null
         : safeRatio(totals.revenueCents - priorYearRevenueCents, priorYearRevenueCents),
+    targetRevenueCents,
+    targetAttainmentRatio:
+      targetRevenueCents === null
+        ? null
+        : safeRatio(totals.revenueCents, targetRevenueCents),
     dataRevision,
     calculationVersion: config.calculationVersion,
   });

@@ -120,6 +120,10 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { organizationId: 1, storeId: 1, periodKey: 1 },
       { unique: true, name: "period_targets_scope_period_unique" },
     ),
+    db.collection("storeConfigurationCommands").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      { unique: true, name: "store_configuration_commands_scope_key_unique" },
+    ),
     db.collection("markdownFacts").createIndex(
       { organizationId: 1, storeId: 1, occurredOn: 1, productId: 1 },
       { name: "markdown_facts_scope_date_product" },

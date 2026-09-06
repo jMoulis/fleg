@@ -34,6 +34,8 @@ export const dashboardMetricsSchema = z.object({
   productCount: z.number().int().nonnegative(),
   priorYearRevenueCents: z.number().int().safe().nullable(),
   yearOverYearRatio: z.number().finite().nullable(),
+  targetRevenueCents: z.number().int().safe().nonnegative().nullable(),
+  targetAttainmentRatio: z.number().finite().nonnegative().nullable(),
   dataRevision: z.number().int().nonnegative(),
   calculationVersion: z.string().min(1),
 });

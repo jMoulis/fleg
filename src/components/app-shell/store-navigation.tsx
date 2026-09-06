@@ -13,6 +13,7 @@ import {
   FlaskConical,
   PackageX,
   Ruler,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -34,6 +35,12 @@ const navigation = [
   { label: "Démarque", segment: "markdown", icon: PackageX },
   { label: "Imports", segment: "imports", icon: FileSpreadsheet },
   { label: "Décisions", segment: "decisions", icon: History, desktopOnly: true },
+  {
+    label: "Paramètres",
+    segment: "settings",
+    icon: SlidersHorizontal,
+    desktopOnly: true,
+  },
   {
     label: "Copilote",
     segment: "copilot",

@@ -35,6 +35,7 @@ describe("analytics calculations", () => {
         },
       ],
       dataRevision: 2,
+      targetRevenueCents: 12_500,
       config: defaultAnalyticsConfig,
     });
 
@@ -42,6 +43,8 @@ describe("analytics calculations", () => {
       revenueCents: 10_000,
       marginRatio: 0.3,
       yearOverYearRatio: 0.25,
+      targetRevenueCents: 12_500,
+      targetAttainmentRatio: 0.8,
     });
   });
 
