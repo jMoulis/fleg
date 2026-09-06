@@ -7,7 +7,7 @@ Le workflow GitHub Actions `CI` s'exécute à chaque pull request vers `master`,
 Deux contrôles doivent réussir :
 
 - `Quality and build` installe strictement `package-lock.json`, puis exécute le lint, le typage, les tests unitaires et le build de production avec Node.js 24 ;
-- `End-to-end` démarre MongoDB 8 dans un conteneur jetable, injecte uniquement des identifiants de test, charge le jeu de démonstration et exécute la recette Playwright sur les formats mobile et desktop.
+- `End-to-end` démarre MongoDB 8 en replica set dans un conteneur jetable, injecte uniquement des identifiants de test, charge le jeu de démonstration et exécute la recette Playwright sur les formats mobile et desktop. Le replica set conserve la capacité transactionnelle utilisée sur Atlas.
 
 Le script de seed accepte une configuration fournie entièrement par les variables du processus : `.env.local` reste pratique en local mais n'est pas requis dans un runner CI ou un conteneur.
 

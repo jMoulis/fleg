@@ -46,7 +46,7 @@ jobs:
     timeout-minutes: 30
     env:
       CI: true
-      MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+      MONGODB_URI: "mongodb://127.0.0.1:27017/?directConnection=true&replicaSet=rs0"
       MONGODB_AUTH_DB: fleg_ci_auth
       MONGODB_APP_DB: fleg_ci_app
       MONGODB_MAX_POOL_SIZE: 10
@@ -59,20 +59,45 @@ jobs:
       AUTH_ALLOW_SIGN_UP: false
       INVITATION_EMAIL_PROVIDER: manual
 
-    services:
-      mongodb:
-        image: mongo:8.0
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+
+      - name: Start a disposable MongoDB replica set
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --name fleg-ci-mongodb \
+            --publish 27017:27017 \
+            --tmpfs /data/db:rw,noexec,nosuid,size=1g \
+            mongo:8.0 --replSet rs0 --bind_ip_all
+
+          for attempt in {1..30}; do
+            if docker exec fleg-ci-mongodb mongosh --quiet \
+              --eval 'db.adminCommand({ ping: 1 }).ok' | grep --quiet 1; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs fleg-ci-mongodb
+              exit 1
+            fi
+            sleep 2
+          done
+
+          docker exec fleg-ci-mongodb mongosh --quiet --eval \
+            'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})'
+
+          for attempt in {1..30}; do
+            if docker exec fleg-ci-mongodb mongosh --quiet \
+              --eval 'db.hello().isWritablePrimary' | grep --quiet true; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs fleg-ci-mongodb
+              exit 1
+            fi
+            sleep 2
+          done
 
       - name: Use Node.js 24
         uses: actions/setup-node@v7
@@ -102,3 +127,7 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Show MongoDB diagnostics after a failure
+        if: failure()
+        run: docker logs fleg-ci-mongodb
