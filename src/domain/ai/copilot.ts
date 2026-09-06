@@ -161,7 +161,7 @@ export const copilotModelFunctionCallSchema = z
   })
   .passthrough();
 
-export const STORE_COPILOT_PROMPT_VERSION = "store-copilot-v3";
+export const STORE_COPILOT_PROMPT_VERSION = "store-copilot-v4";
 export const NETWORK_COPILOT_PROMPT_VERSION = "network-copilot-v1";
 
 export function buildStoreCopilotInstructions(
@@ -258,7 +258,15 @@ export interface CopilotModelRequest {
   toolChoice:
     | "auto"
     | "none"
-    | { type: "function"; name: StoreCopilotToolName };
+    | { type: "function"; name: StoreCopilotToolName }
+    | {
+        type: "allowed_tools";
+        mode: "required";
+        tools: Array<{
+          type: "function";
+          name: (typeof storeCopilotReadToolNames)[number];
+        }>;
+      };
 }
 
 export class CopilotToolLoopError extends Error {
@@ -327,6 +335,17 @@ export async function orchestrateStoreCopilot(input: {
               : ("getStoreKpis" as const),
           }
         : null;
+    const requiredInitialReadToolChoice =
+      request.intent === "analysis" && toolCalls.length === 0
+        ? {
+            type: "allowed_tools" as const,
+            mode: "required" as const,
+            tools: storeCopilotReadToolNames.map((name) => ({
+              type: "function" as const,
+              name,
+            })),
+          }
+        : null;
     const turn = await input.createModelTurn({
       input: [...conversation],
       instructions,
@@ -335,7 +354,7 @@ export async function orchestrateStoreCopilot(input: {
       toolChoice:
         round === input.maxToolRounds || actionPlan
           ? "none"
-          : (forcedDraftToolChoice ?? "auto"),
+          : (forcedDraftToolChoice ?? requiredInitialReadToolChoice ?? "auto"),
     });
 
     if (turn.functionCalls.length === 0) {

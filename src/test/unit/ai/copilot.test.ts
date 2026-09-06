@@ -7,6 +7,7 @@ import {
   networkCopilotRequestSchema,
   orchestrateNetworkCopilot,
   orchestrateStoreCopilot,
+  storeCopilotReadToolNames,
   storeCopilotRequestSchema,
 } from "@/domain/ai/copilot";
 import {
@@ -179,7 +180,14 @@ describe("store Copilot contract", () => {
         executeTool: vi.fn().mockResolvedValue(emptyKpisResult),
       }),
     ).rejects.toBeInstanceOf(CopilotToolLoopError);
-    expect(createModelTurn.mock.calls[0]?.[0].toolChoice).toBe("auto");
+    expect(createModelTurn.mock.calls[0]?.[0].toolChoice).toEqual({
+      type: "allowed_tools",
+      mode: "required",
+      tools: storeCopilotReadToolNames.map((name) => ({
+        type: "function",
+        name,
+      })),
+    });
     expect(createModelTurn.mock.calls[1]?.[0].toolChoice).toBe("none");
   });
 
@@ -222,7 +230,14 @@ describe("store Copilot contract", () => {
       executeTool: vi.fn().mockResolvedValue(emptyKpisResult),
     });
 
-    expect(createModelTurn.mock.calls[0]?.[0].toolChoice).toBe("auto");
+    expect(createModelTurn.mock.calls[0]?.[0].toolChoice).toEqual({
+      type: "allowed_tools",
+      mode: "required",
+      tools: storeCopilotReadToolNames.map((name) => ({
+        type: "function",
+        name,
+      })),
+    });
     expect(createModelTurn.mock.calls[1]?.[0].toolChoice).toBe("none");
     expect(result.answer).toContain("synthèse");
     expect(result.toolCalls).toHaveLength(1);
@@ -274,7 +289,7 @@ describe("store Copilot contract", () => {
         limitations: [],
         sourceQuestion: "Prépare un plan d’action",
         model: "model-test",
-        promptVersion: "store-copilot-v3",
+        promptVersion: "store-copilot-v4",
         createdByUserId: "manager-a",
         createdAt: "2026-09-05T10:00:00.000Z",
         updatedAt: "2026-09-05T10:00:00.000Z",
