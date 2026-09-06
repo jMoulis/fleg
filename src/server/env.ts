@@ -13,6 +13,12 @@ export const serverEnvSchema = z.object({
   MONGODB_AUTH_DB: z.string().trim().min(1).default("fl_cockpit_auth"),
   MONGODB_APP_DB: z.string().trim().min(1).default("fl_cockpit_app"),
   MONGODB_MAX_POOL_SIZE: z.coerce.number().int().min(1).max(100).default(20),
+  MONGODB_MAX_IDLE_TIME_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(60_000)
+    .default(5_000),
   MONGODB_SERVER_SELECTION_TIMEOUT_MS: z.coerce
     .number()
     .int()

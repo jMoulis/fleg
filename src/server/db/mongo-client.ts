@@ -1,5 +1,6 @@
 import "server-only";
 
+import { attachDatabasePool } from "@vercel/functions";
 import { Db, MongoClient, ServerApiVersion } from "mongodb";
 
 import { ensureFoundationIndexesForDb } from "@/server/db/foundation-indexes";
@@ -13,8 +14,9 @@ declare global {
 function createMongoClient(): MongoClient {
   const environment = getServerEnv();
 
-  return new MongoClient(environment.MONGODB_URI, {
+  const client = new MongoClient(environment.MONGODB_URI, {
     connectTimeoutMS: environment.MONGODB_CONNECT_TIMEOUT_MS,
+    maxIdleTimeMS: environment.MONGODB_MAX_IDLE_TIME_MS,
     maxPoolSize: environment.MONGODB_MAX_POOL_SIZE,
     serverSelectionTimeoutMS: environment.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
     serverApi: {
@@ -23,6 +25,8 @@ function createMongoClient(): MongoClient {
       deprecationErrors: true,
     },
   });
+  attachDatabasePool(client);
+  return client;
 }
 
 export function getMongoClient(): Promise<MongoClient> {

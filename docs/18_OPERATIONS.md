@@ -7,6 +7,7 @@ L’application nécessite un runtime Node.js capable d’ouvrir une connexion T
 Le déploiement doit fournir les variables décrites dans `.env.example`, en particulier `MONGODB_URI`, `BETTER_AUTH_SECRET` et `BETTER_AUTH_URL`. Les bornes opérationnelles restent configurables :
 
 - `MONGODB_MAX_POOL_SIZE` limite le nombre de connexions MongoDB par processus ;
+- `MONGODB_MAX_IDLE_TIME_MS` libère rapidement les connexions inactives, notamment avant la suspension d’une fonction Vercel ;
 - `MONGODB_SERVER_SELECTION_TIMEOUT_MS` borne la découverte d’un serveur ;
 - `MONGODB_CONNECT_TIMEOUT_MS` borne l’ouverture d’une connexion ;
 - `HEALTH_CHECK_TIMEOUT_MS` borne le contrôle de disponibilité.
@@ -20,6 +21,8 @@ Avant une mise en production :
 5. effectuer la recette utilisateur de ce document.
 
 Les deux commandes de vérification chargent `.env.local` si le fichier existe. Pour contrôler un fichier cible sans le renommer, définir par exemple `DEPLOYMENT_ENV_FILE=.env.preproduction`.
+
+Le déploiement Vercel retenu pour le projet est détaillé dans [`docs/19_VERCEL_DEPLOYMENT.md`](./19_VERCEL_DEPLOYMENT.md). Vercel utilise l’intégration Next.js native ; le `Dockerfile` reste une solution de repli pour un hébergeur de conteneurs.
 
 Le runtime Sites basé sur Cloudflare Workers ne prend pas en charge la connexion TCP directe exigée par le driver MongoDB. L’application doit donc rester sur un hébergeur Node.js compatible, ou sa couche MongoDB doit être remplacée par une interface HTTP avant un déploiement Sites.
 

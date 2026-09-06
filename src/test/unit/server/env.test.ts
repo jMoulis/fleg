@@ -18,6 +18,7 @@ describe("parseServerEnv", () => {
       MONGODB_AUTH_DB: "fl_cockpit_auth",
       MONGODB_APP_DB: "fl_cockpit_app",
       MONGODB_MAX_POOL_SIZE: 20,
+      MONGODB_MAX_IDLE_TIME_MS: 5_000,
       MONGODB_SERVER_SELECTION_TIMEOUT_MS: 5_000,
       MONGODB_CONNECT_TIMEOUT_MS: 10_000,
       HEALTH_CHECK_TIMEOUT_MS: 8_000,
@@ -29,12 +30,14 @@ describe("parseServerEnv", () => {
       parseServerEnv({
         MONGODB_URI: "mongodb://127.0.0.1:27017",
         MONGODB_MAX_POOL_SIZE: "35",
+        MONGODB_MAX_IDLE_TIME_MS: "7500",
         MONGODB_SERVER_SELECTION_TIMEOUT_MS: "2500",
         MONGODB_CONNECT_TIMEOUT_MS: "4000",
         HEALTH_CHECK_TIMEOUT_MS: "3000",
       }),
     ).toMatchObject({
       MONGODB_MAX_POOL_SIZE: 35,
+      MONGODB_MAX_IDLE_TIME_MS: 7_500,
       MONGODB_SERVER_SELECTION_TIMEOUT_MS: 2_500,
       MONGODB_CONNECT_TIMEOUT_MS: 4_000,
       HEALTH_CHECK_TIMEOUT_MS: 3_000,
