@@ -1,0 +1,40 @@
+name: Production health
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-health
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    name: Public readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://fleg-two.vercel.app' }}
+
+    steps:
+      - name: Check the public readiness endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          health_url="${PRODUCTION_URL%/}/api/health"
+          status_code="$(curl --silent --show-error --location \
+            --connect-timeout 10 --max-time 25 \
+            --output health.json --write-out '%{http_code}' \
+            "$health_url")"
+
+          jq . health.json
+          test "$status_code" = "200"
+          jq --exit-status '
+            .status == "ok" and
+            .services.database == "up" and
+            .services.indexes == "ready"
+          ' health.json > /dev/null

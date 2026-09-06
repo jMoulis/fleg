@@ -24,6 +24,8 @@ Les deux commandes de vérification chargent `.env.local` si le fichier existe. 
 
 Le déploiement Vercel retenu pour le projet est détaillé dans [`docs/19_VERCEL_DEPLOYMENT.md`](./19_VERCEL_DEPLOYMENT.md). Vercel utilise l’intégration Next.js native ; le `Dockerfile` reste une solution de repli pour un hébergeur de conteneurs.
 
+Les contrôles CI, la surveillance publique minimale et la protection attendue de la branche principale sont détaillés dans [`docs/20_DEVOPS_BASELINE.md`](./20_DEVOPS_BASELINE.md).
+
 Le runtime Sites basé sur Cloudflare Workers ne prend pas en charge la connexion TCP directe exigée par le driver MongoDB. L’application doit donc rester sur un hébergeur Node.js compatible, ou sa couche MongoDB doit être remplacée par une interface HTTP avant un déploiement Sites.
 
 ## Configuration des invitations
