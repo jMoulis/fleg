@@ -4,12 +4,14 @@ import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Layers3, Maximize2, MonitorCog, Pencil, Ruler, ShieldCheck } from "lucide-react";
 import * as z from "zod";
 
+import { PhotoAttachmentManager } from "@/components/attachments/photo-attachment-manager";
 import { LayoutPlan } from "@/components/space/layout-plan";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { listPhotoAttachments } from "@/server/services/attachment-service";
 import { getCurrentStoreLayout } from "@/server/services/layout-service";
 import type { FixtureType } from "@/domain/space/schemas";
 
@@ -52,7 +54,13 @@ export default async function StoreSpacePage({ params, searchParams }: StoreSpac
     ["stores.read"],
     requestHeaders,
   );
-  const { layout, summary } = await getCurrentStoreLayout(context);
+  const [{ layout, summary }, attachments] = await Promise.all([
+    getCurrentStoreLayout(context),
+    listPhotoAttachments({
+      context,
+      targetTypes: ["layout", "fixture"],
+    }),
+  ]);
 
   if (!layout || !summary) {
     return (
@@ -184,6 +192,32 @@ export default async function StoreSpacePage({ params, searchParams }: StoreSpac
           </div>
         </aside>
       </div>
+
+      <section className="mt-8" aria-label="Photos du plan et du mobilier">
+        <PhotoAttachmentManager
+          canWrite={context.permissions.includes("attachments.write")}
+          description="Documentez manuellement une version du plan ou un mobilier précis. Ces photos restent des observations et ne déplacent aucun élément."
+          initialAttachments={attachments}
+          storeId={storeId}
+          targets={[
+            {
+              label: `Plan · version ${layout.version}`,
+              description: "Vue rattachée uniquement à cette version du plan.",
+              target: { type: "layout", layoutVersionId: layout.id },
+            },
+            ...layout.fixtures.map((fixture) => ({
+              label: `Mobilier · ${fixture.name}`,
+              description: `Photo de ${fixture.name} dans la version ${layout.version}.`,
+              target: {
+                type: "fixture" as const,
+                layoutVersionId: layout.id,
+                fixtureId: fixture.id,
+              },
+            })),
+          ]}
+          title="Photos d’implantation"
+        />
+      </section>
 
       <section className="mt-8" aria-labelledby="notes-title">
         <Card className="border-amber-500/25 bg-amber-500/[0.04]">

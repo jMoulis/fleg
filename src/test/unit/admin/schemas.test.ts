@@ -35,4 +35,16 @@ describe("admin schemas", () => {
       expect(permissions).toContain("stores.read");
     }
   });
+
+  it("grants photo management to store and department managers by default", () => {
+    expect(defaultStorePermissionsByRole.store_director).toContain(
+      "attachments.write",
+    );
+    expect(defaultStorePermissionsByRole.department_manager).toContain(
+      "attachments.write",
+    );
+    expect(defaultStorePermissionsByRole.employee).not.toContain(
+      "attachments.write",
+    );
+  });
 });

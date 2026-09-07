@@ -257,6 +257,21 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
         name: "product_space_policy_commands_scope_key_unique",
       },
     ),
+    db.collection("attachments").createIndex(
+      { organizationId: 1, storeId: 1, targetKey: 1, createdAt: -1 },
+      { name: "attachments_scope_target_created" },
+    ),
+    db.collection("attachmentObjects").createIndex(
+      { organizationId: 1, storeId: 1, createdAt: -1 },
+      { name: "attachment_objects_scope_created" },
+    ),
+    db.collection("attachmentCommands").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      {
+        unique: true,
+        name: "attachment_commands_scope_key_unique",
+      },
+    ),
     db.collection("commercialEvents").createIndex(
       {
         organizationId: 1,

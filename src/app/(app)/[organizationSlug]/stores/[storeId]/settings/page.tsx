@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { ShieldCheck, SlidersHorizontal } from "lucide-react";
 
+import { PhotoAttachmentManager } from "@/components/attachments/photo-attachment-manager";
 import { StoreConfigurationManager } from "@/components/configuration/store-configuration-manager";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { requireStoreContext } from "@/server/auth/store-context";
+import { listPhotoAttachments } from "@/server/services/attachment-service";
 import { getStoreConfigurationWorkspace } from "@/server/services/store-configuration-service";
 
 export const metadata: Metadata = {
@@ -22,9 +24,13 @@ export default async function StoreSettingsPage({
     ["stores.read", "analytics.read"],
     requestHeaders,
   );
-  const workspace = await getStoreConfigurationWorkspace(context);
+  const [workspace, attachments] = await Promise.all([
+    getStoreConfigurationWorkspace(context),
+    listPhotoAttachments({ context, targetTypes: ["store"] }),
+  ]);
   const canEditSettings = context.permissions.includes("settings.write");
   const canEditTargets = context.permissions.includes("targets.write");
+  const canWriteAttachments = context.permissions.includes("attachments.write");
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -55,6 +61,23 @@ export default async function StoreSettingsPage({
         initialWorkspace={workspace}
         storeId={storeId}
       />
+
+      <section className="mt-8" aria-label="Photos du magasin">
+        <PhotoAttachmentManager
+          canWrite={canWriteAttachments}
+          description="Conservez des vues générales du magasin comme observations datées, sans modifier les données d’implantation."
+          initialAttachments={attachments}
+          storeId={storeId}
+          targets={[
+            {
+              label: "Magasin",
+              description: "Vue générale rattachée au magasin autorisé.",
+              target: { type: "store" },
+            },
+          ]}
+          title="Photos du magasin"
+        />
+      </section>
     </main>
   );
 }
