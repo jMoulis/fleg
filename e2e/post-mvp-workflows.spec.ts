@@ -102,13 +102,7 @@ test("REL-01 versionne le plan et enregistre une allocation", async ({
 }, testInfo) => {
   const marker = recipeMarker(testInfo.project.name);
   const { storeBaseUrl, storeId } = await signInToStore(page);
-  const dashboardPeriodLabel = await page
-    .getByText(/^Période \d{4}-\d{2}/)
-    .first()
-    .textContent();
-  const allocationPeriodKey = dashboardPeriodLabel?.match(/\d{4}-\d{2}/)?.[0];
-  expect(allocationPeriodKey).toBeDefined();
-  await importProjectFixture({
+  const allocationPeriodKey = await importProjectFixture({
     page,
     projectName: testInfo.project.name,
     storeId,
