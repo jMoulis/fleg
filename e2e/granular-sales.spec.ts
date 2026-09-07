@@ -1,0 +1,172 @@
+import { expect, test, type Page } from "@playwright/test";
+
+import {
+  dailySalesReadResponseSchema,
+  weeklySalesReadResponseSchema,
+} from "@/domain/analytics/granular-sales-schemas";
+import { dashboardResponseSchema } from "@/domain/analytics/schemas";
+import {
+  dailyImportCommitResponseSchema,
+  dailyImportPreviewResponseSchema,
+} from "@/domain/imports/daily-schemas";
+import { productOptionsResponseSchema } from "@/domain/products/schemas";
+import {
+  getDemoStorePair,
+  selectPrimaryDemoStore,
+} from "./demo-store";
+
+function dailyCsv(projectName: string) {
+  const prefix = projectName === "mobile-390" ? "390" : "1440";
+  return [
+    "Date;ITM8 Prio;EAN Prio;Libellé;Quantité;Valeur prix vente;Val Marge",
+    `31/12/2026;${prefix}01;3${prefix.padEnd(12, "0")};Produit journalier ${prefix} A;2;20,00;6,00`,
+    "31/12/2026;;;Total;2;20,00;6,00",
+    `01/01/2027;${prefix}02;4${prefix.padEnd(12, "0")};Produit journalier ${prefix} B;3;30,00;9,00`,
+    "01/01/2027;;;Total;3;30,00;9,00",
+  ].join("\n");
+}
+
+async function monthlyDashboardSnapshot(page: Page, storeId: string) {
+  const response = await page.request.get(
+    `/api/stores/${storeId}/dashboard?period=2026-12`,
+  );
+  expect(response.status()).toBe(200);
+  const result = dashboardResponseSchema.parse(await response.json());
+  if (!result.dashboard) return null;
+  return {
+    periodKey: result.dashboard.periodKey,
+    revenueCents: result.dashboard.revenueCents,
+    marginCents: result.dashboard.marginCents,
+    marginRatio: result.dashboard.marginRatio,
+    quantity: result.dashboard.quantity,
+    productCount: result.dashboard.productCount,
+    priorYearRevenueCents: result.dashboard.priorYearRevenueCents,
+    yearOverYearRatio: result.dashboard.yearOverYearRatio,
+    targetRevenueCents: result.dashboard.targetRevenueCents,
+    targetAttainmentRatio: result.dashboard.targetAttainmentRatio,
+    calculationVersion: result.dashboard.calculationVersion,
+  };
+}
+
+test("V3-01 importe le journalier et expose une semaine ISO sans changer le mensuel", async ({
+  page,
+}, testInfo) => {
+  const stores = await getDemoStorePair(page);
+  const projectName = testInfo.project.name;
+  const csv = dailyCsv(projectName);
+  const fileName = `daily-${projectName}.csv`;
+  const monthlyBefore = await monthlyDashboardSnapshot(page, stores.primary.id);
+
+  await page.goto("/stores");
+  await selectPrimaryDemoStore(page);
+  await page.getByRole("button", { name: "Ouvrir le cockpit" }).click();
+  await page.getByRole("link", { name: "Imports" }).click();
+
+  const dailySection = page.getByLabel("Ventes journalières", { exact: true });
+  await dailySection.getByLabel("Ventes journalières Mercalys").setInputFiles({
+    name: fileName,
+    mimeType: "text/csv",
+    buffer: Buffer.from(csv),
+  });
+  const previewResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/imports/daily/preview") &&
+      response.request().method() === "POST",
+  );
+  await dailySection
+    .getByRole("button", { name: "Prévisualiser" })
+    .click();
+  const previewResponse = await previewResponsePromise;
+  expect(previewResponse.status()).toBe(200);
+  const preview = dailyImportPreviewResponseSchema.parse(
+    await previewResponse.json(),
+  );
+  expect(preview.startDate).toBe("2026-12-31");
+  expect(preview.endDate).toBe("2027-01-01");
+  expect(preview.excludedRowCount).toBe(2);
+  expect(preview.coverage.status).toBe("complete");
+
+  const commitResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/imports/daily/${preview.importId}/commit`) &&
+      response.request().method() === "POST",
+  );
+  await dailySection
+    .getByRole("button", { name: "Valider l’import journalier" })
+    .click();
+  const commitResponse = await commitResponsePromise;
+  expect(commitResponse.status()).toBe(200);
+  const commit = dailyImportCommitResponseSchema.parse(
+    await commitResponse.json(),
+  );
+  expect(commit.importedFactCount).toBeGreaterThan(0);
+  await expect(
+    dailySection.getByRole("heading", { name: "Import journalier validé" }),
+  ).toBeVisible();
+
+  const weeklyRow = page.getByRole("row", { name: /2026-W53/ });
+  await expect(weeklyRow).toBeVisible();
+  await expect(weeklyRow).toContainText("Partielle · 2/7");
+
+  const replay = await page.request.post(
+    `/api/stores/${stores.primary.id}/imports/daily/${preview.importId}/commit`,
+    {
+      data: {
+        resolutions: preview.unresolvedAliases.map((alias) => ({
+          externalKey: alias.externalKey,
+          action: "create" as const,
+          canonicalLabel: alias.sourceLabel,
+        })),
+      },
+    },
+  );
+  expect(replay.status()).toBe(200);
+  const replayedCommit = dailyImportCommitResponseSchema.parse(
+    await replay.json(),
+  );
+  expect(replayedCommit.dataRevision).toBe(commit.dataRevision);
+  expect(replayedCommit.importedFactCount).toBe(commit.importedFactCount);
+
+  const weeklyResponse = await page.request.get(
+    `/api/stores/${stores.primary.id}/sales/weekly?from=2026-12-31&to=2027-01-01`,
+  );
+  expect(weeklyResponse.status()).toBe(200);
+  const weekly = weeklySalesReadResponseSchema.parse(
+    await weeklyResponse.json(),
+  );
+  expect(weekly.from).toBe("2026-12-28");
+  expect(weekly.to).toBe("2027-01-03");
+  expect(weekly.weeks[0]).toMatchObject({
+    isoWeekKey: "2026-W53",
+    coverage: { status: "partial" },
+  });
+
+  const otherStoreResponse = await page.request.get(
+    `/api/stores/${stores.control.id}/sales/daily?from=2026-12-31&to=2027-01-01`,
+  );
+  expect(otherStoreResponse.status()).toBe(200);
+  const otherStoreDaily = dailySalesReadResponseSchema.parse(
+    await otherStoreResponse.json(),
+  );
+  expect(otherStoreDaily.days).toEqual([]);
+  expect(otherStoreDaily.coverage.status).toBe("unknown");
+
+  const productsResponse = await page.request.get(
+    `/api/stores/${stores.primary.id}/products/options`,
+  );
+  expect(productsResponse.status()).toBe(200);
+  const products = productOptionsResponseSchema.parse(
+    await productsResponse.json(),
+  );
+  const primaryProduct = products.products.find(
+    (product) => product.label === `Produit journalier ${projectName === "mobile-390" ? "390" : "1440"} A`,
+  );
+  expect(primaryProduct).toBeDefined();
+  const foreignProductResponse = await page.request.get(
+    `/api/stores/${stores.control.id}/sales/daily?from=2026-12-31&to=2027-01-01&productId=${primaryProduct?.id ?? ""}`,
+  );
+  expect(foreignProductResponse.status()).toBe(404);
+
+  const monthlyAfter = await monthlyDashboardSnapshot(page, stores.primary.id);
+  expect(monthlyAfter).toEqual(monthlyBefore);
+});

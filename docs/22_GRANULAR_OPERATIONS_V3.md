@@ -146,7 +146,7 @@ choice. They must never add a daily rollup to the corresponding monthly fact.
 
 ### API boundary
 
-Planned routes:
+Implemented routes:
 
 - `POST /api/stores/:storeId/imports/daily/preview`;
 - `POST /api/stores/:storeId/imports/daily/:importId/commit`;
@@ -157,6 +157,12 @@ Planned routes:
 Preview requires `imports.create`, commit requires `imports.commit`, and sales
 reads require `analytics.read`. Route parameters never supply organization or
 authorization scope.
+
+Daily and weekly range parameters are optional only as a pair. The default is a
+28-day window ending on the latest authorized observation and the explicit
+maximum is 366 days. Weekly results expand intersecting ISO weeks to their full
+Monday-to-Sunday boundaries. The optional `productId` is revalidated against the
+authorized organization and store before any fact query.
 
 ### V3-01 non-goals
 

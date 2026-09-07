@@ -33,10 +33,15 @@ Thresholds configurable.
 Daily observations retain their source business date. ISO weekly aggregates are
 derived from active daily facts, use Monday-to-Sunday week boundaries and carry
 coverage status plus the store data revision. Missing dates are not zero demand.
+The default granular window is the 28 days ending on the latest authorized
+observation; explicit windows are capped at 366 days. Weekly queries expose the
+full boundaries of every intersecting ISO week, including missing dates,
+corrected active facts and non-positive net-demand warnings.
 
 Monthly `salesFacts` and daily rollups are distinct observed/evidence paths. A
-reconciliation may compare them for a complete month, but an analytical result
-must choose one grain and must never sum both.
+reconciliation compares them only for a complete daily month. Incomplete months
+retain both observed totals but withhold deltas; zero monthly denominators return
+null ratios. An analytical result must choose one grain and must never sum both.
 
 True XYZ uses population standard deviation of complete weekly unit-demand
 windows. Window length, minimum complete weeks, small-mean guard and X/Y
