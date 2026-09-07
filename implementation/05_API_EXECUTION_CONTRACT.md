@@ -23,6 +23,8 @@ GET/POST  /api/stores/:storeId/layout/versions
 POST      /api/stores/:storeId/layout/optimize
 GET/POST  /api/stores/:storeId/commercial-events
 GET/POST  /api/stores/:storeId/markdown
+GET/PATCH /api/stores/:storeId/space-policies
+GET/POST  /api/stores/:storeId/allocations
 POST      /api/stores/:storeId/ai/chat
 GET       /api/network/dashboard
 POST      /api/network/ai/chat

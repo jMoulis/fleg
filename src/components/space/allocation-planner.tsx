@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Calculator,
   CheckCircle2,
+  CircleAlert,
   Lock,
   LockOpen,
   Plus,
@@ -13,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { ProductSpacePolicyEditor } from "@/components/space/product-space-policy-editor";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,11 +47,19 @@ import {
   type ShelfCapacity,
 } from "@/domain/space/allocation-schemas";
 import {
+  buildAllocationLimitations,
   buildHeuristicAllocationDraft,
+  calculateAllocationProductEconomics,
+  isAllocationProductCompatible,
   summarizeAllocations,
+  summarizeAllocationEconomics,
   validateAllocationDraft,
 } from "@/domain/space/allocations";
-import { formatMoney, formatRatio } from "@/lib/formatting";
+import {
+  configurableFixtureTypes,
+  type ProductSpacePolicySet,
+} from "@/domain/space/product-space-policy-schemas";
+import { formatMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 
 interface AllocationPlannerProps {
@@ -60,6 +70,7 @@ interface AllocationPlannerProps {
   products: AllocationProduct[];
   basis: AllocationBasis;
   defaultConfig: AllocationConfig;
+  initialPolicySet: ProductSpacePolicySet;
   initialPlan: AllocationPlan | null;
   canWrite: boolean;
 }
@@ -78,9 +89,9 @@ const manualEvidence = [
   "Répartition saisie ou ajustée manuellement par le manager.",
 ];
 const heuristicEvidence = [
-  "Brouillon classé sur la marge prévisionnelle disponible, puis réparti dans l'ordre physique du plan.",
-  "Les allocations verrouillées sont conservées.",
-  "La démarque et la compatibilité produit-mobilier ne sont pas encore disponibles : validation manager obligatoire.",
+  "Calcul déterministe classé sur la marge prévisionnelle après démarque connue.",
+  "Les lignes verrouillées et les lignes de produits obligatoires déjà placées sont conservées.",
+  "Les nouveaux produits obligatoires sont placés en priorité sur un mobilier compatible.",
 ];
 
 export function AllocationPlanner({
@@ -91,6 +102,7 @@ export function AllocationPlanner({
   products,
   basis,
   defaultConfig,
+  initialPolicySet,
   initialPlan,
   canWrite,
 }: AllocationPlannerProps) {
@@ -101,6 +113,7 @@ export function AllocationPlanner({
   const [config, setConfig] = useState<AllocationConfig>(
     initialPlan?.config ?? defaultConfig,
   );
+  const [policySet, setPolicySet] = useState(initialPolicySet);
   const [source, setSource] = useState<"manager" | "heuristic">(
     initialPlan?.source ?? "manager",
   );
@@ -127,6 +140,13 @@ export function AllocationPlanner({
     () => new Map(products.map((product) => [product.id, product])),
     [products],
   );
+  const policyByProductId = useMemo(
+    () =>
+      new Map(
+        policySet.policies.map((policy) => [policy.productId, policy]),
+      ),
+    [policySet.policies],
+  );
   const authorizedProductIds = useMemo(
     () => new Set(products.map((product) => product.id)),
     [products],
@@ -142,8 +162,9 @@ export function AllocationPlanner({
         allocations,
         config,
         authorizedProductIds,
+        policies: policySet.policies,
       }),
-    [allocations, authorizedProductIds, capacities, config],
+    [allocations, authorizedProductIds, capacities, config, policySet.policies],
   );
   const selectedCapacity = capacities.find(
     (capacity) => capacity.shelfId === selectedShelfId,
@@ -163,7 +184,13 @@ export function AllocationPlanner({
     (product) =>
       !selectedAllocations.some(
         (allocation) => allocation.productId === product.id,
-      ),
+      ) &&
+      (!selectedCapacity ||
+        isAllocationProductCompatible(
+          product.id,
+          selectedCapacity,
+          policyByProductId,
+        )),
   );
   const productToAddId = availableProducts.some(
     (product) => product.id === selectedProductId,
@@ -184,6 +211,23 @@ export function AllocationPlanner({
         first.label.localeCompare(second.label, "fr"),
     );
   const groupedCapacities = groupCapacities(capacities);
+  const economics = useMemo(
+    () =>
+      summarizeAllocationEconomics({
+        products,
+        config,
+        periodKey: basis.periodKey,
+      }),
+    [basis.periodKey, config, products],
+  );
+  const limitations = useMemo(
+    () =>
+      buildAllocationLimitations({
+        products,
+        policies: policySet.policies,
+      }),
+    [policySet.policies, products],
+  );
 
   function markManagerEdit() {
     setSource("manager");
@@ -277,6 +321,7 @@ export function AllocationPlanner({
       products,
       currentAllocations: allocations,
       config: validatedConfig.data,
+      policies: policySet.policies,
     });
     setAllocations(next);
     setSource("heuristic");
@@ -311,11 +356,20 @@ export function AllocationPlanner({
       source,
       modelVersion:
         source === "heuristic"
-          ? "space-allocation-heuristic-v1"
+          ? "space-allocation-heuristic-v2"
           : "manual-allocation-v1",
       config,
-      basis,
+      basis: {
+        ...basis,
+        policyRevision: policySet.revision,
+      },
       evidence,
+      limitations,
+      constraintSnapshot: {
+        policyRevision: policySet.revision,
+        policies: policySet.policies,
+      },
+      economics,
       allocations,
       note,
     });
@@ -419,6 +473,15 @@ export function AllocationPlanner({
           </AlertDescription>
         </Alert>
       ) : null}
+
+      <ProductSpacePolicyEditor
+        canWrite={canWrite}
+        fixtureTypes={configurableFixtureTypes}
+        initialPolicySet={policySet}
+        onSaved={setPolicySet}
+        products={products}
+        storeId={storeId}
+      />
 
       <div className="grid items-start gap-5 xl:grid-cols-[18rem_minmax(0,1fr)_22rem]">
         <Card className="xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
@@ -539,10 +602,20 @@ export function AllocationPlanner({
                   <tbody>
                     {selectedAllocations.map((allocation) => {
                       const product = productById.get(allocation.productId);
+                      const policy = policyByProductId.get(
+                        allocation.productId,
+                      );
                       return (
                         <tr className="border-t" key={allocation.productId}>
                           <th className="px-3 py-3 text-left font-medium">
-                            {product?.label ?? "Produit indisponible"}
+                            <span className="block">
+                              {product?.label ?? "Produit indisponible"}
+                            </span>
+                            {policy?.mustStock ? (
+                              <Badge className="mt-1" variant="outline">
+                                Stock obligatoire
+                              </Badge>
+                            ) : null}
                           </th>
                           <td className="w-32 px-3 py-2">
                             <div className="flex items-center gap-1">
@@ -679,6 +752,18 @@ export function AllocationPlanner({
                 step={0.01}
                 value={config.facingIncrementM}
               />
+              <NumberSetting
+                disabled={!canWrite}
+                id="markdown-penalty-weight"
+                label="Poids de la démarque"
+                max={2}
+                min={0}
+                onChange={(value) =>
+                  updateConfig("markdownPenaltyWeight", value)
+                }
+                step={0.05}
+                value={config.markdownPenaltyWeight}
+              />
               <Button
                 className="w-full"
                 disabled={!canWrite || products.length === 0}
@@ -718,26 +803,37 @@ export function AllocationPlanner({
                 />
               </div>
               <div className="mt-3 max-h-72 space-y-1 overflow-y-auto">
-                {filteredProducts.slice(0, 100).map((product) => (
-                  <button
-                    className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-muted"
-                    key={product.id}
-                    onClick={() => setSelectedProductId(product.id)}
-                    type="button"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium">
-                        {product.label}
+                {filteredProducts.slice(0, 100).map((product) => {
+                  const productEconomics =
+                    calculateAllocationProductEconomics(product, config);
+                  const policy = policyByProductId.get(product.id);
+                  return (
+                    <button
+                      className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-muted"
+                      key={product.id}
+                      onClick={() => setSelectedProductId(product.id)}
+                      type="button"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">
+                          {product.label}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          CA {formatMoney(product.revenueCents)} · marge après
+                          démarque {formatMoney(productEconomics.expectedPostMarkdownMarginCents)}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        CA {formatMoney(product.revenueCents)} · marge {formatRatio(product.marginRatio)}
+                      <span className="flex shrink-0 gap-1">
+                        {policy?.mustStock ? (
+                          <Badge variant="secondary">Obligatoire</Badge>
+                        ) : null}
+                        {product.abcClass ? (
+                          <Badge variant="outline">{product.abcClass}</Badge>
+                        ) : null}
                       </span>
-                    </span>
-                    {product.abcClass ? (
-                      <Badge variant="outline">{product.abcClass}</Badge>
-                    ) : null}
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
                 {filteredProducts.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">
                     Aucun produit trouvé.
@@ -746,8 +842,84 @@ export function AllocationPlanner({
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Économie et limites</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Révisions données {basis.dataRevision ?? "—"} · réglages {basis.settingsRevision} · contraintes {policySet.revision}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <dl className="grid gap-2">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Couverture démarque</dt>
+                  <dd className="font-medium">
+                    {economics.markdownObservedProductCount}/{economics.consideredProductCount}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Démarque connue</dt>
+                  <dd className="font-medium">
+                    {formatMoney(economics.observedMarkdownCents)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Marge après démarque connue</dt>
+                  <dd className="font-medium">
+                    {formatMoney(
+                      economics.knownExpectedPostMarkdownMarginCents,
+                    )}
+                  </dd>
+                </div>
+              </dl>
+              <div className="border-t pt-3">
+                <p className="flex items-center gap-2 font-medium">
+                  <CircleAlert aria-hidden="true" className="size-4" />
+                  Limites du brouillon
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-5 text-muted-foreground">
+                  {limitations.map((limitation) => (
+                    <li key={limitation}>{limitation}</li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {initialPlan ? (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Allocation enregistrée · version {initialPlan.version}</CardTitle>
+              <Badge variant="outline">{initialPlan.modelVersion}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Snapshot contraintes {initialPlan.constraintSnapshot.policyRevision} · réglages {initialPlan.basis.settingsRevision} · données {initialPlan.basis.dataRevision ?? "—"}
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-5 lg:grid-cols-2">
+            <div>
+              <p className="text-sm font-medium">Éléments de preuve</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                {initialPlan.evidence.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Limites figées</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                {initialPlan.limitations.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -925,6 +1097,7 @@ function NumberSetting({
   label,
   value,
   min,
+  max,
   step,
   disabled,
   onChange,
@@ -933,6 +1106,7 @@ function NumberSetting({
   label: string;
   value: number;
   min: number;
+  max?: number;
   step: number;
   disabled: boolean;
   onChange: (value: number) => void;
@@ -944,6 +1118,7 @@ function NumberSetting({
         disabled={disabled}
         id={id}
         min={min}
+        max={max}
         onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
         step={step}
         type="number"

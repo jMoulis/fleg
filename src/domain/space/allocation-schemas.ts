@@ -2,6 +2,8 @@ import * as z from "zod";
 
 import { abcClassSchema, confidenceSchema } from "@/domain/analytics/schemas";
 import { periodKeySchema } from "@/domain/imports/schemas";
+import { productSpacePolicySchema } from "@/domain/space/product-space-policy-schemas";
+import { fixtureTypeSchema } from "@/domain/space/schemas";
 import { storeIdSchema } from "@/domain/stores/schemas";
 
 const mongoIdSchema = z.string().regex(/^[a-f\d]{24}$/i);
@@ -11,6 +13,7 @@ export const allocationConfigSchema = z.object({
   minimumFacingWidthM: positiveWidthSchema.max(10),
   targetProductsPerShelf: z.number().int().min(1).max(8),
   facingIncrementM: positiveWidthSchema.max(1),
+  markdownPenaltyWeight: z.number().finite().min(0).max(2).default(1),
 });
 export type AllocationConfig = z.infer<typeof allocationConfigSchema>;
 
@@ -19,11 +22,13 @@ export const defaultAllocationConfig: AllocationConfig =
     minimumFacingWidthM: 0.25,
     targetProductsPerShelf: 2,
     facingIncrementM: 0.05,
+    markdownPenaltyWeight: 1,
   });
 
 export const allocationModelVersionSchema = z.enum([
   "manual-allocation-v1",
   "space-allocation-heuristic-v1",
+  "space-allocation-heuristic-v2",
 ]);
 export type AllocationModelVersion = z.infer<
   typeof allocationModelVersionSchema
@@ -38,8 +43,19 @@ export const allocationProductSchema = z.object({
   forecastRevenueCents: z.number().int().safe().nullable(),
   abcClass: abcClassSchema.nullable(),
   confidence: confidenceSchema.nullable(),
+  markdownCents: z.number().int().safe().nonnegative().nullable(),
 });
 export type AllocationProduct = z.infer<typeof allocationProductSchema>;
+
+export const allocationProductEconomicsSchema = z.object({
+  projectedGrossMarginCents: z.number().int().safe().nullable(),
+  markdownCents: z.number().int().safe().nonnegative().nullable(),
+  expectedPostMarkdownMarginCents: z.number().int().safe().nullable(),
+  scoreCents: z.number().int().safe().positive(),
+});
+export type AllocationProductEconomics = z.infer<
+  typeof allocationProductEconomicsSchema
+>;
 
 export const allocationLineSchema = z.object({
   productId: mongoIdSchema,
@@ -53,8 +69,43 @@ export const allocationBasisSchema = z.object({
   periodKey: periodKeySchema.nullable(),
   calculationVersion: z.string().trim().min(1).max(100).nullable(),
   dataRevision: z.number().int().nonnegative().nullable(),
+  settingsRevision: z.number().int().nonnegative().default(0),
+  policyRevision: z.number().int().nonnegative().default(0),
 });
 export type AllocationBasis = z.infer<typeof allocationBasisSchema>;
+
+export const allocationConstraintSnapshotSchema = z.object({
+  policyRevision: z.number().int().nonnegative(),
+  policies: z.array(productSpacePolicySchema).max(2_000),
+});
+export type AllocationConstraintSnapshot = z.infer<
+  typeof allocationConstraintSnapshotSchema
+>;
+
+export const allocationEconomicsSummarySchema = z.object({
+  periodKey: periodKeySchema.nullable(),
+  consideredProductCount: z.number().int().nonnegative(),
+  markdownObservedProductCount: z.number().int().nonnegative(),
+  observedMarkdownCents: z.number().int().safe().nonnegative().nullable(),
+  knownExpectedPostMarkdownMarginCents: z.number().int().safe().nullable(),
+  markdownCoverage: z.enum(["none", "partial", "complete"]),
+});
+export type AllocationEconomicsSummary = z.infer<
+  typeof allocationEconomicsSummarySchema
+>;
+
+const legacyConstraintSnapshot: AllocationConstraintSnapshot = {
+  policyRevision: 0,
+  policies: [],
+};
+const legacyEconomicsSummary: AllocationEconomicsSummary = {
+  periodKey: null,
+  consideredProductCount: 0,
+  markdownObservedProductCount: 0,
+  observedMarkdownCents: null,
+  knownExpectedPostMarkdownMarginCents: null,
+  markdownCoverage: "none",
+};
 
 function addDuplicateLineIssue(
   allocations: AllocationLine[],
@@ -91,6 +142,19 @@ export const allocationPlanSchema = z
     config: allocationConfigSchema,
     basis: allocationBasisSchema,
     evidence: z.array(z.string().trim().min(1).max(300)).min(1).max(10),
+    limitations: z
+      .array(z.string().trim().min(1).max(300))
+      .min(1)
+      .max(10)
+      .default([
+        "Version historique : contraintes et couverture de démarque non figées.",
+      ]),
+    constraintSnapshot: allocationConstraintSnapshotSchema.default(
+      legacyConstraintSnapshot,
+    ),
+    economics: allocationEconomicsSummarySchema.default(
+      legacyEconomicsSummary,
+    ),
     allocations: z.array(allocationLineSchema).max(2_000),
     note: z.string().trim().max(500).nullable(),
     createdBy: z.string().min(1),
@@ -112,6 +176,12 @@ export const allocationPlanCreateInputSchema = z
     config: allocationConfigSchema,
     basis: allocationBasisSchema,
     evidence: z.array(z.string().trim().min(1).max(300)).min(1).max(10),
+    limitations: z
+      .array(z.string().trim().min(1).max(300))
+      .min(1)
+      .max(10),
+    constraintSnapshot: allocationConstraintSnapshotSchema,
+    economics: allocationEconomicsSummarySchema,
     allocations: z.array(allocationLineSchema).max(2_000),
     note: z.string().trim().max(500).optional(),
   })
@@ -132,6 +202,7 @@ export const shelfCapacitySchema = z.object({
   shelfLabel: z.string().min(1),
   fixtureId: z.string().min(1),
   fixtureName: z.string().min(1),
+  fixtureType: fixtureTypeSchema,
   faceId: z.string().min(1),
   faceLabel: z.string().min(1),
   moduleId: z.string().min(1),
@@ -160,6 +231,8 @@ export const allocationValidationIssueSchema = z.object({
     "UNKNOWN_PRODUCT",
     "BELOW_MINIMUM_FACING",
     "SHELF_CAPACITY_EXCEEDED",
+    "INCOMPATIBLE_FIXTURE",
+    "MUST_STOCK_MISSING",
   ]),
   shelfId: z.string().nullable(),
   productId: z.string().nullable(),

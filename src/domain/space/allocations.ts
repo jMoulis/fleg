@@ -1,14 +1,19 @@
 import {
+  allocationEconomicsSummarySchema,
+  allocationProductEconomicsSchema,
   allocationSummarySchema,
   allocationValidationIssueSchema,
   shelfCapacitySchema,
   type AllocationConfig,
+  type AllocationEconomicsSummary,
   type AllocationLine,
   type AllocationProduct,
+  type AllocationProductEconomics,
   type AllocationSummary,
   type AllocationValidationIssue,
   type ShelfCapacity,
 } from "@/domain/space/allocation-schemas";
+import type { ProductSpacePolicy } from "@/domain/space/product-space-policy-schemas";
 import type { LayoutVersion } from "@/domain/space/schemas";
 
 function roundMetric(value: number): number {
@@ -27,6 +32,7 @@ export function flattenLayoutCapacity(
             shelfLabel: shelf.label,
             fixtureId: fixture.id,
             fixtureName: fixture.name,
+            fixtureType: fixture.type,
             faceId: face.id,
             faceLabel: face.label,
             moduleId: sellingModule.id,
@@ -104,11 +110,15 @@ export function validateAllocationDraft(input: {
   allocations: AllocationLine[];
   config: AllocationConfig;
   authorizedProductIds?: Set<string>;
+  policies?: ProductSpacePolicy[];
 }): AllocationValidationIssue[] {
   const capacityByShelfId = new Map(
     input.capacities.map((capacity) => [capacity.shelfId, capacity]),
   );
   const allocatedByShelfId = new Map<string, number>();
+  const policyByProductId = new Map(
+    (input.policies ?? []).map((policy) => [policy.productId, policy]),
+  );
   const issues: AllocationValidationIssue[] = [];
 
   for (const allocation of input.allocations) {
@@ -151,6 +161,21 @@ export function validateAllocationDraft(input: {
       );
     }
 
+    const policy = policyByProductId.get(allocation.productId);
+    if (
+      policy?.suitability === "restricted" &&
+      !policy.allowedFixtureTypes.includes(capacity.fixtureType)
+    ) {
+      issues.push(
+        allocationValidationIssueSchema.parse({
+          code: "INCOMPATIBLE_FIXTURE",
+          shelfId: allocation.shelfId,
+          productId: allocation.productId,
+          message: `Ce produit n’est pas compatible avec le mobilier « ${capacity.fixtureName} »`,
+        }),
+      );
+    }
+
     allocatedByShelfId.set(
       allocation.shelfId,
       (allocatedByShelfId.get(allocation.shelfId) ?? 0) +
@@ -172,15 +197,152 @@ export function validateAllocationDraft(input: {
     }
   }
 
+  const allocatedProductIds = new Set(
+    input.allocations.map((allocation) => allocation.productId),
+  );
+  for (const policy of input.policies ?? []) {
+    const productIsActive =
+      !input.authorizedProductIds ||
+      input.authorizedProductIds.has(policy.productId);
+    if (
+      policy.mustStock &&
+      productIsActive &&
+      !allocatedProductIds.has(policy.productId)
+    ) {
+      issues.push(
+        allocationValidationIssueSchema.parse({
+          code: "MUST_STOCK_MISSING",
+          shelfId: null,
+          productId: policy.productId,
+          message: "Un produit déclaré obligatoire manque dans l’allocation",
+        }),
+      );
+    }
+  }
+
   return issues;
 }
 
-function productScore(product: AllocationProduct): number {
+export function calculateAllocationProductEconomics(
+  product: AllocationProduct,
+  config: Pick<AllocationConfig, "markdownPenaltyWeight">,
+): AllocationProductEconomics {
   const projectedRevenueCents =
-    product.forecastRevenueCents ?? product.revenueCents ?? 0;
-  const marginRatio = Math.max(product.marginRatio ?? 0, 0);
+    product.forecastRevenueCents ?? product.revenueCents;
+  const projectedGrossMarginCents =
+    projectedRevenueCents === null || product.marginRatio === null
+      ? null
+      : Math.round(projectedRevenueCents * product.marginRatio);
+  const expectedPostMarkdownMarginCents =
+    projectedGrossMarginCents === null || product.markdownCents === null
+      ? null
+      : Math.round(
+          projectedGrossMarginCents -
+            product.markdownCents * config.markdownPenaltyWeight,
+        );
 
-  return Math.max(1, projectedRevenueCents * marginRatio);
+  return allocationProductEconomicsSchema.parse({
+    projectedGrossMarginCents,
+    markdownCents: product.markdownCents,
+    expectedPostMarkdownMarginCents,
+    scoreCents: Math.max(
+      1,
+      expectedPostMarkdownMarginCents ?? projectedGrossMarginCents ?? 0,
+    ),
+  });
+}
+
+export function summarizeAllocationEconomics(input: {
+  products: AllocationProduct[];
+  config: Pick<AllocationConfig, "markdownPenaltyWeight">;
+  periodKey: string | null;
+}): AllocationEconomicsSummary {
+  const economics = input.products.map((product) =>
+    calculateAllocationProductEconomics(product, input.config),
+  );
+  const observed = economics.filter(
+    (product) => product.markdownCents !== null,
+  );
+  const knownPostMarkdownMargins = economics.flatMap((product) =>
+    product.expectedPostMarkdownMarginCents === null
+      ? []
+      : [product.expectedPostMarkdownMarginCents],
+  );
+  const markdownCoverage =
+    observed.length === 0
+      ? "none"
+      : observed.length === economics.length
+        ? "complete"
+        : "partial";
+
+  return allocationEconomicsSummarySchema.parse({
+    periodKey: input.periodKey,
+    consideredProductCount: economics.length,
+    markdownObservedProductCount: observed.length,
+    observedMarkdownCents:
+      observed.length === 0
+        ? null
+        : observed.reduce(
+            (total, product) => total + (product.markdownCents ?? 0),
+            0,
+          ),
+    knownExpectedPostMarkdownMarginCents:
+      knownPostMarkdownMargins.length === 0
+        ? null
+        : knownPostMarkdownMargins.reduce(
+            (total, marginCents) => total + marginCents,
+            0,
+          ),
+    markdownCoverage,
+  });
+}
+
+export function buildAllocationLimitations(input: {
+  products: AllocationProduct[];
+  policies: ProductSpacePolicy[];
+}): string[] {
+  const knownMarkdownCount = input.products.filter(
+    (product) => product.markdownCents !== null,
+  ).length;
+  const restrictedProductIds = new Set(
+    input.policies
+      .filter((policy) => policy.suitability === "restricted")
+      .map((policy) => policy.productId),
+  );
+  const unknownSuitabilityCount = input.products.filter(
+    (product) => !restrictedProductIds.has(product.id),
+  ).length;
+
+  return [
+    knownMarkdownCount === 0
+      ? "Aucune démarque produit observée pour la période : le classement utilise la marge théorique et ne suppose aucune perte nulle."
+      : `Démarque observée pour ${knownMarkdownCount}/${input.products.length} produits : les autres pertes restent inconnues.`,
+    unknownSuitabilityCount === 0
+      ? "Compatibilité mobilier explicitement renseignée pour tous les produits considérés."
+      : `Compatibilité mobilier inconnue pour ${unknownSuitabilityCount}/${input.products.length} produits : ces produits restent proposés avec validation manager.`,
+    "Les données mensuelles ne décrivent ni le stock disponible, ni la casse future, ni la demande quotidienne.",
+  ];
+}
+
+function productScore(
+  product: AllocationProduct,
+  config: Pick<AllocationConfig, "markdownPenaltyWeight">,
+): number {
+  return calculateAllocationProductEconomics(product, config).scoreCents;
+}
+
+export function isAllocationProductCompatible(
+  productId: string,
+  capacity: ShelfCapacity,
+  policyByProductId: Map<string, ProductSpacePolicy>,
+): boolean {
+  const policy = policyByProductId.get(productId);
+
+  return (
+    !policy ||
+    policy.suitability === "unknown" ||
+    policy.allowedFixtureTypes.includes(capacity.fixtureType)
+  );
 }
 
 function roundFacing(value: number): number {
@@ -202,69 +364,115 @@ export function buildHeuristicAllocationDraft(input: {
   products: AllocationProduct[];
   currentAllocations: AllocationLine[];
   config: AllocationConfig;
+  policies?: ProductSpacePolicy[];
 }): AllocationLine[] {
+  const policyByProductId = new Map(
+    (input.policies ?? []).map((policy) => [policy.productId, policy]),
+  );
   const products = [...input.products].sort((first, second) => {
-    const scoreDifference = productScore(second) - productScore(first);
+    const scoreDifference =
+      productScore(second, input.config) - productScore(first, input.config);
     return scoreDifference || first.label.localeCompare(second.label, "fr");
   });
-  const lockedAllocations = input.currentAllocations.filter(
-    (allocation) => allocation.locked,
+  const protectedAllocations = input.currentAllocations.filter(
+    (allocation) =>
+      allocation.locked ||
+      policyByProductId.get(allocation.productId)?.mustStock === true,
   );
-  const lockedByShelfId = new Map<string, AllocationLine[]>();
+  const protectedByShelfId = new Map<string, AllocationLine[]>();
 
-  for (const allocation of lockedAllocations) {
-    lockedByShelfId.set(allocation.shelfId, [
-      ...(lockedByShelfId.get(allocation.shelfId) ?? []),
+  for (const allocation of protectedAllocations) {
+    protectedByShelfId.set(allocation.shelfId, [
+      ...(protectedByShelfId.get(allocation.shelfId) ?? []),
       allocation,
     ]);
   }
 
   if (products.length === 0) {
-    return lockedAllocations;
+    return protectedAllocations;
   }
 
+  const activeProductIds = new Set(products.map((product) => product.id));
+  const allocatedMustStockProductIds = new Set(
+    protectedAllocations
+      .filter(
+        (allocation) =>
+          policyByProductId.get(allocation.productId)?.mustStock === true,
+      )
+      .map((allocation) => allocation.productId),
+  );
+  const missingMustStockProductIds = new Set(
+    (input.policies ?? [])
+      .filter(
+        (policy) =>
+          policy.mustStock &&
+          activeProductIds.has(policy.productId) &&
+          !allocatedMustStockProductIds.has(policy.productId),
+      )
+      .map((policy) => policy.productId),
+  );
   const generated: AllocationLine[] = [];
   let productCursor = 0;
 
   for (const capacity of input.capacities) {
-    const shelfLocked = lockedByShelfId.get(capacity.shelfId) ?? [];
-    const lockedWidthM = shelfLocked.reduce(
+    const shelfProtected = protectedByShelfId.get(capacity.shelfId) ?? [];
+    const protectedWidthM = shelfProtected.reduce(
       (total, allocation) => total + allocation.facingWidthM,
       0,
     );
     const availableWidthM = roundFacing(
-      Math.max(0, capacity.capacityWidthM - lockedWidthM),
+      Math.max(0, capacity.capacityWidthM - protectedWidthM),
     );
     const maximumProductCount = Math.floor(
       (availableWidthM + 0.000_1) / input.config.minimumFacingWidthM,
     );
-    const productCount = Math.min(
-      input.config.targetProductsPerShelf,
-      maximumProductCount,
-      products.length,
-    );
-
-    if (productCount === 0) {
+    if (maximumProductCount === 0) {
       continue;
     }
 
-    const lockedProductIds = new Set(
-      shelfLocked.map((allocation) => allocation.productId),
+    const shelfProductIds = new Set(
+      shelfProtected.map((allocation) => allocation.productId),
     );
     const selected: AllocationProduct[] = [];
+    for (const product of products) {
+      if (
+        selected.length >= maximumProductCount ||
+        !missingMustStockProductIds.has(product.id)
+      ) {
+        continue;
+      }
+      if (
+        !shelfProductIds.has(product.id) &&
+        isAllocationProductCompatible(product.id, capacity, policyByProductId)
+      ) {
+        selected.push(product);
+        missingMustStockProductIds.delete(product.id);
+      }
+    }
+
+    const desiredProductCount = Math.min(
+      maximumProductCount,
+      products.length,
+      Math.max(input.config.targetProductsPerShelf, selected.length),
+    );
     let attempts = 0;
 
-    while (selected.length < productCount && attempts < products.length * 2) {
+    while (
+      selected.length < desiredProductCount &&
+      attempts < products.length * 2
+    ) {
       const product = products[productCursor % products.length];
       productCursor += 1;
       attempts += 1;
 
       if (
         product &&
-        !lockedProductIds.has(product.id) &&
-        !selected.some((candidate) => candidate.id === product.id)
+        !shelfProductIds.has(product.id) &&
+        !selected.some((candidate) => candidate.id === product.id) &&
+        isAllocationProductCompatible(product.id, capacity, policyByProductId)
       ) {
         selected.push(product);
+        missingMustStockProductIds.delete(product.id);
       }
     }
 
@@ -278,7 +486,7 @@ export function buildHeuristicAllocationDraft(input: {
       availableWidthM - baseWidthM * selected.length,
     );
     const totalScore = selected.reduce(
-      (total, product) => total + productScore(product),
+      (total, product) => total + productScore(product, input.config),
       0,
     );
     let assignedWidthM = 0;
@@ -289,7 +497,8 @@ export function buildHeuristicAllocationDraft(input: {
           ? roundFacing(availableWidthM - assignedWidthM)
           : floorToFacingIncrement(
               baseWidthM +
-                (distributableWidthM * productScore(product)) / totalScore,
+                (distributableWidthM * productScore(product, input.config)) /
+                  totalScore,
               baseWidthM,
               input.config.facingIncrementM,
             );
@@ -303,5 +512,5 @@ export function buildHeuristicAllocationDraft(input: {
     }
   }
 
-  return [...lockedAllocations, ...generated];
+  return [...protectedAllocations, ...generated];
 }

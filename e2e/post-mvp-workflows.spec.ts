@@ -6,6 +6,13 @@ import {
 } from "@playwright/test";
 import { join } from "node:path";
 
+import { markdownCreateInputSchema } from "@/domain/markdown/schemas";
+import { productOptionsResponseSchema } from "@/domain/products/schemas";
+import { allocationPlanResponseSchema } from "@/domain/space/allocation-schemas";
+import {
+  productSpacePolicySetResponseSchema,
+  productSpacePolicySetUpdateInputSchema,
+} from "@/domain/space/product-space-policy-schemas";
 import {
   getDemoStorePair,
   importFixtureIntoStore,
@@ -78,8 +85,9 @@ async function importProjectFixture(input: {
 }
 
 function isolatedFutureWindow() {
-  const epoch = Date.UTC(2040, 0, 1);
-  const offsetDays = Math.floor(Date.now() / 1_000) % 5_000;
+  const epoch = Date.UTC(2100, 0, 1);
+  const offsetDays =
+    Number.parseInt(crypto.randomUUID().slice(0, 8), 16) % 1_000_000;
   const startsOn = new Date(epoch + offsetDays * 86_400_000);
   const endsOn = new Date(startsOn.getTime() + 6 * 86_400_000);
 
@@ -94,11 +102,54 @@ test("REL-01 versionne le plan et enregistre une allocation", async ({
 }, testInfo) => {
   const marker = recipeMarker(testInfo.project.name);
   const { storeBaseUrl, storeId } = await signInToStore(page);
+  const dashboardPeriodLabel = await page
+    .getByText(/^Période \d{4}-\d{2}/)
+    .first()
+    .textContent();
+  const allocationPeriodKey = dashboardPeriodLabel?.match(/\d{4}-\d{2}/)?.[0];
+  expect(allocationPeriodKey).toBeDefined();
   await importProjectFixture({
     page,
     projectName: testInfo.project.name,
     storeId,
   });
+  const productOptionsResponse = await page.request.get(
+    `/api/stores/${storeId}/products/options`,
+  );
+  expect(productOptionsResponse.status()).toBe(200);
+  const productOptions = productOptionsResponseSchema.parse(
+    await productOptionsResponse.json(),
+  );
+  const currentPoliciesResponse = await page.request.get(
+    `/api/stores/${storeId}/space-policies`,
+  );
+  expect(currentPoliciesResponse.status()).toBe(200);
+  const currentPolicies = productSpacePolicySetResponseSchema.parse(
+    await currentPoliciesResponse.json(),
+  );
+  const configuredProductIds = new Set(
+    currentPolicies.policySet.policies.map((policy) => policy.productId),
+  );
+  const policyProduct =
+    productOptions.products.find(
+      (product) => !configuredProductIds.has(product.id),
+    ) ?? productOptions.products[0];
+  expect(policyProduct).toBeDefined();
+  if (!policyProduct) throw new Error("Produit de recette absent");
+  const markdownInput = markdownCreateInputSchema.parse({
+    idempotencyKey: crypto.randomUUID(),
+    productId: policyProduct.id,
+    occurredOn: `${allocationPeriodKey}-15`,
+    amountCents: 123,
+    quantity: 1,
+    reason: "quality",
+    notes: `Démarque allocation ${marker}`,
+  });
+  const markdownResponse = await page.request.post(
+    `/api/stores/${storeId}/markdown`,
+    { data: markdownInput },
+  );
+  expect(markdownResponse.status()).toBe(201);
 
   await page.goto(`${storeBaseUrl}/space`);
   await expect(page.getByRole("heading", { name: "Espace" })).toBeVisible();
@@ -120,6 +171,54 @@ test("REL-01 versionne le plan et enregistre une allocation", async ({
   await expect(
     page.getByRole("heading", { name: "Allocation de l’espace" }),
   ).toBeVisible();
+  const policyCard = page
+    .locator('[data-slot="card"]')
+    .filter({ hasText: "Contraintes produits" })
+    .first();
+  await policyCard.getByRole("combobox", { name: "Produit à configurer" }).click();
+  await page
+    .getByRole("option", { name: policyProduct.label, exact: true })
+    .click();
+  await policyCard.getByRole("checkbox", { name: "Stock obligatoire" }).check();
+  await policyCard
+    .getByRole("combobox", { name: "Compatibilité mobilier" })
+    .click();
+  await page
+    .getByRole("option", { name: "Mobiliers autorisés", exact: true })
+    .click();
+  const policyResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/space-policies") &&
+      response.request().method() === "PATCH",
+  );
+  await policyCard
+    .getByRole("button", { name: "Enregistrer les contraintes" })
+    .click();
+  const policyResponse = await policyResponsePromise;
+  expect(policyResponse.status()).toBe(200);
+  const savedPolicies = productSpacePolicySetResponseSchema.parse(
+    await policyResponse.json(),
+  );
+  const policyInput = productSpacePolicySetUpdateInputSchema.parse(
+    policyResponse.request().postDataJSON(),
+  );
+  const duplicatePolicyResponse = await page.request.patch(
+    `/api/stores/${storeId}/space-policies`,
+    { data: policyInput },
+  );
+  expect(duplicatePolicyResponse.status()).toBe(200);
+  expect(
+    productSpacePolicySetResponseSchema.parse(
+      await duplicatePolicyResponse.json(),
+    ).policySet.revision,
+  ).toBe(savedPolicies.policySet.revision);
+  const isolatedPolicyResponse = await page.request.patch(
+    "/api/stores/000000000000000000000000/space-policies",
+    { data: policyInput },
+  );
+  expect(isolatedPolicyResponse.status()).toBe(404);
+  await expect(policyCard.getByText(/révision \d+/i).first()).toBeVisible();
+  await expect(page.getByText(/Démarque observée pour/).first()).toBeVisible();
   await page
     .getByRole("button", { name: "Calculer une proposition" })
     .click();
@@ -128,7 +227,38 @@ test("REL-01 versionne le plan et enregistre une allocation", async ({
   await page
     .locator("#allocation-note")
     .fill(`Allocation vérifiée par la recette E2E ${marker}`);
+  const allocationResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/allocations") &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
+  const allocationResponse = await allocationResponsePromise;
+  expect(allocationResponse.status()).toBe(201);
+  const savedAllocation = allocationPlanResponseSchema.parse(
+    await allocationResponse.json(),
+  ).plan;
+  expect(savedAllocation).not.toBeNull();
+  expect(savedAllocation).toMatchObject({
+    modelVersion: "space-allocation-heuristic-v2",
+    constraintSnapshot: {
+      policyRevision: savedPolicies.policySet.revision,
+    },
+    economics: {
+      markdownCoverage: "partial",
+    },
+  });
+  expect(
+    savedAllocation?.constraintSnapshot.policies.some(
+      (policy) =>
+        policy.productId === policyProduct.id && policy.mustStock,
+    ),
+  ).toBe(true);
+  expect(
+    savedAllocation?.allocations.some(
+      (allocation) => allocation.productId === policyProduct.id,
+    ),
+  ).toBe(true);
 
   await expect(page).toHaveURL(/\/space\/allocations\?savedPlanVersion=\d+$/);
   await expect(page.getByText(/Allocation \d+ enregistrée/)).toBeVisible();
