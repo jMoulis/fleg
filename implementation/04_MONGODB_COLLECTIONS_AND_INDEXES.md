@@ -57,6 +57,21 @@ auditLogs:         { organizationId: 1, storeId: 1, createdAt: -1 }
 
 The application ensures this index set once per process before returning the first application database handle. A rejected bootstrap is evicted so a later readiness attempt can recover. `GET /api/health` is the pre-traffic warm-up and confirms both MongoDB connectivity and index readiness.
 
+## Planned V3-01 additive collections
+
+```ts
+dailySalesImportJobs: { organizationId: 1, storeId: 1, fingerprint: 1, coverageKey: 1 } unique
+dailySalesImportJobs: { organizationId: 1, storeId: 1, status: 1, createdAt: -1 }
+dailySalesFacts:      { organizationId: 1, storeId: 1, productId: 1, businessDate: 1 } unique where active = true
+dailySalesFacts:      { organizationId: 1, storeId: 1, productId: 1, businessDate: 1, version: 1 } unique
+dailySalesFacts:      { organizationId: 1, storeId: 1, businessDate: 1, active: 1 }
+dailySalesFacts:      { organizationId: 1, storeId: 1, isoWeekKey: 1, active: 1 }
+dailySalesFacts:      { importJobId: 1, active: 1 }
+```
+
+These collections are not aliases for monthly `importJobs` or `salesFacts`.
+Weekly values are derived rather than stored as a second observed fact source.
+
 ## Sales fact example
 ```ts
 {

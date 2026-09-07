@@ -1,5 +1,5 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "tickets": [
     {
       "id": "FND-01",
@@ -256,6 +256,82 @@
         "explicit type size retention and deletion policy",
         "audited mutations",
         "no automatic geometry mutation"
+      ]
+    },
+    {
+      "id": "V3-01",
+      "epic": "granular_data",
+      "title": "Daily sales ingestion and deterministic weekly views",
+      "priority": "P0",
+      "acceptance": [
+        "additive append-versioned store-scoped daily facts",
+        "validated business dates and ISO week-year keys",
+        "coverage aliases aggregate exclusions and reconciled preview",
+        "transactional idempotent correction-aware commit",
+        "weekly aggregation without zero-filled missing days",
+        "monthly and daily observations reconciled but never summed",
+        "existing monthly analytics unchanged",
+        "responsive states and isolation tests"
+      ]
+    },
+    {
+      "id": "V3-02",
+      "epic": "inventory",
+      "title": "Stock snapshots and availability evidence",
+      "priority": "P0",
+      "acceptance": [
+        "append-only store-scoped stock observations",
+        "distinct nullable on-hand on-order and reserved quantities",
+        "source age and anomaly evidence",
+        "no invented or backfilled stock values"
+      ]
+    },
+    {
+      "id": "V3-03",
+      "epic": "analytics",
+      "title": "True XYZ from granular demand",
+      "priority": "P1",
+      "acceptance": [
+        "complete weekly unit-demand windows",
+        "configurable versioned CV thresholds and evidence guards",
+        "unclassified state for insufficient or invalid demand",
+        "clear separation from monthly stability proxy"
+      ]
+    },
+    {
+      "id": "V3-04",
+      "epic": "forecasting",
+      "title": "Day-of-week forecasting",
+      "priority": "P1",
+      "acceptance": [
+        "versioned training window and coefficients",
+        "backtest error metrics and confidence",
+        "partial coverage lowers confidence",
+        "no zero-filled missing demand"
+      ]
+    },
+    {
+      "id": "V3-05",
+      "epic": "context",
+      "title": "Promotion and weather context features",
+      "priority": "P2",
+      "acceptance": [
+        "separate observed contextual sources",
+        "date and store scoped feature joins",
+        "explicit source provenance and missing context",
+        "no mutation of business facts"
+      ]
+    },
+    {
+      "id": "V3-06",
+      "epic": "ordering",
+      "title": "Evidence-backed order suggestion drafts",
+      "priority": "P1",
+      "acceptance": [
+        "separate demand stock safety lead-time and pack inputs",
+        "persisted coefficients confidence evidence and limitations",
+        "explicit authorized approval boundary",
+        "no automatic supplier order"
       ]
     }
   ]

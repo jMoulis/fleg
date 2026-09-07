@@ -43,5 +43,19 @@ POST      /api/network/ai/chat
 }
 ```
 
+## V3-01 planned endpoints
+
+```text
+POST /api/stores/:storeId/imports/daily/preview
+POST /api/stores/:storeId/imports/daily/:importId/commit
+GET  /api/stores/:storeId/sales/daily?from=YYYY-MM-DD&to=YYYY-MM-DD&productId=...
+GET  /api/stores/:storeId/sales/weekly?from=YYYY-MM-DD&to=YYYY-MM-DD&productId=...
+GET  /api/stores/:storeId/sales/reconciliation?period=YYYY-MM
+```
+
+Daily preview/commit use `imports.create` and `imports.commit`. Granular reads
+use `analytics.read`. Organization and store scope come only from the server
+context. See `implementation/12_GRANULAR_DATA_FOUNDATION.md`.
+
 ## Idempotency
 Import commit is idempotent by `(storeId, source fingerprint, period)`. State-changing API routes that can be retried should accept an idempotency key where useful.

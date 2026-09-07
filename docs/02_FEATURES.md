@@ -36,6 +36,15 @@ Rank by projected CA by default; configurable metric. A <= 80% cumulative, B <=9
 ## F08 XYZ
 V1 proxy clearly labeled when only monthly data exists. True XYZ later uses coefficient of variation of weekly/daily demand.
 
+Acceptance criteria for `V3-01` granular sales foundation:
+
+- a daily XLSX/CSV preview exposes business-date coverage, aggregate exclusions, aliases and reconciled totals before commit;
+- daily facts are append-versioned by authorized store, product and business date;
+- corrections supersede an active fact while unchanged retries remain idempotent;
+- weekly views use ISO week-years, expose partial coverage and never fill missing dates with zero;
+- daily and monthly observations are reconciled but never added together;
+- existing monthly dashboards, recommendations and experiments do not change source in this ticket.
+
 ## F09 Recommendation engine
 push / maintain / reduce / review_margin / review_waste / review_space / delist_candidate / traffic_protect. Every recommendation includes reasons, inputs, confidence and expected effect where calculable.
 

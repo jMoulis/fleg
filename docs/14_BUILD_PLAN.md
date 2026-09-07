@@ -60,4 +60,16 @@
 - error monitoring,
 - deployment docs.
 
+## M8 — V3 granular operations
+
+- additive daily sales import and append-versioned facts,
+- deterministic weekly views and monthly reconciliation,
+- stock snapshots and availability evidence,
+- true XYZ and day-of-week forecasting,
+- promotion/weather context,
+- non-executing order suggestion drafts.
+
+Follow `docs/22_GRANULAR_OPERATIONS_V3.md` and
+`implementation/12_GRANULAR_DATA_FOUNDATION.md` in that order.
+
 At each milestone produce tests, screenshots, schema/index diff and unresolved limitations.

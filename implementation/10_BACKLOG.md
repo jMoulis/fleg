@@ -42,6 +42,12 @@
 | PREV3-02 | Decisions | Realized outcomes + before/after follow-up | P1 | PREV3-01, DEC-01 |
 | PREV3-03 | Space | Must-stock, suitability + markdown-aware constraints | P1 | PREV3-01, SPC-03, MD-01 |
 | PREV3-04 | Media | Manual store/layout/fixture/event photo attachments | P2 | SPC-01, TG-01 |
+| V3-01 | Granular data | Daily sales ingestion + deterministic weekly views | P0 | PREV3-04, IMP-04 |
+| V3-02 | Inventory | Store-scoped stock snapshots + availability evidence | P0 | V3-01 |
+| V3-03 | Analytics | True XYZ from complete granular demand windows | P1 | V3-01, PREV3-01 |
+| V3-04 | Forecasting | Day-of-week forecast + confidence evidence | P1 | V3-01, V3-03 |
+| V3-05 | Context | Promotion and weather observations/features | P2 | V3-04 |
+| V3-06 | Ordering | Evidence-backed order suggestion drafts | P1 | V3-02, V3-04 |
 
 ## Pre-V3 gate acceptance
 
@@ -74,3 +80,49 @@
 - metadata and object access are store-scoped, validated and audited;
 - supported type, size, retention and deletion behavior are explicit;
 - photos never modify layout geometry automatically.
+
+## V3 acceptance
+
+### V3-01
+
+- daily sales facts are additive, append-versioned and store-scoped;
+- source business dates produce deterministic month and ISO week-year keys;
+- preview exposes coverage, missing dates, aggregate exclusions, aliases and reconciled totals;
+- commit is transactional and idempotent, versions corrections and increments the store revision once only when facts change;
+- weekly reads aggregate active daily facts and never zero-fill missing days;
+- monthly and daily observations are reconciled but never summed or silently substituted;
+- existing monthly dashboards and recommendations remain unchanged in this ticket;
+- responsive import and coverage states plus unit, isolation and E2E tests are delivered.
+
+### V3-02
+
+- stock snapshots are append-only observed facts with source and observation age;
+- on-hand, on-order and reserved quantities remain distinct and missing values stay null;
+- negative source values are exposed as anomalies rather than silently clamped;
+- stockout and availability evidence is store-scoped and never backfilled.
+
+### V3-03
+
+- true XYZ uses weekly unit demand from complete granular windows;
+- CV method, window, minimum evidence, small-mean guard and thresholds are configurable and versioned;
+- insufficient or invalid demand stays unclassified with warnings;
+- the monthly stability proxy remains visibly distinct.
+
+### V3-04
+
+- day-of-week forecasts freeze their training window, data revision, model version and coefficients;
+- backtests expose error metrics and confidence before recommendations consume the forecast;
+- missing or partial daily coverage lowers confidence rather than becoming zero demand.
+
+### V3-05
+
+- promotion and weather are separate observed sources with provenance and bounded schemas;
+- feature joins are date/store scoped and missing context is explicit;
+- contextual features cannot rewrite sales, stock or experiment facts.
+
+### V3-06
+
+- order suggestions separate forecast demand, available stock, safety stock, lead time and pack constraints;
+- inputs, coefficients, evidence, confidence and limitations are persisted;
+- suggestions remain drafts until explicit authorized approval;
+- no supplier order or external integration is executed automatically.
