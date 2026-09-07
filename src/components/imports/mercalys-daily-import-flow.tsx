@@ -36,6 +36,7 @@ import {
 
 interface MercalysDailyImportFlowProps {
   storeId: string;
+  onCommitted?: () => void;
 }
 
 type Preview = ReturnType<typeof dailyImportPreviewResponseSchema.parse>;
@@ -62,6 +63,7 @@ async function readApiError(response: Response, fallback: string) {
 
 export function MercalysDailyImportFlow({
   storeId,
+  onCommitted,
 }: MercalysDailyImportFlowProps) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [products, setProducts] = useState<ProductOption[]>([]);
@@ -217,6 +219,7 @@ export function MercalysDailyImportFlow({
         throw new Error("La réponse de validation est invalide.");
       }
       setCommit(result.data);
+      onCommitted?.();
     } catch (caught) {
       setError(
         caught instanceof Error

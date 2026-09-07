@@ -76,6 +76,40 @@ export function enumerateBusinessDates(from: string, to: string): string[] {
   return dates;
 }
 
+export function shiftBusinessDate(
+  businessDate: string,
+  dayOffset: number,
+): string {
+  const normalized = parseBusinessDate(businessDate);
+  const date = new Date(`${normalized}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + dayOffset);
+  return date.toISOString().slice(0, 10);
+}
+
+export function businessDateRangeLength(from: string, to: string): number {
+  return enumerateBusinessDates(from, to).length;
+}
+
+export function periodBounds(periodKey: string): {
+  startsOn: string;
+  endsOn: string;
+} {
+  const match = periodKey.match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+  if (!match) {
+    throw new Error("Période mensuelle invalide");
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const startsOn = toBusinessDate(year, month, 1);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  return {
+    startsOn,
+    endsOn: toBusinessDate(year, month, lastDay),
+  };
+}
+
 export function isoWeekBounds(isoWeekKey: string): {
   startsOn: string;
   endsOn: string;

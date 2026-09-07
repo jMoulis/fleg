@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { MercalysDailyImportFlow } from "@/components/imports/mercalys-daily-import-flow";
+import { MercalysDailyImportWorkspace } from "@/components/imports/mercalys-daily-import-workspace";
 import { MercalysImportFlow } from "@/components/imports/mercalys-import-flow";
 
 export const metadata: Metadata = {
@@ -35,7 +35,7 @@ export default async function ImportPage({ params }: ImportPageProps) {
             Les faits journaliers sont versionnés séparément des résultats mensuels.
           </p>
         </div>
-        <MercalysDailyImportFlow storeId={storeId} />
+        <MercalysDailyImportWorkspace storeId={storeId} />
       </section>
 
       <section className="mt-12 border-t pt-10" aria-labelledby="monthly-import-title">

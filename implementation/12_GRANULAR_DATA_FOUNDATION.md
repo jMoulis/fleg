@@ -90,7 +90,10 @@ date ranges. Default and maximum ranges are explicit in schemas. Responses
 include data revision, grain, calculation version and coverage warnings.
 
 Weekly reads use active daily facts only. They calculate ISO boundaries from
-plain business dates and never rely on server locale or local time zone.
+plain business dates and never rely on server locale or local time zone. The
+default window is 28 days ending on the latest authorized observation; explicit
+windows are limited to 366 days. Weekly queries return full intersecting ISO
+weeks so dates outside a narrow request cannot hide incomplete coverage.
 
 ## User experience
 
@@ -100,7 +103,9 @@ alias queue and reconciled totals before commit. Loading, empty, validation,
 conflict and success states are required on mobile and desktop.
 
 Add a read-only granular coverage panel after commit. Do not replace existing
-monthly dashboard cards in this ticket.
+monthly dashboard cards in this ticket. The panel exposes observed/missing days,
+weekly totals and the reconciliation status; it refreshes after a successful
+daily commit.
 
 ## Tests
 

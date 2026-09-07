@@ -34,8 +34,6 @@ POST `/api/stores/:storeId/imports/preview`
 POST `/api/stores/:storeId/imports/:importId/commit`
 GET `/api/stores/:storeId/imports`
 
-Planned for `V3-01`:
-
 POST `/api/stores/:storeId/imports/daily/preview`
 
 POST `/api/stores/:storeId/imports/daily/:importId/commit`
@@ -45,13 +43,18 @@ GET `/api/stores/:storeId/dashboard?period=YYYY-MM`
 GET `/api/stores/:storeId/products/metrics?period=YYYY-MM`
 GET `/api/network/dashboard?storeIds=...&period=YYYY-MM`
 
-Planned for `V3-01`:
-
 GET `/api/stores/:storeId/sales/daily?from=YYYY-MM-DD&to=YYYY-MM-DD&productId=...`
 
 GET `/api/stores/:storeId/sales/weekly?from=YYYY-MM-DD&to=YYYY-MM-DD&productId=...`
 
-GET `/api/stores/:storeId/sales/reconciliation?period=YYYY-MM`
+GET `/api/stores/:storeId/sales/reconciliation?period=YYYY-MM&productId=...`
+
+Daily and weekly ranges accept either both `from` and `to`, or neither. An
+omitted range ends at the latest authorized observation and spans 28 days; an
+explicit range is limited to 366 days. A weekly response expands intersecting
+weeks to their full ISO Monday-to-Sunday boundaries so partial coverage cannot
+be hidden by a narrow query. All three reads require `analytics.read` and
+validate an optional product inside the same authorized store.
 
 ## Layout
 GET `/api/stores/:storeId/layout`
