@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import {
   AlertCircle,
   CheckCircle2,
-  FileSpreadsheet,
+  FileClock,
   LoaderCircle,
   ShieldCheck,
   TriangleAlert,
@@ -23,22 +23,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { apiErrorSchema } from "@/domain/api/schemas";
 import {
-  importCommitResponseSchema,
-  importPreviewResponseSchema,
-  type AliasResolution,
-} from "@/domain/imports/schemas";
+  dailyImportCommitResponseSchema,
+  dailyImportPreviewResponseSchema,
+} from "@/domain/imports/daily-schemas";
+import type { AliasResolution } from "@/domain/imports/schemas";
 import {
   productOptionsResponseSchema,
   type ProductOption,
 } from "@/domain/products/schemas";
 
-interface MercalysImportFlowProps {
+interface MercalysDailyImportFlowProps {
   storeId: string;
 }
 
-type Preview = ReturnType<typeof importPreviewResponseSchema.parse>;
-type Commit = ReturnType<typeof importCommitResponseSchema.parse>;
+type Preview = ReturnType<typeof dailyImportPreviewResponseSchema.parse>;
+type Commit = ReturnType<typeof dailyImportCommitResponseSchema.parse>;
 
 interface ResolutionDraft {
   action: "create" | "merge" | "ignore";
@@ -54,7 +55,14 @@ const quantityFormatter = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 3,
 });
 
-export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
+async function readApiError(response: Response, fallback: string) {
+  const parsed = apiErrorSchema.safeParse(await response.json().catch(() => null));
+  return parsed.success ? parsed.data.message : fallback;
+}
+
+export function MercalysDailyImportFlow({
+  storeId,
+}: MercalysDailyImportFlowProps) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [resolutions, setResolutions] = useState<Record<string, ResolutionDraft>>(
@@ -68,19 +76,17 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
     event.preventDefault();
     setError(null);
     setCommit(null);
-
     const formData = new FormData(event.currentTarget);
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
-      setError("Sélectionnez un fichier XLSX ou CSV Mercalys.");
+      setError("Sélectionnez un export journalier Mercalys XLSX ou CSV.");
       return;
     }
 
     setPending("preview");
-
     try {
       const [previewResponse, productsResponse] = await Promise.all([
-        fetch(`/api/stores/${storeId}/imports/preview`, {
+        fetch(`/api/stores/${storeId}/imports/daily/preview`, {
           method: "POST",
           body: formData,
         }),
@@ -88,24 +94,29 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
           headers: { Accept: "application/json" },
         }),
       ]);
-
       if (!previewResponse.ok) {
-        throw new Error("PREVIEW_FAILED");
+        throw new Error(
+          await readApiError(
+            previewResponse,
+            "La prévisualisation journalière a échoué.",
+          ),
+        );
       }
 
-      const parsedPreview = importPreviewResponseSchema.safeParse(
+      const parsedPreview = dailyImportPreviewResponseSchema.safeParse(
         await previewResponse.json(),
       );
       if (!parsedPreview.success) {
-        throw new Error("INVALID_PREVIEW");
+        throw new Error("La réponse de prévisualisation est invalide.");
       }
-
       let availableProducts: ProductOption[] = [];
       if (productsResponse.ok) {
         const parsedProducts = productOptionsResponseSchema.safeParse(
           await productsResponse.json(),
         );
-        availableProducts = parsedProducts.success ? parsedProducts.data.products : [];
+        availableProducts = parsedProducts.success
+          ? parsedProducts.data.products
+          : [];
       }
 
       setProducts(availableProducts);
@@ -122,9 +133,11 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
           ]),
         ),
       );
-    } catch {
+    } catch (caught) {
       setError(
-        "La prévisualisation a échoué. Vérifiez le format et les colonnes du fichier.",
+        caught instanceof Error
+          ? caught.message
+          : "La prévisualisation journalière a échoué.",
       );
     } finally {
       setPending(null);
@@ -138,7 +151,6 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
     setResolutions((current) => ({
       ...current,
       [externalKey]: {
-        ...current[externalKey],
         action: current[externalKey]?.action ?? "create",
         canonicalLabel: current[externalKey]?.canonicalLabel ?? "",
         productId: current[externalKey]?.productId ?? "",
@@ -148,19 +160,15 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
   }
 
   async function handleCommit() {
-    if (!preview) {
-      return;
-    }
+    if (!preview) return;
 
     const payload: AliasResolution[] = [];
     for (const alias of preview.unresolvedAliases) {
       const resolution = resolutions[alias.externalKey];
-
       if (!resolution) {
         setError(`Résolution manquante pour ${alias.sourceLabel}.`);
         return;
       }
-
       if (resolution.action === "create") {
         if (!resolution.canonicalLabel.trim()) {
           setError(`Nom canonique manquant pour ${alias.sourceLabel}.`);
@@ -188,30 +196,32 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
 
     setPending("commit");
     setError(null);
-
     try {
       const response = await fetch(
-        `/api/stores/${storeId}/imports/${preview.importId}/commit`,
+        `/api/stores/${storeId}/imports/daily/${preview.importId}/commit`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ resolutions: payload }),
         },
       );
-
       if (!response.ok) {
-        throw new Error("COMMIT_FAILED");
+        throw new Error(
+          await readApiError(response, "La validation journalière a échoué."),
+        );
       }
-
-      const result = importCommitResponseSchema.safeParse(await response.json());
+      const result = dailyImportCommitResponseSchema.safeParse(
+        await response.json(),
+      );
       if (!result.success) {
-        throw new Error("INVALID_COMMIT_RESPONSE");
+        throw new Error("La réponse de validation est invalide.");
       }
-
       setCommit(result.data);
-    } catch {
+    } catch (caught) {
       setError(
-        "La validation a échoué. Aucune écriture partielle n’a été conservée.",
+        caught instanceof Error
+          ? caught.message
+          : "La validation journalière a échoué.",
       );
     } finally {
       setPending(null);
@@ -225,9 +235,9 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
           <span className="grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground">
             <CheckCircle2 aria-hidden="true" className="size-7" />
           </span>
-          <h2 className="mt-5 text-xl font-semibold">Import validé</h2>
-          <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            {commit.importedFactCount} faits produits engagés. Révision des données : {commit.dataRevision}.
+          <h2 className="mt-5 text-xl font-semibold">Import journalier validé</h2>
+          <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+            {commit.importedFactCount} fait(s) journalier(s) enregistré(s), {commit.unchangedFactCount} inchangé(s). Révision des données : {commit.dataRevision}.
           </p>
           <Button className="mt-6" variant="outline" onClick={() => setCommit(null)}>
             Importer un autre fichier
@@ -250,23 +260,25 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileSpreadsheet aria-hidden="true" className="size-5 text-primary" />
-            Fichier source
+            <FileClock aria-hidden="true" className="size-5 text-primary" />
+            Export journalier
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handlePreview} className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <Field className="flex-1">
-              <FieldLabel htmlFor="mercalys-file">Export Mercalys</FieldLabel>
+              <FieldLabel htmlFor="mercalys-daily-file">Ventes journalières Mercalys</FieldLabel>
               <Input
-                id="mercalys-file"
+                id="mercalys-daily-file"
                 name="file"
                 type="file"
                 accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                 disabled={pending !== null}
                 required
               />
-              <FieldDescription>XLSX ou CSV, 10 Mo maximum par défaut.</FieldDescription>
+              <FieldDescription>
+                La date et le code PDV sont contrôlés depuis le contenu du fichier.
+              </FieldDescription>
             </Field>
             <Button type="submit" size="lg" disabled={pending !== null}>
               {pending === "preview" ? (
@@ -282,21 +294,30 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
 
       {preview ? (
         <>
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Réconciliation de l’import">
-            <PreviewMetric label="Période" value={preview.periodKey} />
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-label="Réconciliation journalière">
             <PreviewMetric
-              label="Chiffre d’affaires"
-              value={euroFormatter.format(preview.totals.revenueCents / 100)}
+              label="Journée"
+              value={
+                preview.startDate === preview.endDate
+                  ? preview.startDate
+                  : `${preview.startDate} au ${preview.endDate}`
+              }
             />
-            <PreviewMetric
-              label="Marge"
-              value={euroFormatter.format(preview.totals.marginCents / 100)}
-            />
-            <PreviewMetric
-              label="Quantité"
-              value={quantityFormatter.format(preview.totals.quantity)}
-            />
+            <PreviewMetric label="PDV source" value={preview.sourceStoreCode ?? "Non détecté"} />
+            <PreviewMetric label="Chiffre d’affaires" value={euroFormatter.format(preview.totals.revenueCents / 100)} />
+            <PreviewMetric label="Marge" value={euroFormatter.format(preview.totals.marginCents / 100)} />
+            <PreviewMetric label="Quantité" value={quantityFormatter.format(preview.totals.quantity)} />
           </section>
+
+          <Alert>
+            <ShieldCheck aria-hidden="true" />
+            <AlertTitle>
+              Couverture {preview.coverage.status === "complete" ? "complète" : "partielle"}
+            </AlertTitle>
+            <AlertDescription>
+              {preview.includedRowCount} article(s) inclus, {preview.excludedRowCount} ligne(s) agrégée(s) exclue(s), {preview.observedDates.length} journée(s) observée(s).
+            </AlertDescription>
+          </Alert>
 
           {preview.warnings.length > 0 ? (
             <Alert>
@@ -316,11 +337,11 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Résolution des libellés</CardTitle>
+              <CardTitle>Résolution des produits</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {preview.unresolvedAliases.length === 0
-                  ? "Tous les libellés correspondent déjà à un produit canonique."
-                  : `${preview.unresolvedAliases.length} libellé(s) nécessitent une décision.`}
+                  ? "Les identifiants ITM8, EAN ou les libellés correspondent déjà à des produits connus."
+                  : `${preview.unresolvedAliases.length} produit(s) nécessitent une décision.`}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -329,13 +350,11 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
                 return (
                   <div key={alias.externalKey} className="grid gap-3 rounded-xl border p-4 lg:grid-cols-[1fr_12rem_1.2fr] lg:items-end">
                     <Field>
-                      <FieldLabel>Libellé source</FieldLabel>
+                      <FieldLabel>Produit source</FieldLabel>
                       <Input value={alias.sourceLabel} readOnly />
-                      {alias.sourceItm8 || alias.sourceEan ? (
-                        <FieldDescription>
-                          ITM8 {alias.sourceItm8 ?? "—"} · EAN {alias.sourceEan ?? "—"}
-                        </FieldDescription>
-                      ) : null}
+                      <FieldDescription>
+                        ITM8 {alias.sourceItm8 ?? "—"} · EAN {alias.sourceEan ?? "—"}
+                      </FieldDescription>
                     </Field>
                     <Field>
                       <FieldLabel>Décision</FieldLabel>
@@ -347,14 +366,10 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
                           })
                         }
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="create">Créer</SelectItem>
-                          <SelectItem value="merge" disabled={products.length === 0}>
-                            Fusionner
-                          </SelectItem>
+                          <SelectItem value="merge" disabled={products.length === 0}>Fusionner</SelectItem>
                           <SelectItem value="ignore">Ignorer</SelectItem>
                         </SelectContent>
                       </Select>
@@ -365,26 +380,20 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
                         <Select
                           value={resolution.productId}
                           onValueChange={(value) =>
-                            updateResolution(alias.externalKey, {
-                              productId: value ?? "",
-                            })
+                            updateResolution(alias.externalKey, { productId: value ?? "" })
                           }
                         >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Choisir un produit" />
-                          </SelectTrigger>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Choisir un produit" /></SelectTrigger>
                           <SelectContent>
                             {products.map((product) => (
-                              <SelectItem key={product.id} value={product.id}>
-                                {product.label}
-                              </SelectItem>
+                              <SelectItem key={product.id} value={product.id}>{product.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </Field>
                     ) : resolution?.action === "ignore" ? (
                       <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                        Les lignes correspondantes ne seront pas engagées.
+                        Les lignes correspondantes ne seront pas enregistrées.
                       </p>
                     ) : (
                       <Field>
@@ -392,9 +401,7 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
                         <Input
                           value={resolution?.canonicalLabel ?? alias.sourceLabel}
                           onChange={(event) =>
-                            updateResolution(alias.externalKey, {
-                              canonicalLabel: event.target.value,
-                            })
+                            updateResolution(alias.externalKey, { canonicalLabel: event.target.value })
                           }
                         />
                       </Field>
@@ -406,13 +413,11 @@ export function MercalysImportFlow({ storeId }: MercalysImportFlowProps) {
               <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ShieldCheck aria-hidden="true" className="size-4 text-primary" />
-                  La validation est transactionnelle, idempotente et auditée.
+                  Le commit est versionné, idempotent et audité.
                 </p>
                 <Button size="lg" onClick={handleCommit} disabled={pending !== null}>
-                  {pending === "commit" ? (
-                    <LoaderCircle className="animate-spin" aria-hidden="true" />
-                  ) : null}
-                  Valider l’import
+                  {pending === "commit" ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : null}
+                  Valider l’import journalier
                 </Button>
               </div>
             </CardContent>

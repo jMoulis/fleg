@@ -19,7 +19,7 @@ Acceptance criteria for administration and onboarding:
 Persistent global store context. Authorized stores only. Network mode for authorized users.
 
 ## F03 Mercalys import
-Upload XLSX/CSV. Detect columns: Libellé, Année/Mois, Quantité, Valeur prix vente, Val Marge, % Marge. Preview, validate, detect duplicate aggregate row, map aliases, commit idempotently.
+Upload XLSX/CSV. Detect columns: Libellé, Année/Mois, Quantité, Valeur prix vente, Val Marge, % Marge, plus ITM8/EAN lorsqu’ils sont disponibles. Preview, validate, detect duplicate aggregate row, map aliases, commit idempotently. Daily Mercalys exports use their metadata date and PDV, keep a separate versioned fact history and never replace monthly observations.
 
 ## F04 Dashboard
 CA, margin €, margin %, markdown, target gap, forecast, YoY, seasonality, top actions. Network view adds store ranking and normalized productivity.

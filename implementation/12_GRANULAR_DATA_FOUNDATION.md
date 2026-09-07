@@ -57,6 +57,11 @@ Create pure, testable modules for:
 - weekly aggregation and evidence warnings;
 - monthly-vs-daily reconciliation.
 
+The first source adapter detects the observed Mercalys profile dynamically:
+metadata before the header, `PDV` and date-range extraction, ITM8/EAN product
+aliases, a blank-identity reconciled total, and a non-business footer. It must
+not rely on fixed row counts or the uploaded filename.
+
 All external schemas are strict Zod schemas. Quantities are finite numbers;
 money uses safe integer cents. Business dates and range order are validated.
 
@@ -131,7 +136,7 @@ At both 390 px and 1440 px:
 6. verify the monthly dashboard remains on its observed monthly source;
 7. substitute another authorized store ID and confirm object isolation.
 
-## Entry requirement
+## Source evidence status
 
 Before source-specific parser aliases are finalized, obtain one anonymized daily
 Mercalys export and record:
@@ -142,5 +147,7 @@ Mercalys export and record:
 - return/correction sign convention;
 - daily subtotal and whole-period total rows.
 
-If the sample is unavailable, implement only the canonical fixture profile and
-label the Mercalys header mapping provisional.
+The initial single-day sample satisfies the header, date and aggregate-row
+requirements. Zero-sales-day behavior and negative quantity/revenue correction
+rows remain unobserved; preserve them as explicit hardening cases rather than
+inventing semantics.

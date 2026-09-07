@@ -34,7 +34,8 @@ The delivery order is:
 
 ### Source contract
 
-The first accepted source is a daily Mercalys-compatible XLSX or CSV export.
+The first accepted source is the observed daily Mercalys XLSX or a compatible
+CSV export. Its table starts after metadata rather than on the first row.
 Required logical columns are:
 
 - product label or stable source product key;
@@ -46,6 +47,16 @@ Required logical columns are:
 An optional source margin ratio is retained only for reconciliation. Product
 identity continues to use canonical products and source aliases. Multiple
 source rows for one product and date are grouped after aggregate-row exclusion.
+The observed source supplies ITM8 and EAN identifiers. Resolution tries ITM8,
+then EAN, then the normalized label, and persists all available aliases after
+an explicit create/merge/ignore decision. Monthly imports accept those two
+identifier columns optionally without rejecting legacy label-only workbooks.
+
+For the observed non-detailed daily profile, the source business date comes
+from `Sélection de données : Du DD/MM/YYYY Au DD/MM/YYYY`. A single-day range
+applies to every included article row. A multi-day range requires a per-row
+date column and is otherwise rejected. `PDV: <code>` is a source consistency
+check against the already-authorized store, never an authorization input.
 
 The preview exposes:
 
@@ -188,9 +199,15 @@ neutral evidence. Order suggestions combine forecast, stock and operational
 constraints only after those sources are reliable. They remain auditable drafts
 requiring explicit manager approval and never create supplier orders.
 
-## Required source evidence before parser implementation
+## Observed source evidence
 
-At least one anonymized representative daily export is required to confirm
-actual header names, date encoding, zero-sales-day behavior, aggregate rows and
-whether corrections/returns are negative rows. Until then, the canonical
-contract above is stable but source-specific aliases remain provisional.
+The first representative export confirmed metadata and headers, a single
+business date encoded as `DD/MM/YYYY`, 133 article rows, one reconciled total
+row, and a `Nombre de Lignes` footer. It also confirmed that identifiers must
+remain strings to preserve leading zeroes. One article has a negative margin
+with positive quantity and revenue, so negative business values are preserved
+as observations rather than clamped.
+
+Still required for later hardening: an explicit no-sales-day export and a real
+return/correction row with negative quantity or revenue. Missing evidence stays
+unknown and does not block the confirmed single-day profile.

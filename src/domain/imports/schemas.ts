@@ -5,6 +5,8 @@ export const periodKeySchema = z
   .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Période attendue au format YYYY-MM");
 
 export const mercalysColumnSchema = z.enum([
+  "itm8",
+  "ean",
   "label",
   "period",
   "quantity",
@@ -32,6 +34,9 @@ export const normalizedMercalysRowSchema = z.object({
   rowNumber: z.number().int().positive(),
   sourceLabel: z.string().min(1),
   externalKey: z.string().min(1),
+  aliasKeys: z.array(z.string().min(1)).min(1).optional(),
+  sourceItm8: z.string().min(1).nullable().optional(),
+  sourceEan: z.string().min(1).nullable().optional(),
   periodKey: periodKeySchema,
   quantity: z.number().finite(),
   revenueCents: z.number().int().safe(),
@@ -69,6 +74,9 @@ export const importPreviewResponseSchema = mercalysPreviewSchema.extend({
     z.object({
       externalKey: z.string().min(1),
       sourceLabel: z.string().min(1),
+      aliasKeys: z.array(z.string().min(1)).min(1).optional(),
+      sourceItm8: z.string().min(1).nullable().optional(),
+      sourceEan: z.string().min(1).nullable().optional(),
     }),
   ),
   requestId: z.uuid(),
