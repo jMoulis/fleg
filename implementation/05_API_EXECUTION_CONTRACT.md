@@ -25,6 +25,9 @@ GET/POST  /api/stores/:storeId/commercial-events
 GET/POST  /api/stores/:storeId/markdown
 GET/PATCH /api/stores/:storeId/space-policies
 GET/POST  /api/stores/:storeId/allocations
+GET/POST  /api/stores/:storeId/attachments
+GET        /api/stores/:storeId/attachments/:attachmentId/content
+DELETE     /api/stores/:storeId/attachments/:attachmentId
 POST      /api/stores/:storeId/ai/chat
 GET       /api/network/dashboard
 POST      /api/network/ai/chat

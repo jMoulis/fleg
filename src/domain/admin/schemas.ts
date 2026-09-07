@@ -74,6 +74,7 @@ export const defaultStorePermissionsByRole = {
     "targets.write",
     "layouts.write",
     "allocations.write",
+    "attachments.write",
     "markdown.write",
     "recommendations.approve",
     "tg.publish",

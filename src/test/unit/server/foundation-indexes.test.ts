@@ -39,6 +39,9 @@ describe("foundation indexes", () => {
         "recommendation_follow_up_commands_scope_key_unique",
         "product_space_policy_sets_scope_unique",
         "product_space_policy_commands_scope_key_unique",
+        "attachments_scope_target_created",
+        "attachment_objects_scope_created",
+        "attachment_commands_scope_key_unique",
       ]),
     );
   });

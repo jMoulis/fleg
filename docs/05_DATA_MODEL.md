@@ -19,6 +19,9 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 - allocationPlans `{storeId:1,layoutVersionId:1,version:-1}`
 - productSpacePolicySets `{organizationId:1,storeId:1}` unique
 - productSpacePolicyCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
+- attachments `{organizationId:1,storeId:1,targetKey:1,createdAt:-1}`
+- attachmentObjects `{organizationId:1,storeId:1,createdAt:-1}`
+- attachmentCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - commercialEvents `{organizationId:1,storeId:1,fixtureId:1,startsOn:1,endsOn:1,status:1}`
 - commercialEventCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - experiments `{organizationId:1,storeId:1,status:1,plannedStartAt:-1}`
@@ -36,6 +39,12 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 Never overwrite sales facts with forecasts. Derived metrics may be materialized with `calculationVersion`, `inputRevision`, `generatedAt`.
 
 Allocation plans preserve their product-policy snapshot, input revisions, configurable coefficients, known-component markdown economics and limitations. Missing markdown and suitability remain explicit unknowns.
+
+Photo metadata lives in `attachments`; private binary content lives separately in
+`attachmentObjects` under the same attachment `_id`, `organizationId` and
+`storeId`. Target keys preserve the layout version for fixture photos. Deletion
+removes both records permanently while the audit entry and idempotency command
+remain as evidence of the mutation.
 
 ## Product identity
 Mercalys labels change. Use canonical Product + ProductAlias. Unresolved labels enter mapping queue.

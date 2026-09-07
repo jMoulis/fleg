@@ -68,6 +68,18 @@ the whole operation.
 ## Markdown
 GET/POST `/api/stores/:storeId/markdown`
 
+## Manual photos
+GET/POST `/api/stores/:storeId/attachments`
+
+DELETE `/api/stores/:storeId/attachments/:attachmentId` requires a UUID
+idempotency key and permanently removes metadata plus binary content.
+
+GET `/api/stores/:storeId/attachments/:attachmentId/content` streams the
+private object only after session, organization and store authorization. Upload
+uses multipart form data with a Zod-validated `metadata` JSON field and a
+`file` field. JPEG, PNG and WebP are accepted up to 4 Mio; the server validates
+the file signature instead of trusting the MIME declaration.
+
 ## AI
 POST `/api/stores/:storeId/ai/chat`
 POST `/api/network/ai/chat` with explicit cross-store permission.

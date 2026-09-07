@@ -6,6 +6,18 @@ import {
 } from "@playwright/test";
 import { join } from "node:path";
 
+import {
+  attachmentCreateMetadataSchema,
+  attachmentDeletionResponseSchema,
+  attachmentResponseSchema,
+  attachmentsResponseSchema,
+  type Attachment,
+  type AttachmentTarget,
+} from "@/domain/attachments/schemas";
+import {
+  commercialEventCreateInputSchema,
+  commercialEventResponseSchema,
+} from "@/domain/commercial-events/schemas";
 import { markdownCreateInputSchema } from "@/domain/markdown/schemas";
 import { productOptionsResponseSchema } from "@/domain/products/schemas";
 import { allocationPlanResponseSchema } from "@/domain/space/allocation-schemas";
@@ -13,6 +25,7 @@ import {
   productSpacePolicySetResponseSchema,
   productSpacePolicySetUpdateInputSchema,
 } from "@/domain/space/product-space-policy-schemas";
+import { layoutResponseSchema } from "@/domain/space/schemas";
 import {
   getDemoStorePair,
   importFixtureIntoStore,
@@ -23,6 +36,11 @@ const networkFixtureByProject = {
   "mobile-390": "10_2025.xlsx",
   "desktop-1440": "11_2025.xlsx",
 } as const;
+
+const onePixelPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
 
 async function signInToStore(page: Page) {
   await page.goto("/stores");
@@ -95,6 +113,34 @@ function isolatedFutureWindow() {
     startsOn: startsOn.toISOString().slice(0, 10),
     endsOn: endsOn.toISOString().slice(0, 10),
   };
+}
+
+async function uploadRecipePhoto(input: {
+  page: Page;
+  storeId: string;
+  target: AttachmentTarget;
+  caption: string;
+}): Promise<Attachment> {
+  const metadata = attachmentCreateMetadataSchema.parse({
+    target: input.target,
+    caption: input.caption,
+    idempotencyKey: crypto.randomUUID(),
+  });
+  const response = await input.page.request.post(
+    `/api/stores/${input.storeId}/attachments`,
+    {
+      multipart: {
+        metadata: JSON.stringify(metadata),
+        file: {
+          name: "photo-recette.png",
+          mimeType: "image/png",
+          buffer: onePixelPng,
+        },
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+  return attachmentResponseSchema.parse(await response.json()).attachment;
 }
 
 test("REL-01 versionne le plan et enregistre une allocation", async ({
@@ -506,4 +552,197 @@ test("REL-05 configure un objectif et versionne les coefficients magasin", async
     .click();
   expect((await settingsResponsePromise).status()).toBe(200);
   await expect(page.getByText(/Réglages enregistrés · révision \d+/)).toBeVisible();
+});
+
+test("REL-06 sécurise les photos manuelles sans modifier le plan", async ({
+  page,
+}, testInfo) => {
+  const marker = recipeMarker(testInfo.project.name);
+  const { storeBaseUrl, storeId } = await signInToStore(page);
+  const stores = await getDemoStorePair(page);
+  await importProjectFixture({
+    page,
+    projectName: testInfo.project.name,
+    storeId,
+  });
+
+  const layoutBeforeResponse = await page.request.get(
+    `/api/stores/${storeId}/layout`,
+  );
+  expect(layoutBeforeResponse.status()).toBe(200);
+  const layoutBefore = layoutResponseSchema.parse(
+    await layoutBeforeResponse.json(),
+  ).layout;
+  expect(layoutBefore).not.toBeNull();
+  if (!layoutBefore) throw new Error("Plan de recette absent");
+  const fixture = layoutBefore.fixtures[0];
+  const endcap = layoutBefore.fixtures.find(({ type }) => type === "endcap");
+  expect(fixture).toBeDefined();
+  expect(endcap).toBeDefined();
+  if (!fixture || !endcap) throw new Error("Mobilier de recette absent");
+
+  const productOptionsResponse = await page.request.get(
+    `/api/stores/${storeId}/products/options`,
+  );
+  expect(productOptionsResponse.status()).toBe(200);
+  const product = productOptionsResponseSchema.parse(
+    await productOptionsResponse.json(),
+  ).products[0];
+  expect(product).toBeDefined();
+  if (!product) throw new Error("Produit de recette absent");
+  const eventWindow = isolatedFutureWindow();
+  const eventInput = commercialEventCreateInputSchema.parse({
+    layoutVersionId: layoutBefore.id,
+    fixtureId: endcap.id,
+    title: `Opération photo ${marker}`,
+    theme: "Photothèque de recette",
+    startsOn: eventWindow.startsOn,
+    endsOn: eventWindow.endsOn,
+    productIds: [product.id],
+    targetRevenueCents: 10_000,
+    targetMarginCents: null,
+    actualRevenueCents: null,
+    actualMarginCents: null,
+    notes: null,
+    idempotencyKey: crypto.randomUUID(),
+    action: "save",
+  });
+  const eventResponse = await page.request.post(
+    `/api/stores/${storeId}/commercial-events`,
+    { data: eventInput },
+  );
+  expect(eventResponse.status()).toBe(201);
+  const commercialEvent = commercialEventResponseSchema.parse(
+    await eventResponse.json(),
+  ).event;
+
+  const invalidPhotoResponse = await page.request.post(
+    `/api/stores/${storeId}/attachments`,
+    {
+      multipart: {
+        metadata: JSON.stringify(
+          attachmentCreateMetadataSchema.parse({
+            target: { type: "store" },
+            caption: null,
+            idempotencyKey: crypto.randomUUID(),
+          }),
+        ),
+        file: {
+          name: "faux.png",
+          mimeType: "image/png",
+          buffer: Buffer.from("ceci n'est pas une image"),
+        },
+      },
+    },
+  );
+  expect(invalidPhotoResponse.status()).toBe(400);
+
+  const uploaded = await Promise.all([
+    uploadRecipePhoto({
+      page,
+      storeId,
+      target: { type: "store" },
+      caption: `Magasin ${marker}`,
+    }),
+    uploadRecipePhoto({
+      page,
+      storeId,
+      target: { type: "layout", layoutVersionId: layoutBefore.id },
+      caption: `Plan ${marker}`,
+    }),
+    uploadRecipePhoto({
+      page,
+      storeId,
+      target: {
+        type: "fixture",
+        layoutVersionId: layoutBefore.id,
+        fixtureId: fixture.id,
+      },
+      caption: `Mobilier ${marker}`,
+    }),
+    uploadRecipePhoto({
+      page,
+      storeId,
+      target: { type: "commercial_event", eventId: commercialEvent.id },
+      caption: `Opération ${marker}`,
+    }),
+  ]);
+
+  for (const attachment of uploaded) {
+    const contentResponse = await page.request.get(attachment.contentUrl);
+    expect(contentResponse.status()).toBe(200);
+    expect(contentResponse.headers()["content-type"]).toBe("image/png");
+    expect((await contentResponse.body()).subarray(0, 8)).toEqual(
+      onePixelPng.subarray(0, 8),
+    );
+  }
+  const isolatedContentResponse = await page.request.get(
+    `/api/stores/${stores.control.id}/attachments/${uploaded[0]!.id}/content`,
+  );
+  expect(isolatedContentResponse.status()).toBe(404);
+
+  const listResponse = await page.request.get(
+    `/api/stores/${storeId}/attachments`,
+  );
+  expect(listResponse.status()).toBe(200);
+  const attachmentList = attachmentsResponseSchema.parse(
+    await listResponse.json(),
+  );
+  expect(attachmentList.policy).toMatchObject({
+    maxSizeBytes: 4 * 1024 * 1024,
+    maxPerTarget: 20,
+    retention: "until_manual_deletion",
+    deletion: "permanent",
+  });
+  expect(
+    uploaded.every((attachment) =>
+      attachmentList.attachments.some(({ id }) => id === attachment.id),
+    ),
+  ).toBe(true);
+
+  const layoutAfterResponse = await page.request.get(
+    `/api/stores/${storeId}/layout`,
+  );
+  const layoutAfter = layoutResponseSchema.parse(
+    await layoutAfterResponse.json(),
+  ).layout;
+  expect(layoutAfter?.fixtures).toEqual(layoutBefore.fixtures);
+
+  await page.goto(`${storeBaseUrl}/settings`);
+  await expect(page.getByText(`Magasin ${marker}`)).toBeVisible();
+  const storePhotoCard = page
+    .locator("article")
+    .filter({ hasText: `Magasin ${marker}` });
+  const storeDeleteResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/attachments/${uploaded[0]!.id}`) &&
+      response.request().method() === "DELETE",
+  );
+  await storePhotoCard.getByRole("button", { name: "Supprimer" }).click();
+  await storePhotoCard.getByRole("button", { name: "Confirmer" }).click();
+  expect((await storeDeleteResponsePromise).status()).toBe(200);
+  await expect(
+    page.getByText("Photo supprimée définitivement. La trace d’audit est conservée."),
+  ).toBeVisible();
+
+  for (const attachment of uploaded.slice(1)) {
+    const idempotencyKey = crypto.randomUUID();
+    const deletionResponse = await page.request.delete(
+      `/api/stores/${storeId}/attachments/${attachment.id}`,
+      { data: { idempotencyKey } },
+    );
+    expect(deletionResponse.status()).toBe(200);
+    expect(
+      attachmentDeletionResponseSchema.parse(await deletionResponse.json())
+        .deletedAttachment.id,
+    ).toBe(attachment.id);
+    if (attachment.id === uploaded[2]!.id) {
+      const duplicateDeletion = await page.request.delete(
+        `/api/stores/${storeId}/attachments/${attachment.id}`,
+        { data: { idempotencyKey } },
+      );
+      expect(duplicateDeletion.status()).toBe(200);
+    }
+  }
+  expect((await page.request.get(uploaded[0]!.contentUrl)).status()).toBe(404);
 });
