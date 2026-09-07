@@ -179,6 +179,21 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { storeId: 1, createdAt: -1 },
       { name: "decision_logs_store_created" },
     ),
+    db.collection("recommendationFollowUps").createIndex(
+      { organizationId: 1, storeId: 1, recommendationDecisionId: 1 },
+      { unique: true, name: "recommendation_follow_ups_decision_unique" },
+    ),
+    db.collection("recommendationFollowUps").createIndex(
+      { organizationId: 1, storeId: 1, status: 1, dueOn: 1 },
+      { name: "recommendation_follow_ups_scope_due" },
+    ),
+    db.collection("recommendationFollowUpCommands").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      {
+        unique: true,
+        name: "recommendation_follow_up_commands_scope_key_unique",
+      },
+    ),
     db.collection("aiActionPlans").createIndex(
       { organizationId: 1, storeId: 1, idempotencyKey: 1 },
       { unique: true, name: "ai_action_plans_scope_key_unique" },

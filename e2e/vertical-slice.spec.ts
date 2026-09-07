@@ -3,11 +3,30 @@ import { join } from "node:path";
 
 import { expect, test } from "@playwright/test";
 
-import { primaryDemoStoreLabel, selectPrimaryDemoStore } from "./demo-store";
+import {
+  recommendationFollowUpCompleteInputSchema,
+  recommendationFollowUpResponseSchema,
+  recommendationFollowUpScheduleInputSchema,
+} from "@/domain/decisions/follow-up-schemas";
+import {
+  importFixtureIntoStore,
+  primaryDemoStoreLabel,
+  selectPrimaryDemoStore,
+} from "./demo-store";
 
 const fixtureByProject = {
-  "mobile-390": { fileName: "10_2025.xlsx", periodKey: "2025-10" },
-  "desktop-1440": { fileName: "11_2025.xlsx", periodKey: "2025-11" },
+  "mobile-390": {
+    fileName: "10_2025.xlsx",
+    periodKey: "2025-10",
+    followUpFileName: "11_2025.xlsx",
+    followUpPeriodKey: "2025-11",
+  },
+  "desktop-1440": {
+    fileName: "11_2025.xlsx",
+    periodKey: "2025-11",
+    followUpFileName: "12_2025.xlsx",
+    followUpPeriodKey: "2025-12",
+  },
 } as const;
 
 test("HARD-01 expose une navigation clavier et réduit les mouvements", async ({
@@ -201,6 +220,96 @@ test("E2E-01 transforme un export Mercalys en décision manager", async ({
       page.getByRole("heading", { name: "Journal des décisions" }),
     ).toBeVisible();
     await expect(page.getByText(rationale).first()).toBeVisible();
+
+    const decisionCard = page
+      .locator("article")
+      .filter({ hasText: rationale })
+      .first();
+    await decisionCard
+      .getByLabel("Période après")
+      .fill(fixture.followUpPeriodKey);
+    await decisionCard.getByLabel("Échéance de contrôle").fill("2040-01-28");
+    const scheduleResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/follow-ups") &&
+        response.request().method() === "POST",
+    );
+    await decisionCard
+      .getByRole("button", { name: "Planifier le suivi" })
+      .click();
+    const scheduleResponse = await scheduleResponsePromise;
+    expect(scheduleResponse.status()).toBe(200);
+    const scheduled = recommendationFollowUpResponseSchema.parse(
+      await scheduleResponse.json(),
+    );
+    const scheduleInput = recommendationFollowUpScheduleInputSchema.parse(
+      scheduleResponse.request().postDataJSON(),
+    );
+    const duplicateSchedule = await page.request.post(
+      `/api/stores/${storeId}/decisions/${scheduled.followUp.recommendationDecisionId}/follow-ups`,
+      { data: scheduleInput },
+    );
+    expect(duplicateSchedule.status()).toBe(200);
+    expect(
+      recommendationFollowUpResponseSchema.parse(await duplicateSchedule.json())
+        .followUp.id,
+    ).toBe(scheduled.followUp.id);
+    await expect(decisionCard.getByText("Suivi 2025")).toBeVisible();
+
+    await importFixtureIntoStore({
+      fileName: fixture.followUpFileName,
+      fixturePath: join(
+        process.cwd(),
+        "assets",
+        "import_excel_files_examples",
+        fixture.followUpFileName,
+      ),
+      page,
+      storeId,
+    });
+    const outcomeInterpretation = `Résultat vérifié après import ${fixture.followUpPeriodKey}`;
+    await decisionCard
+      .getByLabel("Interprétation du résultat")
+      .fill(outcomeInterpretation);
+    await decisionCard
+      .getByLabel("Limites complémentaires")
+      .fill("Promotion locale non isolée");
+    const outcomeResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/follow-ups/") &&
+        response.request().method() === "PATCH",
+    );
+    await decisionCard
+      .getByRole("button", { name: "Enregistrer le réalisé" })
+      .click();
+    const outcomeResponse = await outcomeResponsePromise;
+    expect(outcomeResponse.status()).toBe(200);
+    const completed = recommendationFollowUpResponseSchema.parse(
+      await outcomeResponse.json(),
+    );
+    const completeInput = recommendationFollowUpCompleteInputSchema.parse(
+      outcomeResponse.request().postDataJSON(),
+    );
+    const duplicateOutcome = await page.request.patch(
+      `/api/stores/${storeId}/decisions/${completed.followUp.recommendationDecisionId}/follow-ups/${completed.followUp.id}`,
+      { data: completeInput },
+    );
+    expect(duplicateOutcome.status()).toBe(200);
+    expect(
+      recommendationFollowUpResponseSchema.parse(await duplicateOutcome.json())
+        .followUp,
+    ).toMatchObject({ id: completed.followUp.id, status: "completed" });
+
+    const isolatedOutcome = await page.request.patch(
+      `/api/stores/000000000000000000000000/decisions/${completed.followUp.recommendationDecisionId}/follow-ups/${completed.followUp.id}`,
+      { data: completeInput },
+    );
+    expect(isolatedOutcome.status()).toBe(404);
+    await expect(decisionCard.getByText("Résultat observé")).toBeVisible();
+    await expect(decisionCard.getByText(outcomeInterpretation)).toBeVisible();
+    await expect(
+      decisionCard.getByText(/aucun effet causal ne peut être attribué/),
+    ).toBeVisible();
   });
 
   await test.step("un storeId inconnu ne divulgue aucune donnée", async () => {
