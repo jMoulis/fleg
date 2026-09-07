@@ -105,7 +105,10 @@ function toSettingsSnapshot(
       },
     },
     space: {
-      allocation: values.space.allocation,
+      allocation: {
+        ...defaultEditableStoreSettings.space.allocation,
+        ...values.space.allocation,
+      },
     },
   });
 }

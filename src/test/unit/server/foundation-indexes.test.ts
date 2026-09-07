@@ -37,6 +37,8 @@ describe("foundation indexes", () => {
         "recommendation_follow_ups_decision_unique",
         "recommendation_follow_ups_scope_due",
         "recommendation_follow_up_commands_scope_key_unique",
+        "product_space_policy_sets_scope_unique",
+        "product_space_policy_commands_scope_key_unique",
       ]),
     );
   });

@@ -246,6 +246,17 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
         name: "allocation_plans_scope_idempotency_unique",
       },
     ),
+    db.collection("productSpacePolicySets").createIndex(
+      { organizationId: 1, storeId: 1 },
+      { unique: true, name: "product_space_policy_sets_scope_unique" },
+    ),
+    db.collection("productSpacePolicyCommands").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      {
+        unique: true,
+        name: "product_space_policy_commands_scope_key_unique",
+      },
+    ),
     db.collection("commercialEvents").createIndex(
       {
         organizationId: 1,

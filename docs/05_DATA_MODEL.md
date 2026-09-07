@@ -1,7 +1,7 @@
 # 05 — MongoDB data model
 
 ## Collections
-`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `markdownFacts`, `periodTargets`, `importJobs`, `layoutVersions`, `allocationPlans`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `recommendationRuns`, `recommendations`, `aiActionPlans`, `decisionLogs`, `attachments`, `auditLogs`, `benchmarkGroups`.
+`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `markdownFacts`, `periodTargets`, `importJobs`, `layoutVersions`, `allocationPlans`, `productSpacePolicySets`, `productSpacePolicyCommands`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `recommendationRuns`, `recommendations`, `aiActionPlans`, `decisionLogs`, `attachments`, `auditLogs`, `benchmarkGroups`.
 
 ## Mandatory tenant fields
 All business documents include `organizationId`, `storeId` where store-scoped, and usually `departmentId`.
@@ -17,6 +17,8 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 - markdownCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - layoutVersions `{storeId:1,departmentId:1,version:-1}`
 - allocationPlans `{storeId:1,layoutVersionId:1,version:-1}`
+- productSpacePolicySets `{organizationId:1,storeId:1}` unique
+- productSpacePolicyCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - commercialEvents `{organizationId:1,storeId:1,fixtureId:1,startsOn:1,endsOn:1,status:1}`
 - commercialEventCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - experiments `{organizationId:1,storeId:1,status:1,plannedStartAt:-1}`
@@ -32,6 +34,8 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 
 ## Facts vs derived values
 Never overwrite sales facts with forecasts. Derived metrics may be materialized with `calculationVersion`, `inputRevision`, `generatedAt`.
+
+Allocation plans preserve their product-policy snapshot, input revisions, configurable coefficients, known-component markdown economics and limitations. Missing markdown and suitability remain explicit unknowns.
 
 ## Product identity
 Mercalys labels change. Use canonical Product + ProductAlias. Unresolved labels enter mapping queue.

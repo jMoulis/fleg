@@ -60,5 +60,13 @@ MVP optimizer can be heuristic and explainable. Later replace with constrained o
 - Missing markdown and product-fixture suitability data are disclosed; the proposal remains a draft until explicit manager save.
 - Every saved allocation version is idempotent and audited with its before/after snapshot.
 
+## PREV3-03 constraints and economics
+- Product rules are stored as a versioned, store-scoped policy set. A rule records `mustStock` and either unknown suitability or an explicit list of allowed fixture types.
+- Unknown suitability is never treated as proven compatibility: the heuristic may propose it, but the limitation remains visible and frozen with the draft.
+- Explicitly incompatible fixtures are rejected by the server. Locked lines and existing must-stock lines are preserved; missing must-stock products are placed first on compatible capacity or reported as invalid.
+- The V2 heuristic ranks known post-markdown margin using `projected gross margin - observed markdown × markdownPenaltyWeight`.
+- `markdownPenaltyWeight` defaults to `1`, is manager-configurable from `0` to `2`, and is persisted with the allocation version. Missing markdown stays `null`; theoretical margin may guide ranking but is never presented as a complete post-markdown value.
+- Every allocation draft freezes the layout version, data/settings/policy revisions, product-rule snapshot, economics coverage, coefficients, evidence and limitations.
+
 ## Learning
 When allocation changes, create DecisionLog. Compare pre/post normalized performance after adequate observation window. Use evidence to calibrate location weights.

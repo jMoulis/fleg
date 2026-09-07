@@ -1,10 +1,10 @@
 # 12 — Testing & acceptance
 
 ## Unit
-Seasonality, small-base guard, forecast, ABC, XYZ proxy, margin-after-markdown, effective-space formulas, recommendation rules.
+Seasonality, small-base guard, forecast, ABC, XYZ proxy, margin-after-markdown, effective-space formulas, must-stock preservation, fixture suitability, allocation economics, recommendation rules.
 
 ## Integration
-Better Auth session, organization membership, store authorization, import preview/commit/idempotency, product alias mapping.
+Better Auth session, organization membership, store authorization, import preview/commit/idempotency, product alias mapping, versioned product-space policies and allocation snapshots.
 
 ## Isolation
 Explicit adversarial tests for guessed store IDs and cross-org access.
@@ -26,6 +26,8 @@ Explicit adversarial tests for guessed store IDs and cross-org access.
 ## Acceptance
 - totals reconcile with source after excluded aggregate rows,
 - no capacity overflow,
+- no incompatible fixture or missing must-stock product in a saved allocation,
+- missing markdown remains unknown and visible in allocation evidence,
 - no cross-store leakage,
 - forecast states confidence,
 - AI numeric claims are traceable,

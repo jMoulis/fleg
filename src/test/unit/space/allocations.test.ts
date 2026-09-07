@@ -8,7 +8,9 @@ import {
 } from "@/domain/space/allocation-schemas";
 import {
   buildHeuristicAllocationDraft,
+  calculateAllocationProductEconomics,
   flattenLayoutCapacity,
+  summarizeAllocationEconomics,
   summarizeAllocations,
   validateAllocationDraft,
 } from "@/domain/space/allocations";
@@ -36,6 +38,7 @@ const products: AllocationProduct[] = [
     forecastRevenueCents: 130_000,
     abcClass: "A",
     confidence: "high",
+    markdownCents: 5_000,
   },
   {
     id: "66d000000000000000000102",
@@ -46,6 +49,7 @@ const products: AllocationProduct[] = [
     forecastRevenueCents: 95_000,
     abcClass: "A",
     confidence: "medium",
+    markdownCents: null,
   },
   {
     id: "66d000000000000000000103",
@@ -56,6 +60,7 @@ const products: AllocationProduct[] = [
     forecastRevenueCents: 48_000,
     abcClass: "B",
     confidence: "medium",
+    markdownCents: 20_000,
   },
 ];
 
@@ -151,6 +156,94 @@ describe("space allocations", () => {
     expect(summary.lockedCount).toBe(1);
   });
 
+  it("preserves must-stock lines and refuses incompatible fixtures", () => {
+    const capacities = flattenLayoutCapacity(layout);
+    const islandCapacity = capacities.find(
+      (capacity) => capacity.fixtureType === "island",
+    );
+    if (!islandCapacity) throw new Error("Îlot de test absent");
+    const mustStockLine: AllocationLine = {
+      productId: products[1]!.id,
+      shelfId: islandCapacity.shelfId,
+      facingWidthM: 0.25,
+      locked: false,
+    };
+    const policies = [
+      {
+        productId: products[1]!.id,
+        mustStock: true,
+        suitability: "restricted" as const,
+        allowedFixtureTypes: ["island" as const],
+      },
+      {
+        productId: products[2]!.id,
+        mustStock: false,
+        suitability: "restricted" as const,
+        allowedFixtureTypes: ["endcap" as const],
+      },
+    ];
+    const allocations = buildHeuristicAllocationDraft({
+      capacities,
+      products,
+      currentAllocations: [mustStockLine],
+      config: defaultAllocationConfig,
+      policies,
+    });
+    const incompatibleIssues = validateAllocationDraft({
+      capacities,
+      allocations: [
+        {
+          productId: products[2]!.id,
+          shelfId: islandCapacity.shelfId,
+          facingWidthM: 0.25,
+          locked: false,
+        },
+      ],
+      config: defaultAllocationConfig,
+      authorizedProductIds: new Set(products.map((product) => product.id)),
+      policies,
+    });
+
+    expect(allocations).toContainEqual(mustStockLine);
+    expect(incompatibleIssues.map((issue) => issue.code)).toEqual([
+      "INCOMPATIBLE_FIXTURE",
+      "MUST_STOCK_MISSING",
+    ]);
+  });
+
+  it("uses known markdown in economics without inventing missing loss", () => {
+    const known = calculateAllocationProductEconomics(
+      products[0]!,
+      defaultAllocationConfig,
+    );
+    const unknown = calculateAllocationProductEconomics(
+      products[1]!,
+      defaultAllocationConfig,
+    );
+    const summary = summarizeAllocationEconomics({
+      products,
+      config: defaultAllocationConfig,
+      periodKey: "2026-08",
+    });
+
+    expect(known).toMatchObject({
+      projectedGrossMarginCents: 32_500,
+      markdownCents: 5_000,
+      expectedPostMarkdownMarginCents: 27_500,
+      scoreCents: 27_500,
+    });
+    expect(unknown).toMatchObject({
+      markdownCents: null,
+      expectedPostMarkdownMarginCents: null,
+      scoreCents: 28_500,
+    });
+    expect(summary).toMatchObject({
+      markdownCoverage: "partial",
+      markdownObservedProductCount: 2,
+      observedMarkdownCents: 25_000,
+    });
+  });
+
   it("rejects a duplicate product on the same shelf at the API boundary", () => {
     const capacity = flattenLayoutCapacity(layout)[0];
 
@@ -176,8 +269,20 @@ describe("space allocations", () => {
         periodKey: "2025-12",
         calculationVersion: "analytics-v1",
         dataRevision: 1,
+        settingsRevision: 1,
+        policyRevision: 1,
       },
       evidence: ["Saisie manager"],
+      limitations: ["Données mensuelles"],
+      constraintSnapshot: {
+        policyRevision: 1,
+        policies: [],
+      },
+      economics: summarizeAllocationEconomics({
+        products,
+        config: defaultAllocationConfig,
+        periodKey: "2025-12",
+      }),
       allocations: [line, line],
       note: "",
     });

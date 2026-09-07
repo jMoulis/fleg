@@ -21,6 +21,11 @@ import {
 } from "@/domain/space/allocations";
 import { buildAllocationScope } from "@/domain/space/allocation-scope";
 import {
+  productSpacePolicySchema,
+  type ProductSpacePolicy,
+} from "@/domain/space/product-space-policy-schemas";
+import {
+  type FixtureType,
   layoutVersionSchema,
   type LayoutVersion,
 } from "@/domain/space/schemas";
@@ -58,6 +63,18 @@ interface LayoutVersionDocument {
   version: number;
   createdAt: Date;
   [key: string]: unknown;
+}
+
+interface ProductSpacePolicySetDocument {
+  organizationId: string;
+  storeId: ObjectId;
+  revision: number;
+  policies: Array<{
+    productId: ObjectId;
+    mustStock: boolean;
+    suitability: "unknown" | "restricted";
+    allowedFixtureTypes: FixtureType[];
+  }>;
 }
 
 export class AllocationPlanConflictError extends Error {
@@ -111,6 +128,9 @@ export class AllocationRepository {
   private readonly allocationPlans;
   private readonly layoutVersions;
   private readonly products;
+  private readonly policySets;
+  private readonly storeSettings;
+  private readonly stores;
   private readonly auditLogs;
 
   constructor(
@@ -123,6 +143,18 @@ export class AllocationRepository {
     this.products = db.collection<{ organizationId: string; storeId: ObjectId; active: boolean }>(
       "products",
     );
+    this.policySets =
+      db.collection<ProductSpacePolicySetDocument>("productSpacePolicySets");
+    this.storeSettings = db.collection<{
+      organizationId: string;
+      storeId: ObjectId;
+      revision: number;
+    }>("storeSettings");
+    this.stores = db.collection<{
+      organizationId: string;
+      dataRevision: number;
+      active: boolean;
+    }>("stores");
     this.auditLogs = db.collection("auditLogs");
   }
 
@@ -201,6 +233,48 @@ export class AllocationRepository {
           throw new AllocationPlanConflictError();
         }
 
+        const [policySetDocument, settingsDocument, storeDocument] =
+          await Promise.all([
+            this.policySets.findOne(
+              { organizationId: scope.organizationId, storeId },
+              { session },
+            ),
+            this.storeSettings.findOne(
+              { organizationId: scope.organizationId, storeId },
+              { projection: { revision: 1 }, session },
+            ),
+            this.stores.findOne(
+              {
+                _id: storeId,
+                organizationId: scope.organizationId,
+                active: true,
+              },
+              { projection: { dataRevision: 1 }, session },
+            ),
+          ]);
+        const policyRevision = policySetDocument?.revision ?? 0;
+        const settingsRevision = settingsDocument?.revision ?? 0;
+
+        if (
+          createInput.basis.policyRevision !== policyRevision ||
+          createInput.constraintSnapshot.policyRevision !== policyRevision ||
+          createInput.basis.settingsRevision !== settingsRevision ||
+          (createInput.basis.dataRevision !== null &&
+            createInput.basis.dataRevision !==
+              (storeDocument?.dataRevision ?? 0))
+        ) {
+          throw new AllocationPlanConflictError();
+        }
+
+        const currentPolicies: ProductSpacePolicy[] = (
+          policySetDocument?.policies ?? []
+        ).map((policy) =>
+          productSpacePolicySchema.parse({
+            ...policy,
+            productId: policy.productId.toHexString(),
+          }),
+        );
+
         const uniqueProductIds = [
           ...new Set(
             createInput.allocations.map((allocation) => allocation.productId),
@@ -227,6 +301,7 @@ export class AllocationRepository {
           allocations: createInput.allocations,
           config: createInput.config,
           authorizedProductIds,
+          policies: currentPolicies,
         });
 
         if (validationIssues.length > 0) {
@@ -249,6 +324,12 @@ export class AllocationRepository {
           config: createInput.config,
           basis: createInput.basis,
           evidence: createInput.evidence,
+          limitations: createInput.limitations,
+          constraintSnapshot: {
+            policyRevision,
+            policies: currentPolicies,
+          },
+          economics: createInput.economics,
           allocations: createInput.allocations,
           note: createInput.note?.trim() || null,
           createdBy: context.userId,
@@ -270,6 +351,9 @@ export class AllocationRepository {
             config: nextPlan.config,
             basis: nextPlan.basis,
             evidence: nextPlan.evidence,
+            limitations: nextPlan.limitations,
+            constraintSnapshot: nextPlan.constraintSnapshot,
+            economics: nextPlan.economics,
             allocations: nextPlan.allocations.map((allocation) => ({
               ...allocation,
               productId: new ObjectId(allocation.productId),

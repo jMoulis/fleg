@@ -242,6 +242,7 @@ export function StoreConfigurationManager({
             minimumFacingWidthM: formNumber(data, "minimumFacingWidthM"),
             targetProductsPerShelf: formNumber(data, "targetProductsPerShelf"),
             facingIncrementM: formNumber(data, "facingIncrementM"),
+            markdownPenaltyWeight: formNumber(data, "markdownPenaltyWeight"),
           },
         },
       },
@@ -425,6 +426,7 @@ export function StoreConfigurationManager({
               <NumberField disabled={!canEditSettings} id="minimumFacingWidthM" label="Facing minimum" defaultValue={settings.space.allocation.minimumFacingWidthM} min={0.05} max={10} step={0.05} suffix="m" />
               <NumberField disabled={!canEditSettings} id="targetProductsPerShelf" label="Produits cibles par niveau" defaultValue={settings.space.allocation.targetProductsPerShelf} min={1} max={8} step={1} />
               <NumberField disabled={!canEditSettings} id="facingIncrementM" label="Pas de réglage" defaultValue={settings.space.allocation.facingIncrementM} min={0.01} max={1} step={0.01} suffix="m" />
+              <NumberField disabled={!canEditSettings} id="markdownPenaltyWeight" label="Poids de la démarque observée" defaultValue={settings.space.allocation.markdownPenaltyWeight} min={0} max={2} step={0.05} suffix="×" />
             </SettingsSection>
 
             <Button disabled={!canEditSettings || pending !== null} type="submit">
