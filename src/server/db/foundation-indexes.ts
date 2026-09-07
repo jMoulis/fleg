@@ -96,6 +96,17 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { storeId: 1, fingerprint: 1, periodKey: 1 },
       { unique: true, name: "import_jobs_store_fingerprint_period_unique" },
     ),
+    db.collection("dailySalesImportJobs").createIndex(
+      { organizationId: 1, storeId: 1, fingerprint: 1, coverageKey: 1 },
+      {
+        unique: true,
+        name: "daily_import_jobs_scope_fingerprint_coverage_unique",
+      },
+    ),
+    db.collection("dailySalesImportJobs").createIndex(
+      { organizationId: 1, storeId: 1, status: 1, createdAt: -1 },
+      { name: "daily_import_jobs_scope_status_created" },
+    ),
     db.collection("products").createIndex(
       { storeId: 1, normalizedLabel: 1 },
       { name: "products_store_normalized_label" },
@@ -111,6 +122,36 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
     db.collection("salesFacts").createIndex(
       { organizationId: 1, storeId: 1, periodKey: 1 },
       { name: "sales_facts_scope_period" },
+    ),
+    db.collection("dailySalesFacts").createIndex(
+      { organizationId: 1, storeId: 1, productId: 1, businessDate: 1 },
+      {
+        unique: true,
+        partialFilterExpression: { active: true },
+        name: "daily_sales_facts_scope_product_date_active_unique",
+      },
+    ),
+    db.collection("dailySalesFacts").createIndex(
+      {
+        organizationId: 1,
+        storeId: 1,
+        productId: 1,
+        businessDate: 1,
+        version: 1,
+      },
+      { unique: true, name: "daily_sales_facts_scope_product_date_version_unique" },
+    ),
+    db.collection("dailySalesFacts").createIndex(
+      { organizationId: 1, storeId: 1, businessDate: 1, active: 1 },
+      { name: "daily_sales_facts_scope_date_active" },
+    ),
+    db.collection("dailySalesFacts").createIndex(
+      { organizationId: 1, storeId: 1, isoWeekKey: 1, active: 1 },
+      { name: "daily_sales_facts_scope_week_active" },
+    ),
+    db.collection("dailySalesFacts").createIndex(
+      { importJobId: 1, active: 1 },
+      { name: "daily_sales_facts_import_active" },
     ),
     db.collection("storeSettings").createIndex(
       { organizationId: 1, storeId: 1 },

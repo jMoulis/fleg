@@ -19,7 +19,7 @@ Acceptance criteria for administration and onboarding:
 Persistent global store context. Authorized stores only. Network mode for authorized users.
 
 ## F03 Mercalys import
-Upload XLSX/CSV. Detect columns: Libellé, Année/Mois, Quantité, Valeur prix vente, Val Marge, % Marge. Preview, validate, detect duplicate aggregate row, map aliases, commit idempotently.
+Upload XLSX/CSV. Detect columns: Libellé, Année/Mois, Quantité, Valeur prix vente, Val Marge, % Marge, plus ITM8/EAN lorsqu’ils sont disponibles. Preview, validate, detect duplicate aggregate row, map aliases, commit idempotently. Daily Mercalys exports use their metadata date and PDV, keep a separate versioned fact history and never replace monthly observations.
 
 ## F04 Dashboard
 CA, margin €, margin %, markdown, target gap, forecast, YoY, seasonality, top actions. Network view adds store ranking and normalized productivity.
@@ -35,6 +35,15 @@ Rank by projected CA by default; configurable metric. A <= 80% cumulative, B <=9
 
 ## F08 XYZ
 V1 proxy clearly labeled when only monthly data exists. True XYZ later uses coefficient of variation of weekly/daily demand.
+
+Acceptance criteria for `V3-01` granular sales foundation:
+
+- a daily XLSX/CSV preview exposes business-date coverage, aggregate exclusions, aliases and reconciled totals before commit;
+- daily facts are append-versioned by authorized store, product and business date;
+- corrections supersede an active fact while unchanged retries remain idempotent;
+- weekly views use ISO week-years, expose partial coverage and never fill missing dates with zero;
+- daily and monthly observations are reconciled but never added together;
+- existing monthly dashboards, recommendations and experiments do not change source in this ticket.
 
 ## F09 Recommendation engine
 push / maintain / reduce / review_margin / review_waste / review_space / delist_candidate / traffic_protect. Every recommendation includes reasons, inputs, confidence and expected effect where calculable.

@@ -87,14 +87,17 @@ test("E2E-01 transforme un export Mercalys en décision manager", async ({
     await expect(
       page.getByRole("heading", { name: "Import Mercalys" }),
     ).toBeVisible();
-    await page.getByLabel("Export Mercalys").setInputFiles(fixturePath);
+    const monthlyImport = page.getByLabel("Synthèse mensuelle");
+    await monthlyImport.getByLabel("Export Mercalys").setInputFiles(fixturePath);
 
     const previewResponsePromise = page.waitForResponse(
       (response) =>
         response.url().includes("/imports/preview") &&
         response.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Prévisualiser" }).click();
+    await monthlyImport
+      .getByRole("button", { name: "Prévisualiser" })
+      .click();
     const previewResponse = await previewResponsePromise;
     expect(previewResponse.status()).toBe(200);
     const preview = (await previewResponse.json()) as {

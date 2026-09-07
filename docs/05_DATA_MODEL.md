@@ -38,6 +38,26 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 ## Facts vs derived values
 Never overwrite sales facts with forecasts. Derived metrics may be materialized with `calculationVersion`, `inputRevision`, `generatedAt`.
 
+## V3 additive granular facts
+
+`V3-01` adds `dailySalesImportJobs` and `dailySalesFacts`; it does not replace
+monthly `importJobs` or `salesFacts`. Daily facts are append-versioned with one
+active document per authorized store, product and business date. `periodKey`
+and `isoWeekKey` are deterministic derivatives of the source business date.
+
+Planned indexes:
+
+- dailySalesImportJobs `{organizationId:1,storeId:1,fingerprint:1,coverageKey:1}` unique
+- dailySalesFacts `{organizationId:1,storeId:1,productId:1,businessDate:1}` unique where `active:true`
+- dailySalesFacts `{organizationId:1,storeId:1,productId:1,businessDate:1,version:1}` unique
+- dailySalesFacts `{organizationId:1,storeId:1,businessDate:1,active:1}`
+- dailySalesFacts `{organizationId:1,storeId:1,isoWeekKey:1,active:1}`
+
+Weekly values are calculated views over active daily facts. They remain derived
+values carrying a calculation version, data revision and coverage evidence.
+Monthly and daily observations for the same calendar month remain separate and
+are never summed.
+
 Allocation plans preserve their product-policy snapshot, input revisions, configurable coefficients, known-component markdown economics and limitations. Missing markdown and suitability remain explicit unknowns.
 
 Photo metadata lives in `attachments`; private binary content lives separately in

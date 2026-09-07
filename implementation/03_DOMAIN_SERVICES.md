@@ -18,6 +18,13 @@ Create/update stores, memberships, objectives and active department metadata.
 ## AnalyticsService
 Produces reconciled store KPIs, product metrics, ABC classifications, available stability/XYZ proxy, Pareto, margin diagnostics and time comparisons.
 
+## GranularSalesService (V3-01)
+
+Previews and commits daily sales observations, versions product-date
+corrections, derives ISO weekly views with explicit coverage and reconciles
+complete daily months against monthly observations without replacing or adding
+the two grains.
+
 ## ForecastService
 Produces forecast values with component evidence and confidence metadata. Small-base and missing-history guards are mandatory.
 

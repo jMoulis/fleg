@@ -3,7 +3,6 @@ import { readSheet } from "read-excel-file/node";
 
 import { detectAggregateRows } from "@/domain/imports/aggregate-detector";
 import {
-  normalizeExternalKey,
   normalizeHeader,
   normalizeText,
   parseFrenchNumber,
@@ -11,6 +10,7 @@ import {
   parsePeriodKey,
   parseRatio,
 } from "@/domain/imports/normalization";
+import { buildMercalysProductIdentity } from "@/domain/imports/product-identity";
 import {
   mercalysPreviewSchema,
   normalizedMercalysRowSchema,
@@ -24,6 +24,8 @@ import {
 type RawRow = unknown[];
 
 const headerAliases: Record<MercalysColumn, ReadonlySet<string>> = {
+  itm8: new Set(["itm8", "itm8prio", "codeitm8"]),
+  ean: new Set(["ean", "eanprio", "codeean", "codebarres"]),
   label: new Set(["libelle", "produit", "libelleproduit"]),
   period: new Set(["anneemois", "periode", "mois"]),
   quantity: new Set(["quantite", "qte", "quantitevendue"]),
@@ -49,6 +51,8 @@ interface HeaderMapping {
 function findHeaderMapping(rows: RawRow[]): HeaderMapping {
   for (let rowIndex = 0; rowIndex < Math.min(rows.length, 12); rowIndex += 1) {
     const indexes: Record<MercalysColumn, number | undefined> = {
+      itm8: undefined,
+      ean: undefined,
       label: undefined,
       period: undefined,
       quantity: undefined,
@@ -57,6 +61,8 @@ function findHeaderMapping(rows: RawRow[]): HeaderMapping {
       marginRatio: undefined,
     };
     const labels: Record<MercalysColumn, string> = {
+      itm8: "",
+      ean: "",
       label: "",
       period: "",
       quantity: "",
@@ -117,11 +123,16 @@ function normalizeRow(
     : unlabeledMercalysRowLabel;
   const sourceMarginRatio = parseRatio(cell(row, mapping.indexes.marginRatio));
   const rawPeriod = cell(row, mapping.indexes.period);
+  const identity = buildMercalysProductIdentity({
+    sourceLabel,
+    rawItm8: cell(row, mapping.indexes.itm8),
+    rawEan: cell(row, mapping.indexes.ean),
+  });
 
   return normalizedMercalysRowSchema.parse({
     rowNumber,
     sourceLabel,
-    externalKey: normalizeExternalKey(sourceLabel),
+    ...identity,
     periodKey:
       rawPeriod === null || rawPeriod === undefined || rawPeriod === ""
         ? fallbackPeriodKey

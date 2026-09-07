@@ -28,6 +28,21 @@ True XYZ after granular history:
 `CV = stddev(demand) / mean(demand)`.
 Thresholds configurable.
 
+## V3 granular evidence
+
+Daily observations retain their source business date. ISO weekly aggregates are
+derived from active daily facts, use Monday-to-Sunday week boundaries and carry
+coverage status plus the store data revision. Missing dates are not zero demand.
+
+Monthly `salesFacts` and daily rollups are distinct observed/evidence paths. A
+reconciliation may compare them for a complete month, but an analytical result
+must choose one grain and must never sum both.
+
+True XYZ uses population standard deviation of complete weekly unit-demand
+windows. Window length, minimum complete weeks, small-mean guard and X/Y
+thresholds are configurable and versioned. Insufficient coverage or non-positive
+mean demand produces an explicit unclassified result.
+
 ## Recommendation score
 Do not reduce decisions to one opaque score. Keep components:
 - economic weight,

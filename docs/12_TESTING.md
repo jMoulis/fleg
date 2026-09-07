@@ -34,3 +34,13 @@ Explicit adversarial tests for guessed store IDs and cross-org access.
 - forecast states confidence,
 - AI numeric claims are traceable,
 - mobile/tablet usable for operational screens.
+
+## V3-01 granular-data gate
+
+- date parsing covers leap days and ISO week-year boundaries;
+- coverage remains partial/unknown when source days are absent;
+- commit replay creates no duplicate facts or revision increment;
+- corrections create a new version and leave one active product-date fact;
+- daily and weekly reads reject foreign store/product/import identifiers;
+- complete daily months reconcile to monthly observations without replacing or summing them;
+- the daily import-to-weekly-view flow passes at mobile and desktop widths.

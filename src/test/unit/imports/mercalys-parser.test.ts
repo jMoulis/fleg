@@ -83,4 +83,35 @@ describe("Mercalys parser", () => {
 
     expect(preview.totals.revenueCents).toBe(10000);
   });
+
+  it("prefers optional ITM8 and EAN identifiers while retaining the label alias", () => {
+    const preview = parseMercalysRows([
+      ["ITM8 Prio", "EAN Prio", ...headers],
+      [
+        "0000087003017",
+        "0000000003017",
+        "Poire conférence vrac",
+        "2026/09",
+        2.75,
+        11.54,
+        4.7,
+        40.69,
+      ],
+    ]);
+
+    expect(preview.rows[0]).toMatchObject({
+      externalKey: "itm8:0000087003017",
+      aliasKeys: [
+        "itm8:0000087003017",
+        "ean:0000000003017",
+        "poire conference vrac",
+      ],
+      sourceItm8: "0000087003017",
+      sourceEan: "0000000003017",
+    });
+    expect(preview.mappedColumns).toMatchObject({
+      itm8: "ITM8 Prio",
+      ean: "EAN Prio",
+    });
+  });
 });

@@ -14,11 +14,17 @@ import {
   type MercalysPreview,
 } from "@/domain/imports/schemas";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
+import {
+  findUnresolvedMercalysIdentities,
+  loadMercalysAliasTargets,
+  persistMercalysIdentityAliases,
+  resolveMercalysProductIds,
+  type MercalysIdentityRow,
+  type ProductAliasDocument,
+  type UnresolvedMercalysIdentity,
+} from "@/server/repositories/mercalys-alias-resolution";
 
-interface UnresolvedAlias {
-  externalKey: string;
-  sourceLabel: string;
-}
+type UnresolvedAlias = UnresolvedMercalysIdentity;
 
 interface ImportJobDocument {
   organizationId: string;
@@ -49,18 +55,6 @@ interface ProductDocument {
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
-}
-
-interface ProductAliasDocument {
-  organizationId: string;
-  storeId: ObjectId;
-  source: "mercalys";
-  externalKey: string;
-  sourceLabel: string;
-  productId?: ObjectId;
-  ignored: boolean;
-  createdBy: string;
-  createdAt: Date;
 }
 
 interface SalesFactDocument {
@@ -117,25 +111,27 @@ export class ImportRepository {
 
   async findResolvedExternalKeys(
     context: AuthorizedStoreContext,
-    externalKeys: string[],
+    identities: MercalysIdentityRow[],
   ): Promise<Set<string>> {
-    if (externalKeys.length === 0) {
+    if (identities.length === 0) {
       return new Set();
     }
 
-    const aliases = await this.productAliases
-      .find(
-        {
-          organizationId: context.organizationId,
-          storeId: new ObjectId(context.storeId),
-          source: "mercalys",
-          externalKey: { $in: externalKeys },
-        },
-        { projection: { externalKey: 1 } },
-      )
-      .toArray();
-
-    return new Set(aliases.map((alias) => alias.externalKey));
+    const targets = await loadMercalysAliasTargets({
+      collection: this.productAliases,
+      context,
+      rows: identities,
+    });
+    const unresolved = new Set(
+      findUnresolvedMercalysIdentities({ rows: identities, targets }).map(
+        (identity) => identity.externalKey,
+      ),
+    );
+    return new Set(
+      identities
+        .map((identity) => identity.externalKey)
+        .filter((externalKey) => !unresolved.has(externalKey)),
+    );
   }
 
   async savePreview(input: {
@@ -215,30 +211,18 @@ export class ImportRepository {
           job.unresolvedAliases.map(({ externalKey }) => externalKey),
           resolutions,
         );
-        const externalKeys = [
-          ...new Set(
-            job.preview.rows
-              .filter((row) => !row.excluded)
-              .map((row) => row.externalKey),
-          ),
-        ];
-        const existingAliases = await this.productAliases
-          .find(
-            {
-              organizationId: context.organizationId,
-              storeId: storeObjectId,
-              source: "mercalys",
-              externalKey: { $in: externalKeys },
-            },
-            { session },
-          )
-          .toArray();
-        const productIdsByExternalKey = new Map<string, string | null>(
-          existingAliases.map((alias) => [
-            alias.externalKey,
-            alias.ignored ? null : (alias.productId?.toHexString() ?? null),
-          ]),
-        );
+        const includedRows = job.preview.rows.filter((row) => !row.excluded);
+        const aliasTargets = await loadMercalysAliasTargets({
+          collection: this.productAliases,
+          context,
+          rows: includedRows,
+          session,
+        });
+        const productIdsByExternalKey = resolveMercalysProductIds({
+          rows: includedRows,
+          targets: aliasTargets,
+        });
+        const now = new Date();
 
         for (const unresolvedAlias of job.unresolvedAliases) {
           if (productIdsByExternalKey.has(unresolvedAlias.externalKey)) {
@@ -252,7 +236,6 @@ export class ImportRepository {
 
           let productId: ObjectId | undefined;
           if (resolution.action === "create") {
-            const now = new Date();
             const created = await this.products.insertOne(
               {
                 organizationId: context.organizationId,
@@ -283,31 +266,25 @@ export class ImportRepository {
             }
           }
 
-          await this.productAliases.insertOne(
-            {
-              organizationId: context.organizationId,
-              storeId: storeObjectId,
-              source: "mercalys",
-              externalKey: unresolvedAlias.externalKey,
-              sourceLabel: unresolvedAlias.sourceLabel,
-              productId,
-              ignored: resolution.action === "ignore",
-              createdBy: context.userId,
-              createdAt: new Date(),
-            },
-            { session },
-          );
           productIdsByExternalKey.set(
             unresolvedAlias.externalKey,
             productId?.toHexString() ?? null,
           );
         }
 
+        await persistMercalysIdentityAliases({
+          collection: this.productAliases,
+          context,
+          rows: includedRows,
+          productIdsByExternalKey,
+          session,
+          now,
+        });
+
         const preparedFacts = groupImportFacts(
           job.preview.rows,
           productIdsByExternalKey,
         );
-        const now = new Date();
 
         if (preparedFacts.length > 0) {
           await this.salesFacts.bulkWrite(
