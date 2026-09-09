@@ -12,6 +12,11 @@ V3 true-XYZ unit coverage includes X/Y/Z boundaries, population CV, exclusion
 of incomplete weeks without zero filling, minimum-history and small-mean
 guards, unresolved negative demand and visible corrected-fact evidence.
 
+V3 day-of-week forecast coverage includes weekday weighting, fixed holdout
+without leakage, MAE/RMSE/bias/WAPE, confidence thresholds, partial and sparse
+coverage without zero filling, zero-denominator protection, negative-demand
+blocking and correction evidence.
+
 ## Integration
 Better Auth session, organization membership, store authorization, import preview/commit/idempotency, product alias mapping, versioned product-space policies, allocation snapshots and attachment object scope.
 
@@ -68,3 +73,16 @@ Explicit adversarial tests for guessed store IDs and cross-org access.
 - matrix and product-detail views show true XYZ separately from ABC and the
   monthly stability proxy;
 - thresholds, evidence guards and their configuration revision are visible.
+
+## V3-04 day-of-week forecast gate
+
+- only active authorized daily facts through `asOf` enter the model;
+- the holdout is excluded from its own fit and exposes point-level errors;
+- incomplete training/backtest coverage cannot receive high confidence;
+- missing weekday history returns null days and a null horizon total rather
+  than invented zero demand;
+- zero backtest demand returns a null WAPE and negative demand blocks the
+  forecast with typed warnings;
+- a product identifier from another store returns 404;
+- mobile and desktop product detail distinguish daily quantity forecasts from
+  the existing monthly revenue forecast.

@@ -150,6 +150,59 @@ export const storeSettingsUpdateInputSchema = z
         message: "Le seuil Y doit être supérieur au seuil X",
       });
     }
+    if (
+      input.settings.analytics.dayOfWeekForecastBacktestWeeks >=
+      input.settings.analytics.dayOfWeekForecastWindowWeeks
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["settings", "analytics", "dayOfWeekForecastBacktestWeeks"],
+        message: "Le backtest doit être plus court que la fenêtre d’apprentissage",
+      });
+    }
+    if (
+      input.settings.analytics.dayOfWeekForecastMinimumObservationsPerWeekday >
+      input.settings.analytics.dayOfWeekForecastWindowWeeks -
+        input.settings.analytics.dayOfWeekForecastBacktestWeeks
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: [
+          "settings",
+          "analytics",
+          "dayOfWeekForecastMinimumObservationsPerWeekday",
+        ],
+        message: "Le minimum par jour dépasse l’historique disponible avant backtest",
+      });
+    }
+    if (
+      input.settings.analytics.dayOfWeekForecastMinimumBacktestObservations >
+      input.settings.analytics.dayOfWeekForecastBacktestWeeks * 7
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: [
+          "settings",
+          "analytics",
+          "dayOfWeekForecastMinimumBacktestObservations",
+        ],
+        message: "Le minimum de points de backtest dépasse la fenêtre de validation",
+      });
+    }
+    if (
+      input.settings.analytics.dayOfWeekForecastHighConfidenceMaxWape >=
+      input.settings.analytics.dayOfWeekForecastMediumConfidenceMaxWape
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: [
+          "settings",
+          "analytics",
+          "dayOfWeekForecastMediumConfidenceMaxWape",
+        ],
+        message: "Le seuil WAPE moyen doit dépasser le seuil WAPE élevé",
+      });
+    }
     addNestedIssues(
       analyticsConfigSchema.safeParse({
         ...defaultAnalyticsConfig,

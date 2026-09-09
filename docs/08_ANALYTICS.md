@@ -55,6 +55,42 @@ blocks classification until resolved. Corrected active facts remain usable but
 are surfaced as evidence. The matrix and product detail always display the
 complete-week count and keep `demand_stability_proxy` explicitly separate.
 
+## V3 day-of-week quantity forecast
+
+The daily model predicts each future date from a recency-weighted mean of
+observed quantities for the same weekday:
+
+`weight = recencyDecay ^ ageInWeeks`
+
+`forecast(weekday) = sum(quantity * weight) / sum(weight)`
+
+Defaults are a 12-week candidate window, a fixed 2-week holdout, at least 4
+training observations per weekday, at least 7 predicted holdout observations
+and a weekly recency decay of 0.90. The holdout model trains only before the
+holdout start, preventing future-data leakage. The production model is then
+refitted with all observations through `asOf`.
+
+Backtest evidence includes:
+
+- `MAE = mean(abs(predicted - actual))`;
+- `RMSE = sqrt(mean((predicted - actual)^2))`;
+- mean error `mean(predicted - actual)`;
+- `WAPE = sum(abs(predicted - actual)) / sum(actual)` when actual demand is
+  non-zero.
+
+High confidence requires a complete forecast horizon, complete training and
+backtest coverage, enough backtest observations and WAPE at or below 20%.
+Medium confidence requires a complete horizon, enough backtest evidence and
+WAPE at or below 40%; this caps partial coverage below high. Every other case
+is low confidence. All windows, minimums, decay and WAPE thresholds are
+store-configurable and versioned.
+
+An absent source date remains unknown and never enters the weighted mean as
+zero. Insufficient weekday history produces null forecast dates. Negative
+demand blocks the product forecast; corrected active facts remain usable when
+non-negative but are disclosed. This quantity forecast remains distinct from
+the monthly revenue forecast and is not consumed by recommendations in V3-04.
+
 ## Recommendation score
 Do not reduce decisions to one opaque score. Keep components:
 - economic weight,

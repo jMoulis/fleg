@@ -51,6 +51,8 @@ GET `/api/stores/:storeId/sales/reconciliation?period=YYYY-MM&productId=...`
 
 GET `/api/stores/:storeId/products/xyz?asOf=YYYY-MM-DD&productId=...`
 
+GET `/api/stores/:storeId/products/day-of-week-forecast?asOf=YYYY-MM-DD&productId=...&horizonDays=7`
+
 Daily and weekly ranges accept either both `from` and `to`, or neither. An
 omitted range ends at the latest authorized observation and spans 28 days; an
 explicit range is limited to 366 days. A weekly response expands intersecting
@@ -67,6 +69,14 @@ filling, warnings, store configuration version, data revision and
 `true-xyz-v1` calculation version. A historical `asOf` never loads observations
 after that date; the remainder of its ISO week is therefore explicit missing
 coverage.
+
+The day-of-week forecast read also requires `analytics.read`, reauthorizes an
+optional product and accepts a 1-to-28-day horizon. `asOf` defaults to the
+latest authorized daily observation and no later fact is loaded. The response
+contains the exact training/forecast windows, seven weekday models, forecast
+days, fixed-holdout points, MAE, RMSE, mean error, WAPE, confidence, warnings,
+configuration version, data revision and model version. Missing predictions
+are null rather than zero.
 
 ## Layout
 GET `/api/stores/:storeId/layout`

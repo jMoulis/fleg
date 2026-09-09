@@ -206,6 +206,10 @@ test("E2E-01 transforme un export Mercalys en décision manager", async ({
     await productLink.click();
 
     await expect(page.getByText("Pourquoi cette recommandation ?")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Prévision par jour de semaine" }),
+    ).toBeVisible();
+    await expect(page.getByText(/distincte de la prévision mensuelle de CA/)).toBeVisible();
     await expect(page.getByText(/Modèle .* calcul .* révision/)).toBeVisible();
     const rationale = `Validation E2E ${projectName} · ${fixture.periodKey}`;
     await page.getByLabel("Note").fill(rationale);

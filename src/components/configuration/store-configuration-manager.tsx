@@ -172,6 +172,34 @@ export function StoreConfigurationManager({
             data,
             "xyzYMaxCoefficientOfVariation",
           ),
+          dayOfWeekForecastWindowWeeks: formNumber(
+            data,
+            "dayOfWeekForecastWindowWeeks",
+          ),
+          dayOfWeekForecastBacktestWeeks: formNumber(
+            data,
+            "dayOfWeekForecastBacktestWeeks",
+          ),
+          dayOfWeekForecastMinimumObservationsPerWeekday: formNumber(
+            data,
+            "dayOfWeekForecastMinimumObservationsPerWeekday",
+          ),
+          dayOfWeekForecastMinimumBacktestObservations: formNumber(
+            data,
+            "dayOfWeekForecastMinimumBacktestObservations",
+          ),
+          dayOfWeekForecastRecencyDecay: formRatio(
+            data,
+            "dayOfWeekForecastRecencyDecay",
+          ),
+          dayOfWeekForecastHighConfidenceMaxWape: formRatio(
+            data,
+            "dayOfWeekForecastHighConfidenceMaxWape",
+          ),
+          dayOfWeekForecastMediumConfidenceMaxWape: formRatio(
+            data,
+            "dayOfWeekForecastMediumConfidenceMaxWape",
+          ),
         },
         recommendations: {
           minimumActionRevenueCents: formCents(data, "minimumActionRevenue"),
@@ -408,6 +436,16 @@ export function StoreConfigurationManager({
               <NumberField disabled={!canEditSettings} id="xyzMinimumMeanWeeklyQuantity" label="Demande hebdomadaire moyenne minimale" defaultValue={settings.analytics.xyzMinimumMeanWeeklyQuantity} min={0.001} max={1_000_000} step={0.001} suffix="unités" />
               <NumberField disabled={!canEditSettings} id="xyzXMaxCoefficientOfVariation" label="CV maximum — classe X" defaultValue={percent(settings.analytics.xyzXMaxCoefficientOfVariation)} min={0} max={500} step={0.01} suffix="%" />
               <NumberField disabled={!canEditSettings} id="xyzYMaxCoefficientOfVariation" label="CV maximum — classe Y" defaultValue={percent(settings.analytics.xyzYMaxCoefficientOfVariation)} min={0.01} max={500} step={0.01} suffix="%" />
+            </SettingsSection>
+
+            <SettingsSection title="Prévision par jour de semaine" description={`Holdout et pondération · ${settings.analytics.calculationVersion}`}>
+              <NumberField disabled={!canEditSettings} id="dayOfWeekForecastWindowWeeks" label="Fenêtre d’apprentissage" defaultValue={settings.analytics.dayOfWeekForecastWindowWeeks} min={6} max={52} step={1} suffix="sem." />
+              <NumberField disabled={!canEditSettings} id="dayOfWeekForecastBacktestWeeks" label="Fenêtre de backtest" defaultValue={settings.analytics.dayOfWeekForecastBacktestWeeks} min={1} max={12} step={1} suffix="sem." />
+              <NumberField disabled={!canEditSettings} id="dayOfWeekForecastMinimumObservationsPerWeekday" label="Observations minimales par jour" defaultValue={settings.analytics.dayOfWeekForecastMinimumObservationsPerWeekday} min={2} max={20} step={1} />
+              <NumberField disabled={!canEditSettings} id="dayOfWeekForecastMinimumBacktestObservations" label="Points de backtest minimaux" defaultValue={settings.analytics.dayOfWeekForecastMinimumBacktestObservations} min={1} max={84} step={1} />
+              <NumberField disabled={!canEditSettings} id="dayOfWeekForecastRecencyDecay" label="Poids conservé chaque semaine" defaultValue={percent(settings.analytics.dayOfWeekForecastRecencyDecay)} min={0.01} max={100} step={0.01} suffix="%" />
+              <NumberField disabled={!canEditSettings} id="dayOfWeekForecastHighConfidenceMaxWape" label="WAPE maximum — confiance élevée" defaultValue={percent(settings.analytics.dayOfWeekForecastHighConfidenceMaxWape)} min={0.01} max={200} step={0.01} suffix="%" />
+              <NumberField disabled={!canEditSettings} id="dayOfWeekForecastMediumConfidenceMaxWape" label="WAPE maximum — confiance moyenne" defaultValue={percent(settings.analytics.dayOfWeekForecastMediumConfidenceMaxWape)} min={0.01} max={200} step={0.01} suffix="%" />
             </SettingsSection>
 
             <SettingsSection title="Recommandations" description={`Règles ${settings.recommendations.modelVersion}`}>

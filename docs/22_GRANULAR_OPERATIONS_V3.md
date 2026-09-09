@@ -248,14 +248,36 @@ The route requires `analytics.read`, reauthorizes the optional product and
 returns the exact candidate window, calculation/configuration versions and data
 revision. No XYZ collection is introduced and no monthly metric is mutated.
 
-## V3-04 to V3-06 boundaries
+## V3-04 — Day-of-week forecast boundary
 
-Day-of-week forecasts consume versioned daily facts and preserve training
-windows, coefficients, confidence and error metrics. Promotion and weather are
-separate contextual observations with source provenance; missing context is not
-neutral evidence. Order suggestions combine forecast, stock and operational
-constraints only after those sources are reliable. They remain auditable drafts
-requiring explicit manager approval and never create supplier orders.
+The implemented V3-04 model forecasts daily unit quantities from a
+recency-weighted mean of observations for the same weekday. It uses a default
+12-week candidate window, reserves the final 2 weeks as a leak-free fixed
+holdout, requires 4 prior observations per weekday and 7 usable backtest
+points, then refits on all evidence through `asOf` for the production horizon.
+
+MAE, RMSE, mean error and WAPE are exposed with point-level holdout evidence.
+High/medium confidence WAPE thresholds default to 20%/40%. Complete coverage is
+required for high confidence; partial coverage can remain forecastable but is
+capped below high. Missing dates and unavailable weekdays remain null, zero
+backtest demand protects the WAPE denominator and negative demand blocks the
+forecast. All coefficients are store-configurable and versioned.
+
+Implemented route:
+
+- `GET /api/stores/:storeId/products/day-of-week-forecast?asOf&productId?&horizonDays`.
+
+The product detail displays the next seven dates, evidence counts, errors,
+confidence, windows, versions and warnings. The daily quantity forecast remains
+separate from monthly revenue forecasting and does not yet feed recommendations.
+
+## V3-05 to V3-06 boundaries
+
+Promotion and weather are separate contextual observations with source
+provenance; missing context is not neutral evidence. Order suggestions combine
+forecast, stock and operational constraints only after those sources are
+reliable. They remain auditable drafts requiring explicit manager approval and
+never create supplier orders.
 
 ## Observed source evidence
 

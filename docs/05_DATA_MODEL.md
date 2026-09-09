@@ -70,6 +70,12 @@ window, store configuration version, data revision, calculation version,
 included complete weeks and excluded-week evidence. The existing monthly
 `demand_stability_proxy` remains a separate value and is never overwritten.
 
+`V3-04` also remains a deterministic derived view. The day-of-week forecast
+response freezes the authorized training and forecast windows, current store
+configuration version, active-fact data revision, model version, weekday
+coefficients, holdout points and error metrics. No forecast collection is added
+and no daily or monthly observed fact is mutated.
+
 `V3-02` adds current `inventoryProductProfiles`, versioned `inventoryCounts` and
 append-versioned `stockSnapshots`. Profiles hold the current manual family,
 unit and last-known pack-size prefill. Each committed snapshot freezes the

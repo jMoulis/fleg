@@ -5,6 +5,7 @@ import {
   weeklySalesReadResponseSchema,
 } from "@/domain/analytics/granular-sales-schemas";
 import { trueXyzAnalysisResponseSchema } from "@/domain/analytics/true-xyz-schemas";
+import { dayOfWeekForecastAnalysisResponseSchema } from "@/domain/forecasting/day-of-week-forecast-schemas";
 import { dashboardResponseSchema } from "@/domain/analytics/schemas";
 import {
   dailyImportCommitResponseSchema,
@@ -190,6 +191,32 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
     xyz.products[0]?.weeks.every(({ includedInCalculation }) => !includedInCalculation),
   ).toBe(true);
 
+  const forecastResponse = await page.request.get(
+    `/api/stores/${stores.primary.id}/products/day-of-week-forecast?asOf=2026-12-31&productId=${primaryProduct?.id ?? ""}&horizonDays=7`,
+  );
+  expect(forecastResponse.status()).toBe(200);
+  const forecast = dayOfWeekForecastAnalysisResponseSchema.parse(
+    await forecastResponse.json(),
+  );
+  expect(forecast).toMatchObject({
+    grain: "day_of_week_quantity_forecast",
+    asOf: "2026-12-31",
+    productId: primaryProduct?.id,
+    horizonDays: 7,
+    config: { windowWeeks: 12, backtestWeeks: 2 },
+  });
+  expect(forecast.products[0]).toMatchObject({
+    status: "unavailable",
+    confidence: "low",
+    predictedDayCount: 0,
+    forecastTotalQuantity: null,
+  });
+  expect(
+    forecast.products[0]?.forecastDays.every(
+      ({ predictedQuantity }) => predictedQuantity === null,
+    ),
+  ).toBe(true);
+
   const foreignProductResponse = await page.request.get(
     `/api/stores/${stores.control.id}/sales/daily?from=2026-12-31&to=2027-01-01&productId=${primaryProduct?.id ?? ""}`,
   );
@@ -198,6 +225,10 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
     `/api/stores/${stores.control.id}/products/xyz?productId=${primaryProduct?.id ?? ""}`,
   );
   expect(foreignXyzResponse.status()).toBe(404);
+  const foreignForecastResponse = await page.request.get(
+    `/api/stores/${stores.control.id}/products/day-of-week-forecast?productId=${primaryProduct?.id ?? ""}`,
+  );
+  expect(foreignForecastResponse.status()).toBe(404);
 
   const monthlyAfter = await monthlyDashboardSnapshot(page, stores.primary.id);
   expect(monthlyAfter).toEqual(monthlyBefore);
