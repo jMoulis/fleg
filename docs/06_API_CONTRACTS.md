@@ -85,6 +85,24 @@ the whole operation.
 ## Markdown
 GET/POST `/api/stores/:storeId/markdown`
 
+## Inventory
+
+GET `/api/stores/:storeId/inventory/counts?businessDate=YYYY-MM-DD` returns the
+authorized article list, current profiles, latest availability evidence and the
+latest count version for the selected date. It requires `inventory.read`.
+
+POST `/api/stores/:storeId/inventory/counts` opens or reuses a persistent daily
+draft. A committed count produces a new correction version rather than becoming
+mutable again.
+
+PATCH `/api/stores/:storeId/inventory/counts/:countId` saves the full draft with
+`basedOnRevision` optimistic concurrency and a UUID idempotency key.
+
+POST `/api/stores/:storeId/inventory/counts/:countId/commit` validates complete
+count lines, freezes packaging evidence, versions changed product/date stock
+snapshots, updates current product profiles and audits the mutation in one
+transaction. All mutations require `inventory.write`.
+
 ## Manual photos
 GET/POST `/api/stores/:storeId/attachments`
 

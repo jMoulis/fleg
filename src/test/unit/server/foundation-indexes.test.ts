@@ -49,6 +49,12 @@ describe("foundation indexes", () => {
         "attachments_scope_target_created",
         "attachment_objects_scope_created",
         "attachment_commands_scope_key_unique",
+        "inventory_profiles_scope_product_unique",
+        "inventory_counts_scope_date_version_unique",
+        "inventory_counts_scope_one_draft",
+        "stock_snapshots_scope_product_date_active_unique",
+        "stock_snapshots_scope_product_date_version_unique",
+        "inventory_commands_scope_key_unique",
       ]),
     );
   });

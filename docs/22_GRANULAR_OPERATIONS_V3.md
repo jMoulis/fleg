@@ -175,14 +175,52 @@ authorized organization and store before any fact query.
 
 ## V3-02 — Stock snapshots boundary
 
-Stock is an observed source, not a value derived from sales. Planned snapshots
-record `observedAt` in UTC, source business date, on-hand quantity and optional
-on-order/reserved quantities. Missing optional quantities remain null. Negative
-on-hand values are preserved as anomalies rather than silently clamped.
+Stock is an observed source, not a value derived from sales. The first source is
+the physical morning count performed before ordering: reserve cases are counted
+first, then the shelf remainder is added in the article base unit.
 
-Snapshots are append-only and scoped by organization, store and product. Stock
-availability and stockout signals always expose the observation age and source;
-they do not backfill missing days.
+Each article has a current, manually maintained operational profile:
+
+- family code `3400` for fruit or `3402` for vegetables;
+- base stock unit `kg` or `piece`;
+- last known pack size (`CDT`), used only as the next-count prefill.
+
+Pack size can change between orders. The value actually used by a committed
+count is therefore copied into its immutable stock snapshot; changing the
+current profile never rewrites history. For a complete line:
+
+`onHandQuantity = reserveCaseCount * packSize + shelfQuantity`
+
+An empty quantity means uncounted/unknown. An explicit zero means an observed
+zero and may produce a stockout signal. A line with only one count component is
+not commit-ready; the system never replaces the missing component with zero.
+
+Counts are persistent drafts with optimistic revisions. Commit locks the count,
+updates current article profiles and creates append-versioned stock observations
+in one transaction. A correction creates a new count version and supersedes
+only changed active product/date snapshots. Unchanged observations are not
+duplicated.
+
+Snapshots record `observedAt` in UTC, source business date, on-hand quantity and
+the reserve, shelf, unit and pack-size evidence used to calculate it. Planned
+`onOrderQuantity` and `reservedQuantity` fields remain null in V3-02 because no
+reliable source exists. Negative manual values are retained with a visible
+`negative_on_hand` anomaly rather than silently clamped.
+
+Snapshots are scoped by organization, store and product. Availability and
+stockout evidence always exposes the source and observation age; missing days
+remain unknown and are never backfilled. PLU and permanent/complementary range
+classification are intentionally outside this first boundary.
+
+Implemented routes:
+
+- `GET/POST /api/stores/:storeId/inventory/counts`;
+- `PATCH /api/stores/:storeId/inventory/counts/:countId`;
+- `POST /api/stores/:storeId/inventory/counts/:countId/commit`.
+
+Reads require `inventory.read`; draft creation, update and commit require
+`inventory.write`. Every route derives its tenant scope from the authorized
+server context.
 
 ## V3-03 — True XYZ boundary
 

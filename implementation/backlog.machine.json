@@ -283,7 +283,12 @@
         "append-only store-scoped stock observations",
         "distinct nullable on-hand on-order and reserved quantities",
         "source age and anomaly evidence",
-        "no invented or backfilled stock values"
+        "no invented or backfilled stock values",
+        "persistent manual reserve-case plus shelf-remainder count drafts",
+        "manual 3400 or 3402 family base-unit and last-pack-size profiles",
+        "pack size frozen per committed snapshot",
+        "explicit zero distinct from uncounted blank",
+        "immutable commits and versioned corrections"
       ]
     },
     {

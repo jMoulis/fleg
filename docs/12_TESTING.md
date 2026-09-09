@@ -3,6 +3,11 @@
 ## Unit
 Seasonality, small-base guard, forecast, ABC, XYZ proxy, margin-after-markdown, effective-space formulas, must-stock preservation, fixture suitability, allocation economics, recommendation rules, photo target contracts and binary signature validation.
 
+V3 inventory unit coverage includes reserve-case plus shelf calculation,
+kilogram and piece constraints, explicit zero versus unknown blank values,
+partial-count rejection, negative-stock anomaly preservation, observation age
+and correction-aware stock snapshot versioning.
+
 ## Integration
 Better Auth session, organization membership, store authorization, import preview/commit/idempotency, product alias mapping, versioned product-space policies, allocation snapshots and attachment object scope.
 
@@ -28,6 +33,8 @@ Explicit adversarial tests for guessed store IDs and cross-org access.
 - totals reconcile with source after excluded aggregate rows,
 - no capacity overflow,
 - no incompatible fixture or missing must-stock product in a saved allocation,
+- no cross-store inventory profile, draft or stock snapshot access,
+- no committed inventory count mutation or silent zero filling,
 - missing markdown remains unknown and visible in allocation evidence,
 - private photos cannot be read through another store ID and never mutate layout geometry,
 - no cross-store leakage,

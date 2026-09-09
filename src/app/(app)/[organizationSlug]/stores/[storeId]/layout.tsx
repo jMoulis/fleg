@@ -19,6 +19,7 @@ export default async function StoreLayout({
   const { organizationSlug, storeId } = await params;
   let canCompareStores = false;
   let canManageOrganization = false;
+  let canReadInventory = false;
   let canUseAi = false;
 
   try {
@@ -31,6 +32,7 @@ export default async function StoreLayout({
       context.permissions.includes("analytics.read") &&
       context.permissions.includes("analytics.compare_stores");
     canManageOrganization = context.role === "organization_admin";
+    canReadInventory = context.permissions.includes("inventory.read");
     canUseAi =
       context.permissions.includes("analytics.read") &&
       context.permissions.includes("ai.use");
@@ -52,6 +54,7 @@ export default async function StoreLayout({
       storeId={storeId}
       canCompareStores={canCompareStores}
       canManageOrganization={canManageOrganization}
+      canReadInventory={canReadInventory}
       canUseAi={canUseAi}
     >
       {children}

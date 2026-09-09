@@ -100,6 +100,11 @@
 - on-hand, on-order and reserved quantities remain distinct and missing values stay null;
 - negative source values are exposed as anomalies rather than silently clamped;
 - stockout and availability evidence is store-scoped and never backfilled.
+- the first source is a persistent manual morning count: reserve cases plus shelf remainder;
+- article family (`3400`/`3402`), base unit and last-known pack size are manual profile data;
+- the pack size used by a committed count is frozen in its snapshot because it may change per order;
+- blank quantities remain uncounted while explicit zero records a stockout;
+- committed counts are immutable and corrections create a new version.
 
 ### V3-03
 
