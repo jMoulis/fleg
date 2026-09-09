@@ -177,6 +177,56 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { organizationId: 1, storeId: 1, idempotencyKey: 1 },
       { unique: true, name: "markdown_commands_scope_key_unique" },
     ),
+    db.collection("inventoryProductProfiles").createIndex(
+      { organizationId: 1, storeId: 1, productId: 1 },
+      { unique: true, name: "inventory_profiles_scope_product_unique" },
+    ),
+    db.collection("inventoryCounts").createIndex(
+      { organizationId: 1, storeId: 1, businessDate: 1, version: 1 },
+      { unique: true, name: "inventory_counts_scope_date_version_unique" },
+    ),
+    db.collection("inventoryCounts").createIndex(
+      { organizationId: 1, storeId: 1, businessDate: 1 },
+      {
+        unique: true,
+        partialFilterExpression: { status: "draft" },
+        name: "inventory_counts_scope_one_draft",
+      },
+    ),
+    db.collection("inventoryCounts").createIndex(
+      { organizationId: 1, storeId: 1, businessDate: -1, version: -1 },
+      { name: "inventory_counts_scope_recent" },
+    ),
+    db.collection("stockSnapshots").createIndex(
+      { organizationId: 1, storeId: 1, productId: 1, businessDate: 1 },
+      {
+        unique: true,
+        partialFilterExpression: { active: true },
+        name: "stock_snapshots_scope_product_date_active_unique",
+      },
+    ),
+    db.collection("stockSnapshots").createIndex(
+      {
+        organizationId: 1,
+        storeId: 1,
+        productId: 1,
+        businessDate: 1,
+        version: 1,
+      },
+      { unique: true, name: "stock_snapshots_scope_product_date_version_unique" },
+    ),
+    db.collection("stockSnapshots").createIndex(
+      { organizationId: 1, storeId: 1, businessDate: 1, active: 1 },
+      { name: "stock_snapshots_scope_date_active" },
+    ),
+    db.collection("stockSnapshots").createIndex(
+      { organizationId: 1, storeId: 1, productId: 1, active: 1, observedAt: -1 },
+      { name: "stock_snapshots_scope_product_latest" },
+    ),
+    db.collection("inventoryCommands").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      { unique: true, name: "inventory_commands_scope_key_unique" },
+    ),
     db.collection("auditLogs").createIndex(
       { organizationId: 1, storeId: 1, createdAt: -1 },
       { name: "audit_logs_org_store_created" },

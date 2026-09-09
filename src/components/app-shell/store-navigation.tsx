@@ -12,6 +12,7 @@ import {
   History,
   FlaskConical,
   PackageX,
+  Warehouse,
   Ruler,
   SlidersHorizontal,
 } from "lucide-react";
@@ -22,6 +23,7 @@ interface StoreNavigationProps {
   organizationSlug: string;
   storeId: string;
   canUseAi: boolean;
+  canReadInventory: boolean;
   variant: "desktop" | "mobile";
 }
 
@@ -29,6 +31,12 @@ const navigation = [
   { label: "Accueil", segment: "dashboard", icon: CircleGauge },
   { label: "Actions", segment: "actions", icon: ClipboardCheck },
   { label: "Produits", segment: "products", icon: Boxes },
+  {
+    label: "Stocks",
+    segment: "inventory",
+    icon: Warehouse,
+    requiresInventory: true,
+  },
   { label: "Espace", segment: "space", icon: Ruler },
   { label: "TG", segment: "tg", icon: CalendarRange },
   { label: "Tests", segment: "experiments", icon: FlaskConical },
@@ -54,6 +62,7 @@ export function StoreNavigation({
   organizationSlug,
   storeId,
   canUseAi,
+  canReadInventory,
   variant,
 }: StoreNavigationProps) {
   const pathname = usePathname();
@@ -63,12 +72,15 @@ export function StoreNavigation({
     return (
       <nav
         aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-50 isolate grid w-full max-w-[100vw] grid-cols-8 border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 isolate grid w-full max-w-[100vw] grid-cols-9 border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
       >
         {navigation
           .filter(
             (item) =>
               !("desktopOnly" in item && item.desktopOnly) &&
+              !("requiresInventory" in item &&
+                item.requiresInventory &&
+                !canReadInventory) &&
               !("requiresAi" in item && item.requiresAi && !canUseAi),
           )
           .map(({ label, segment, icon: Icon }) => {
@@ -97,7 +109,11 @@ export function StoreNavigation({
     <nav aria-label="Navigation principale" className="space-y-1">
       {navigation
         .filter(
-          (item) => !("requiresAi" in item && item.requiresAi && !canUseAi),
+          (item) =>
+            !("requiresInventory" in item &&
+              item.requiresInventory &&
+              !canReadInventory) &&
+            !("requiresAi" in item && item.requiresAi && !canUseAi),
         )
         .map(({ label, segment, icon: Icon }) => {
           const href = `${base}/${segment}`;

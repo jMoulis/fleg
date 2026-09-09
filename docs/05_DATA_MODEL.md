@@ -1,7 +1,7 @@
 # 05 — MongoDB data model
 
 ## Collections
-`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `markdownFacts`, `periodTargets`, `importJobs`, `layoutVersions`, `allocationPlans`, `productSpacePolicySets`, `productSpacePolicyCommands`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `recommendationRuns`, `recommendations`, `aiActionPlans`, `decisionLogs`, `attachments`, `auditLogs`, `benchmarkGroups`.
+`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `dailySalesFacts`, `markdownFacts`, `inventoryProductProfiles`, `inventoryCounts`, `stockSnapshots`, `inventoryCommands`, `periodTargets`, `importJobs`, `dailySalesImportJobs`, `layoutVersions`, `allocationPlans`, `productSpacePolicySets`, `productSpacePolicyCommands`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `recommendationRuns`, `recommendations`, `aiActionPlans`, `decisionLogs`, `attachments`, `auditLogs`, `benchmarkGroups`.
 
 ## Mandatory tenant fields
 All business documents include `organizationId`, `storeId` where store-scoped, and usually `departmentId`.
@@ -15,6 +15,12 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 - periodTargets `{organizationId:1,storeId:1,periodKey:1}` unique
 - markdownFacts `{storeId:1,date:1,productId:1}`
 - markdownCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
+- inventoryProductProfiles `{organizationId:1,storeId:1,productId:1}` unique
+- inventoryCounts `{organizationId:1,storeId:1,businessDate:1,version:1}` unique
+- inventoryCounts `{organizationId:1,storeId:1,businessDate:1}` unique where `status:"draft"`
+- stockSnapshots `{organizationId:1,storeId:1,productId:1,businessDate:1}` unique where `active:true`
+- stockSnapshots `{organizationId:1,storeId:1,productId:1,businessDate:1,version:1}` unique
+- inventoryCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - layoutVersions `{storeId:1,departmentId:1,version:-1}`
 - allocationPlans `{storeId:1,layoutVersionId:1,version:-1}`
 - productSpacePolicySets `{organizationId:1,storeId:1}` unique
@@ -57,6 +63,15 @@ Weekly values are calculated views over active daily facts. They remain derived
 values carrying a calculation version, data revision and coverage evidence.
 Monthly and daily observations for the same calendar month remain separate and
 are never summed.
+
+`V3-02` adds current `inventoryProductProfiles`, versioned `inventoryCounts` and
+append-versioned `stockSnapshots`. Profiles hold the current manual family,
+unit and last-known pack-size prefill. Each committed snapshot freezes the
+family, unit, case count, pack size, shelf remainder and calculated on-hand
+quantity that were actually observed. One active version exists per authorized
+store, product and business date; a correction deactivates and supersedes the
+previous version transactionally. `onOrderQuantity` and `reservedQuantity`
+remain explicit nulls until a trustworthy source is introduced.
 
 Allocation plans preserve their product-policy snapshot, input revisions, configurable coefficients, known-component markdown economics and limitations. Missing markdown and suitability remain explicit unknowns.
 

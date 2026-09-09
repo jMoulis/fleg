@@ -76,6 +76,8 @@ export const defaultStorePermissionsByRole = {
     "allocations.write",
     "attachments.write",
     "markdown.write",
+    "inventory.read",
+    "inventory.write",
     "recommendations.approve",
     "tg.publish",
     "experiments.read",
@@ -90,9 +92,16 @@ export const defaultStorePermissionsByRole = {
     "analytics.read",
     "imports.create",
     "markdown.write",
+    "inventory.read",
+    "inventory.write",
     "experiments.read",
   ],
-  viewer: ["stores.read", "analytics.read", "experiments.read"],
+  viewer: [
+    "stores.read",
+    "analytics.read",
+    "inventory.read",
+    "experiments.read",
+  ],
 } satisfies Record<EditableStoreRole, readonly StorePermission[]>;
 
 export const storeMembershipWriteInputSchema = z

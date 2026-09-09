@@ -47,4 +47,13 @@ describe("admin schemas", () => {
       "attachments.write",
     );
   });
+
+  it("lets operational roles capture inventory while viewers stay read-only", () => {
+    expect(defaultStorePermissionsByRole.department_manager).toContain(
+      "inventory.write",
+    );
+    expect(defaultStorePermissionsByRole.employee).toContain("inventory.write");
+    expect(defaultStorePermissionsByRole.viewer).toContain("inventory.read");
+    expect(defaultStorePermissionsByRole.viewer).not.toContain("inventory.write");
+  });
 });

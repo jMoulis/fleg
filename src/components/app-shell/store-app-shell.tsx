@@ -19,6 +19,7 @@ interface StoreAppShellProps {
   storeId: string;
   canCompareStores: boolean;
   canManageOrganization: boolean;
+  canReadInventory: boolean;
   canUseAi: boolean;
   children: ReactNode;
 }
@@ -28,6 +29,7 @@ export function StoreAppShell({
   storeId,
   canCompareStores,
   canManageOrganization,
+  canReadInventory,
   canUseAi,
   children,
 }: StoreAppShellProps) {
@@ -117,6 +119,7 @@ export function StoreAppShell({
             organizationSlug={organizationSlug}
             storeId={storeId}
             canUseAi={canUseAi}
+            canReadInventory={canReadInventory}
             variant="desktop"
           />
         </aside>
@@ -129,6 +132,7 @@ export function StoreAppShell({
         organizationSlug={organizationSlug}
         storeId={storeId}
         canUseAi={canUseAi}
+        canReadInventory={canReadInventory}
         variant="mobile"
       />
     </div>

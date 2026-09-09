@@ -70,6 +70,8 @@ const permissionLabels: Record<StorePermission, string> = {
   "allocations.write": "Modifier les allocations",
   "attachments.write": "Ajouter et supprimer des photos",
   "markdown.write": "Saisir la démarque",
+  "inventory.read": "Consulter les stocks",
+  "inventory.write": "Saisir et valider les comptages",
   "recommendations.approve": "Décider sur les recommandations",
   "tg.publish": "Publier les opérations TG",
   "experiments.read": "Consulter les tests",

@@ -12,6 +12,8 @@ export const storePermissionValues = [
   "allocations.write",
   "attachments.write",
   "markdown.write",
+  "inventory.read",
+  "inventory.write",
   "recommendations.approve",
   "tg.publish",
   "experiments.read",
