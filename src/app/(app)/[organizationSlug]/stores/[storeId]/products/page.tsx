@@ -144,7 +144,7 @@ export default async function ProductsPage({
           <select name="sort" defaultValue={query.sort} className="h-9 rounded-lg border bg-background px-3 text-sm text-foreground">
             <option value="revenue_desc">CA</option>
             <option value="margin_desc">Marge</option>
-            <option value="forecast_desc">Prévision</option>
+            <option value="forecast_desc">Prévision mensuelle</option>
             <option value="label_asc">Libellé</option>
           </select>
         </label>
@@ -184,7 +184,7 @@ export default async function ProductsPage({
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <span><span className="block text-xs text-muted-foreground">Prévision</span>{formatMoney(product.forecastRevenueCents)}</span>
+                    <span><span className="block text-xs text-muted-foreground">Prévision mensuelle</span>{formatMoney(product.forecastRevenueCents)}</span>
                     <span><span className="block text-xs text-muted-foreground">Recommandation</span>{recommendation ? recommendationLabels[recommendation.type] : "—"}</span>
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">
@@ -207,7 +207,7 @@ export default async function ProductsPage({
                   <th className="px-4 py-3 text-right font-medium">Marge</th>
                   <th className="px-4 py-3 text-right font-medium">Quantité</th>
                   <th className="px-4 py-3 text-right font-medium">YoY</th>
-                  <th className="px-4 py-3 text-right font-medium">Prévision</th>
+                  <th className="px-4 py-3 text-right font-medium">Prévision mensuelle</th>
                   <th className="px-4 py-3 font-medium">Confiance</th>
                   <th className="px-4 py-3 font-medium">Recommandation</th>
                 </tr>

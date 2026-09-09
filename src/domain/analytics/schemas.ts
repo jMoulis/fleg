@@ -14,6 +14,13 @@ export const analyticsConfigSchema = z.object({
   xyzMinimumMeanWeeklyQuantity: z.number().finite().positive().max(1_000_000),
   xyzXMaxCoefficientOfVariation: z.number().finite().nonnegative().max(5),
   xyzYMaxCoefficientOfVariation: z.number().finite().positive().max(5),
+  dayOfWeekForecastWindowWeeks: z.number().int().min(6).max(52),
+  dayOfWeekForecastBacktestWeeks: z.number().int().min(1).max(12),
+  dayOfWeekForecastMinimumObservationsPerWeekday: z.number().int().min(2).max(20),
+  dayOfWeekForecastMinimumBacktestObservations: z.number().int().min(1).max(84),
+  dayOfWeekForecastRecencyDecay: z.number().finite().gt(0).lte(1),
+  dayOfWeekForecastHighConfidenceMaxWape: z.number().finite().gt(0).max(2),
+  dayOfWeekForecastMediumConfidenceMaxWape: z.number().finite().gt(0).max(2),
 });
 export type AnalyticsConfig = z.infer<typeof analyticsConfigSchema>;
 
@@ -30,6 +37,13 @@ export const defaultAnalyticsConfig: AnalyticsConfig =
     xyzMinimumMeanWeeklyQuantity: 1,
     xyzXMaxCoefficientOfVariation: 0.5,
     xyzYMaxCoefficientOfVariation: 1,
+    dayOfWeekForecastWindowWeeks: 12,
+    dayOfWeekForecastBacktestWeeks: 2,
+    dayOfWeekForecastMinimumObservationsPerWeekday: 4,
+    dayOfWeekForecastMinimumBacktestObservations: 7,
+    dayOfWeekForecastRecencyDecay: 0.9,
+    dayOfWeekForecastHighConfidenceMaxWape: 0.2,
+    dayOfWeekForecastMediumConfidenceMaxWape: 0.4,
   });
 
 export const confidenceSchema = z.enum(["low", "medium", "high"]);

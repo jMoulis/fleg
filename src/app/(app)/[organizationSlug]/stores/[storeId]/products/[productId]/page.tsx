@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney, formatQuantity, formatRatio } from "@/lib/formatting";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { getDashboardMetrics, getProductMetrics } from "@/server/services/analytics-service";
+import { getDayOfWeekForecast } from "@/server/services/day-of-week-forecast-service";
 import { getRecommendations } from "@/server/services/recommendation-service";
 import { getTrueXyzAnalysis } from "@/server/services/true-xyz-service";
 
@@ -26,6 +27,26 @@ const typeLabels = {
   MARGIN_WATCH: "Surveiller la marge",
   TRAFFIC_PROTECT: "Protéger le trafic",
 } as const;
+
+const confidenceLabels = {
+  low: "Faible",
+  medium: "Moyenne",
+  high: "Élevée",
+} as const;
+
+const weekdayLabels = {
+  monday: "Lundi",
+  tuesday: "Mardi",
+  wednesday: "Mercredi",
+  thursday: "Jeudi",
+  friday: "Vendredi",
+  saturday: "Samedi",
+  sunday: "Dimanche",
+} as const;
+
+function forecastQuantity(quantity: number | null) {
+  return quantity === null ? "Non disponible" : formatQuantity(quantity);
+}
 
 export default async function ProductDetailPage({
   params,
@@ -50,10 +71,14 @@ export default async function ProductDetailPage({
 
   if (!product || !recommendation) notFound();
 
-  const xyzAnalysis = await getTrueXyzAnalysis(context, { productId });
+  const [xyzAnalysis, dailyForecastAnalysis] = await Promise.all([
+    getTrueXyzAnalysis(context, { productId }),
+    getDayOfWeekForecast(context, { productId, horizonDays: 7 }),
+  ]);
   const xyz = xyzAnalysis.products[0];
+  const dailyForecast = dailyForecastAnalysis.products[0];
 
-  if (!xyz) notFound();
+  if (!xyz || !dailyForecast) notFound();
 
   const canApprove = context.permissions.includes("recommendations.approve");
 
@@ -68,7 +93,10 @@ export default async function ProductDetailPage({
             <Badge variant={xyz.xyzClass ? "secondary" : "outline"}>
               XYZ {xyz.xyzClass ?? "non classé"}
             </Badge>
-            <Badge variant="secondary">Confiance {product.confidence}</Badge>
+            <Badge variant="secondary">Confiance mensuelle {product.confidence}</Badge>
+            <Badge variant="outline">
+              Prévision jour · {confidenceLabels[dailyForecast.confidence]}
+            </Badge>
             <Badge variant="outline">{typeLabels[recommendation.type]}</Badge>
           </div>
         </div>
@@ -81,9 +109,73 @@ export default async function ProductDetailPage({
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Indicateurs produit">
         <DetailMetric icon={ArrowUpRight} label="CA observé" value={formatMoney(product.revenueCents)} helper={`${formatRatio(product.yearOverYearRatio)} vs N-1`} />
         <DetailMetric icon={Scale} label="Marge" value={formatMoney(product.marginCents)} helper={formatRatio(product.marginRatio)} />
-        <DetailMetric icon={CircleGauge} label="Prévision" value={formatMoney(product.forecastRevenueCents)} helper={`Indice retenu ${product.retainedSeasonalityIndex.toFixed(2)}`} />
+        <DetailMetric icon={CircleGauge} label="Prévision mensuelle" value={formatMoney(product.forecastRevenueCents)} helper={`Indice retenu ${product.retainedSeasonalityIndex.toFixed(2)}`} />
         <DetailMetric icon={ArrowDownLeft} label="Quantité" value={formatQuantity(product.quantity)} helper="Valeur observée" />
       </section>
+
+      <Card className="mt-8">
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>Prévision par jour de semaine</CardTitle>
+            <Badge variant={dailyForecast.confidence === "low" ? "outline" : "secondary"}>
+              Confiance {confidenceLabels[dailyForecast.confidence].toLocaleLowerCase("fr-FR")}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Moyenne du même jour de semaine pondérée vers les observations récentes. Les dates absentes restent inconnues.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <EvidenceMetric label="Horizon" value={`${dailyForecast.predictedDayCount} / ${dailyForecastAnalysis.horizonDays} jours`} />
+            <EvidenceMetric label="Quantité totale prévue" value={forecastQuantity(dailyForecast.forecastTotalQuantity)} />
+            <EvidenceMetric label="Erreur absolue moyenne" value={forecastQuantity(dailyForecast.backtest.meanAbsoluteError)} />
+            <EvidenceMetric label="WAPE du backtest" value={formatRatio(dailyForecast.backtest.weightedAbsolutePercentageError)} />
+          </div>
+
+          <div className="mt-5 overflow-x-auto rounded-xl border">
+            <table className="w-full min-w-[34rem] border-collapse text-sm">
+              <caption className="sr-only">Prévisions journalières de {product.label}</caption>
+              <thead className="bg-muted/60 text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Date</th>
+                  <th className="px-4 py-3 font-medium">Jour</th>
+                  <th className="px-4 py-3 text-right font-medium">Quantité prévue</th>
+                  <th className="px-4 py-3 text-right font-medium">Observations</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyForecast.forecastDays.map((day) => (
+                  <tr className="border-t" key={day.businessDate}>
+                    <td className="px-4 py-3 tabular-nums">{day.businessDate}</td>
+                    <td className="px-4 py-3">{weekdayLabels[day.weekday]}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{forecastQuantity(day.predictedQuantity)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{day.observationCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-5 text-xs text-muted-foreground">
+            Apprentissage {dailyForecastAnalysis.trainingWindow.from} → {dailyForecastAnalysis.trainingWindow.to} · backtest {dailyForecast.backtest.from} → {dailyForecast.backtest.to} · {dailyForecast.backtest.eligibleObservationCount}/{dailyForecast.backtest.requiredObservationCount} points exploitables · modèle {dailyForecastAnalysis.modelVersion} · configuration {dailyForecastAnalysis.config.configurationVersion} · révision {dailyForecastAnalysis.dataRevision}.
+          </p>
+          {dailyForecast.warnings.length > 0 ? (
+            <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+              {dailyForecast.warnings.map((warning) => (
+                <li key={warning.code}>• {warning.message}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">
+              L’historique et le backtest satisfont les seuils configurés.
+            </p>
+          )}
+          <p className="mt-4 rounded-lg bg-muted p-3 text-xs leading-5 text-muted-foreground">
+            Cette prévision unitaire journalière est distincte de la prévision mensuelle de CA. Elle est exposée avec son backtest avant toute utilisation future par les recommandations ou les commandes.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card className="mt-8">
         <CardHeader>
@@ -94,10 +186,10 @@ export default async function ProductDetailPage({
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <XyzMetric label="Classe" value={xyz.xyzClass ?? "Non classé"} />
-            <XyzMetric label="Coefficient de variation" value={formatRatio(xyz.coefficientOfVariation)} />
-            <XyzMetric label="Demande moyenne / semaine" value={xyz.meanWeeklyQuantity === null ? "—" : formatQuantity(xyz.meanWeeklyQuantity)} />
-            <XyzMetric label="Semaines complètes" value={`${xyz.completeWeekCount} / ${xyz.requiredCompleteWeekCount}`} />
+            <EvidenceMetric label="Classe" value={xyz.xyzClass ?? "Non classé"} />
+            <EvidenceMetric label="Coefficient de variation" value={formatRatio(xyz.coefficientOfVariation)} />
+            <EvidenceMetric label="Demande moyenne / semaine" value={xyz.meanWeeklyQuantity === null ? "—" : formatQuantity(xyz.meanWeeklyQuantity)} />
+            <EvidenceMetric label="Semaines complètes" value={`${xyz.completeWeekCount} / ${xyz.requiredCompleteWeekCount}`} />
           </div>
           <p className="mt-5 text-xs text-muted-foreground">
             Fenêtre {xyzAnalysis.from} → {xyzAnalysis.to} · données au {xyzAnalysis.asOf} · calcul {xyzAnalysis.calculationVersion} · configuration {xyzAnalysis.config.configurationVersion} · révision des données {xyzAnalysis.dataRevision}.
@@ -170,7 +262,7 @@ export default async function ProductDetailPage({
   );
 }
 
-function XyzMetric({ label, value }: { label: string; value: string }) {
+function EvidenceMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border p-4">
       <p className="text-xs text-muted-foreground">{label}</p>

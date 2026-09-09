@@ -28,7 +28,7 @@ CA, margin €, margin %, markdown, target gap, forecast, YoY, seasonality, top 
 Search/filter/sort. Columns: current CA, historical CA, margin, seasonality, YoY, forecast, ABC, XYZ, recommendation, confidence, allocated space, effective productivity.
 
 ## F06 Forecast
-Monthly V1 using prior-month current year + prior-year month transition. Small-base protection. Later daily model without schema replacement.
+Monthly V1 using prior-month current year + prior-year month transition. Small-base protection. V3 adds a distinct daily-quantity model by weekday with a fixed holdout backtest, explicit error metrics and confidence; it does not replace the monthly revenue forecast.
 
 ## F07 ABC
 Rank by projected CA by default; configurable metric. A <= 80% cumulative, B <=95%, C remainder.

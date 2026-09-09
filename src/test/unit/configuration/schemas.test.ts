@@ -34,6 +34,12 @@ describe("store configuration schemas", () => {
           xyzMinimumCompleteWeeks: 5,
           xyzXMaxCoefficientOfVariation: 1,
           xyzYMaxCoefficientOfVariation: 0.5,
+          dayOfWeekForecastWindowWeeks: 6,
+          dayOfWeekForecastBacktestWeeks: 6,
+          dayOfWeekForecastMinimumObservationsPerWeekday: 2,
+          dayOfWeekForecastMinimumBacktestObservations: 43,
+          dayOfWeekForecastHighConfidenceMaxWape: 0.5,
+          dayOfWeekForecastMediumConfidenceMaxWape: 0.4,
         },
       },
     });
@@ -46,6 +52,10 @@ describe("store configuration schemas", () => {
           "settings.analytics.retainedSeasonalityCeiling",
           "settings.analytics.xyzMinimumCompleteWeeks",
           "settings.analytics.xyzYMaxCoefficientOfVariation",
+          "settings.analytics.dayOfWeekForecastBacktestWeeks",
+          "settings.analytics.dayOfWeekForecastMinimumObservationsPerWeekday",
+          "settings.analytics.dayOfWeekForecastMinimumBacktestObservations",
+          "settings.analytics.dayOfWeekForecastMediumConfidenceMaxWape",
         ]),
       );
     }
