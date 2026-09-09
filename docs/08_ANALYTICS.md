@@ -91,6 +91,26 @@ demand blocks the product forecast; corrected active facts remain usable when
 non-negative but are disclosed. This quantity forecast remains distinct from
 the monthly revenue forecast and is not consumed by recommendations in V3-04.
 
+## V3 promotion and weather context
+
+Business context is a derived store/date view over two independent immutable
+sources. For a product join, only active promotion observations containing that
+product apply. An explicit `none` observation resets earlier promotions on the
+same date; later applicable observations remain active. Without an applicable
+promotion or an explicit reset, promotion status is `missing`, not false.
+
+Weather selects the most recently recorded observation for the date and exposes
+the number of candidate observations so precedence stays visible. Optional
+temperature and precipitation fields remain null when not measured. A date is
+context-complete only when both promotion and weather are observed. Overall
+coverage is `unknown` with no observed feature, `partial` with any gap and
+`complete` only when every requested date has both sources.
+
+The feature join carries `business-context-v1` and the current store data
+revision. V3-05 does not add these features to day-of-week forecasting,
+experiment uplift, recommendations or ordering; that requires a separate
+versioned model decision.
+
 ## Recommendation score
 Do not reduce decisions to one opaque score. Keep components:
 - economic weight,

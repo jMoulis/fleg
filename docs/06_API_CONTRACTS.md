@@ -78,6 +78,29 @@ days, fixed-holdout points, MAE, RMSE, mean error, WAPE, confidence, warnings,
 configuration version, data revision and model version. Missing predictions
 are null rather than zero.
 
+## Context observations
+
+GET `/api/stores/:storeId/context?from=YYYY-MM-DD&to=YYYY-MM-DD&productId=...`
+
+POST `/api/stores/:storeId/context/promotions`
+
+POST `/api/stores/:storeId/context/weather`
+
+The read requires `analytics.read`; both writes require `context.write`. An
+omitted range is the 14 days ending on the current UTC business date, while an
+explicit pair is limited to 92 days. The optional product is revalidated in the
+authorized store. The response contains raw immutable observations, one
+derived promotion/weather feature per expected date, missing-date lists, data
+revision and `business-context-v1` calculation version.
+
+Promotion accepts an active mechanic with one or more authorized products, or
+an explicit manual `none` observation with no promotional fields. Provenance
+is manual or a published/completed commercial event that is revalidated for
+store, date and products. Weather accepts a bounded condition, optional
+temperatures and precipitation, plus manual or provider provenance. Mutations
+use a UUID idempotency key, append an audit entry and never update sales, stock,
+experiments or forecasts.
+
 ## Layout
 GET `/api/stores/:storeId/layout`
 POST `/api/stores/:storeId/layout/versions`

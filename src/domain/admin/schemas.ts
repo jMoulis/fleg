@@ -78,6 +78,7 @@ export const defaultStorePermissionsByRole = {
     "markdown.write",
     "inventory.read",
     "inventory.write",
+    "context.write",
     "recommendations.approve",
     "tg.publish",
     "experiments.read",

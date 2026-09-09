@@ -17,6 +17,10 @@ without leakage, MAE/RMSE/bias/WAPE, confidence thresholds, partial and sparse
 coverage without zero filling, zero-denominator protection, negative-demand
 blocking and correction evidence.
 
+V3 context coverage includes active and explicit no-promotion observations,
+product-scoped joins, latest-weather precedence, bounded measurements,
+missing-context preservation, source provenance and deterministic coverage.
+
 ## Integration
 Better Auth session, organization membership, store authorization, import preview/commit/idempotency, product alias mapping, versioned product-space policies, allocation snapshots and attachment object scope.
 
@@ -86,3 +90,15 @@ Explicit adversarial tests for guessed store IDs and cross-org access.
 - a product identifier from another store returns 404;
 - mobile and desktop product detail distinguish daily quantity forecasts from
   the existing monthly revenue forecast.
+
+## V3-05 promotion and weather context gate
+
+- promotion and weather writes are separately validated, idempotent and audited;
+- store, product and commercial-event references are always reauthorized;
+- explicit no-promotion evidence differs from a missing record;
+- a later weather observation wins without removing earlier provenance;
+- date/product joins expose complete, partial or unknown coverage without zero filling;
+- each successful new observation increments the store data revision once;
+- foreign-store product joins return 404;
+- mobile and desktop expose separate entry, empty, error and evidence states;
+- contextual observations do not mutate sales, stock, experiments or forecasts.

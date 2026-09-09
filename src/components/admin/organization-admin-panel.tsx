@@ -72,6 +72,7 @@ const permissionLabels: Record<StorePermission, string> = {
   "markdown.write": "Saisir la démarque",
   "inventory.read": "Consulter les stocks",
   "inventory.write": "Saisir et valider les comptages",
+  "context.write": "Saisir le contexte promotionnel et météo",
   "recommendations.approve": "Décider sur les recommandations",
   "tg.publish": "Publier les opérations TG",
   "experiments.read": "Consulter les tests",

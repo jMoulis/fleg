@@ -271,13 +271,40 @@ The product detail displays the next seven dates, evidence counts, errors,
 confidence, windows, versions and warnings. The daily quantity forecast remains
 separate from monthly revenue forecasting and does not yet feed recommendations.
 
-## V3-05 to V3-06 boundaries
+## V3-05 — Promotion and weather context boundary
 
-Promotion and weather are separate contextual observations with source
-provenance; missing context is not neutral evidence. Order suggestions combine
-forecast, stock and operational constraints only after those sources are
-reliable. They remain auditable drafts requiring explicit manager approval and
-never create supplier orders.
+V3-05 is implemented with separate immutable promotion and weather observation
+logs. Each record carries the authorized organization/store/department scope,
+business date, actor, recording time and typed provenance. Promotion is either
+an active mechanic for one or more products or an explicit manual observation
+that no promotion was present. Weather records a bounded condition with
+optional temperature and precipitation measures. Missing fields and missing
+dates remain unknown.
+
+The daily `business-context-v1` view joins the requested authorized store/date
+range and optional reauthorized product. A no-promotion record resets earlier
+promotion evidence for its date; applicable later records remain active. The
+latest weather record is selected while the number of source records remains
+visible. Coverage is complete only when both context sources are observed for
+every requested date. The default range is 14 days and the maximum is 92 days.
+
+Writes require `context.write`, use one store-scoped idempotency namespace,
+increment the store data revision and append an audit record transactionally.
+A linked commercial event must be published/completed, belong to the same store,
+cover the date and contain every promoted product. Context does not rewrite
+sales, stock, experiments or forecasts and is not yet a recommendation input.
+
+Implemented routes:
+
+- `GET /api/stores/:storeId/context?from&to&productId?`;
+- `POST /api/stores/:storeId/context/promotions`;
+- `POST /api/stores/:storeId/context/weather`.
+
+## V3-06 boundary
+
+Order suggestions combine forecast, stock and operational constraints only
+after those sources are reliable. They remain auditable drafts requiring
+explicit manager approval and never create supplier orders.
 
 ## Observed source evidence
 
