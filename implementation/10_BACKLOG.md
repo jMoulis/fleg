@@ -131,3 +131,7 @@
 - inputs, coefficients, evidence, confidence and limitations are persisted;
 - suggestions remain drafts until explicit authorized approval;
 - no supplier order or external integration is executed automatically.
+- the F&L default targets zero closing stock, Friday covers Saturday plus Sunday,
+  Saturday orders Monday delivery and Sunday has no order run;
+- the exact morning snapshot supplies on-hand and pack evidence, while the
+  current-day arrival remains an explicit excluded assumption.

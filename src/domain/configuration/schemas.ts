@@ -18,6 +18,10 @@ import {
   recommendationConfigSchema,
 } from "@/domain/recommendations/schemas";
 import {
+  defaultOrderSuggestionConfig,
+  orderSuggestionConfigSchema,
+} from "@/domain/ordering/schemas";
+import {
   allocationConfigSchema,
   defaultAllocationConfig,
 } from "@/domain/space/allocation-schemas";
@@ -31,10 +35,19 @@ const { engineVersion: ignoredBaselineVersion, ...editableBaselineShape } =
   baselineEngineConfigSchema.shape;
 const { engineVersion: ignoredEvaluationVersion, ...editableEvaluationShape } =
   evaluationEngineConfigSchema.shape;
+const {
+  modelVersion: ignoredOrderModelVersion,
+  scheduleVersion: ignoredOrderScheduleVersion,
+  configurationVersion: ignoredOrderConfigurationVersion,
+  ...editableOrderingShape
+} = orderSuggestionConfigSchema.shape;
 void ignoredCalculationVersion;
 void ignoredModelVersion;
 void ignoredBaselineVersion;
 void ignoredEvaluationVersion;
+void ignoredOrderModelVersion;
+void ignoredOrderScheduleVersion;
+void ignoredOrderConfigurationVersion;
 
 export const editableAnalyticsConfigSchema = z.object(editableAnalyticsShape);
 export const editableRecommendationConfigSchema = z.object(
@@ -46,10 +59,12 @@ export const editableBaselineEngineConfigSchema = z.object(
 export const editableEvaluationEngineConfigSchema = z.object(
   editableEvaluationShape,
 );
+export const editableOrderingConfigSchema = z.object(editableOrderingShape);
 
 export const editableStoreSettingsSchema = z.object({
   analytics: editableAnalyticsConfigSchema,
   recommendations: editableRecommendationConfigSchema,
+  ordering: editableOrderingConfigSchema,
   experiments: z.object({
     baseline: editableBaselineEngineConfigSchema,
     evaluation: editableEvaluationEngineConfigSchema,
@@ -66,6 +81,7 @@ export const defaultEditableStoreSettings: EditableStoreSettings =
   editableStoreSettingsSchema.parse({
     analytics: defaultAnalyticsConfig,
     recommendations: defaultRecommendationConfig,
+    ordering: defaultOrderSuggestionConfig,
     experiments: {
       baseline: defaultBaselineEngineConfig,
       evaluation: defaultEvaluationEngineConfig,
@@ -80,6 +96,7 @@ export const storeSettingsSnapshotSchema = z.object({
   updatedAt: z.iso.datetime().nullable(),
   analytics: analyticsConfigSchema,
   recommendations: recommendationConfigSchema,
+  ordering: orderSuggestionConfigSchema,
   experiments: z.object({
     baseline: baselineEngineConfigSchema,
     evaluation: evaluationEngineConfigSchema,

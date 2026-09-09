@@ -48,6 +48,18 @@ Acceptance criteria for `V3-01` granular sales foundation:
 ## F09 Recommendation engine
 push / maintain / reduce / review_margin / review_waste / review_space / delist_candidate / traffic_protect. Every recommendation includes reasons, inputs, confidence and expected effect where calculable.
 
+Acceptance criteria for `V3-06` order suggestions:
+
+- the operating calendar models A-for-B deliveries, Friday coverage for
+  Saturday and Sunday, Saturday ordering for Monday and no Sunday order;
+- demand targets zero closing stock by default, subtracts the exact committed
+  morning stock and rounds the remaining need to the observed pack size;
+- missing, stale or negative stock and incomplete forecasts never become zero;
+- forecast confidence, pack surplus, coefficients, revisions, assumptions and
+  limitations are persisted with each draft;
+- manager case-count overrides require a reason and approval is audited;
+- approval never creates, exports or transmits a supplier order.
+
 ## F10 Layout editor
 Store plan, fixtures, faces, shelves, commercial weights, capacity. Versioned layouts.
 

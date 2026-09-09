@@ -91,6 +91,19 @@ the latest weather record while exposing its observation count. Missing
 promotion or weather dates remain explicit. Context writes are idempotent,
 audited and increment `stores.dataRevision` once.
 
+`V3-06` adds `orderSuggestionDrafts` and `orderSuggestionCommands`. A draft
+freezes the exact stock snapshot evidence, covered forecast days, configuration
+and source revisions, just-in-time assumptions, limitations and pack-rounded
+calculation for every product. Approval adds an immutable manager decision with
+the accepted case count and mandatory rationale for each override. It does not
+create a supplier-order fact and does not increment the observed-data revision.
+
+Planned indexes:
+
+- orderSuggestionDrafts `{organizationId:1,storeId:1,orderDate:1,generatedAt:-1}`
+- orderSuggestionDrafts `{organizationId:1,storeId:1,status:1,deliveryDate:1}`
+- orderSuggestionCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
+
 `V3-02` adds current `inventoryProductProfiles`, versioned `inventoryCounts` and
 append-versioned `stockSnapshots`. Profiles hold the current manual family,
 unit and last-known pack-size prefill. Each committed snapshot freezes the

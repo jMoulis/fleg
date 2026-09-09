@@ -302,9 +302,34 @@ Implemented routes:
 
 ## V3-06 boundary
 
-Order suggestions combine forecast, stock and operational constraints only
-after those sources are reliable. They remain auditable drafts requiring
-explicit manager approval and never create supplier orders.
+V3-06 implements auditable, non-executing order suggestion drafts for the
+observed fruit-and-vegetable morning workflow: sort, count stock, order before
+the local cutoff, then receive the current-day arrival. The just-in-time target
+is zero closing stock by default so freshness and markdown reduction remain the
+primary objective.
+
+The schedule is A-for-B Monday through Thursday, Friday for a Saturday delivery
+covering both Saturday and Sunday, and Saturday for Monday. Sunday is not an
+ordering day. Exceptional closures and bank holidays remain explicit
+limitations.
+
+Every line joins the exact committed stock snapshot for the order date with the
+V3-04 forecast for each covered sales date. The current-day arrival is excluded
+under the visible assumption that it covers current-day sales. Net need
+subtracts morning on-hand stock, adds the configurable target-closing-stock
+ratio, and rounds upward to the pack size frozen in that morning snapshot.
+Missing or negative stock and incomplete forecasts remain unavailable; low
+confidence stays visible.
+
+The persisted draft freezes source revisions, coefficients, evidence,
+confidence, assumptions, limitations and proposed cases. A manager may approve
+different case counts only with a line-level reason. Approval is idempotent and
+audited but never creates, exports or transmits a supplier order.
+
+Implemented routes:
+
+- `GET/POST /api/stores/:storeId/order-suggestions`;
+- `POST /api/stores/:storeId/order-suggestions/:suggestionId/approve`.
 
 ## Observed source evidence
 

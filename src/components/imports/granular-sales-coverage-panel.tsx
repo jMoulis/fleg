@@ -31,6 +31,8 @@ import { apiErrorSchema } from "@/domain/api/schemas";
 interface GranularSalesCoveragePanelProps {
   storeId: string;
   refreshToken: number;
+  initialFrom?: string;
+  initialTo?: string;
 }
 
 interface GranularViews {
@@ -144,6 +146,8 @@ function reconciliationLabel(
 export function GranularSalesCoveragePanel({
   storeId,
   refreshToken,
+  initialFrom,
+  initialTo,
 }: GranularSalesCoveragePanelProps) {
   const [state, setState] = useState<ViewState>({ status: "loading" });
   const [from, setFrom] = useState("");
@@ -151,7 +155,12 @@ export function GranularSalesCoveragePanel({
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadGranularViews({ storeId, signal: controller.signal })
+    void loadGranularViews({
+      storeId,
+      from: initialFrom,
+      to: initialTo,
+      signal: controller.signal,
+    })
       .then((views) => {
         setState({ status: "ready", views });
         setFrom(views.daily.from);
@@ -168,7 +177,7 @@ export function GranularSalesCoveragePanel({
         });
       });
     return () => controller.abort();
-  }, [storeId, refreshToken]);
+  }, [initialFrom, initialTo, storeId, refreshToken]);
 
   async function handleRefresh(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

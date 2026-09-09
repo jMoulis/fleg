@@ -54,6 +54,10 @@ function formRatio(data: FormData, name: string) {
   return formNumber(data, name) / 100;
 }
 
+function formString(data: FormData, name: string) {
+  return String(data.get(name) ?? "");
+}
+
 async function requestJson(url: string, init: RequestInit) {
   const response = await fetch(url, {
     ...init,
@@ -209,6 +213,13 @@ export function StoreConfigurationManager({
             data,
             "reduceForecastDeclineRatio",
           ),
+        },
+        ordering: {
+          targetClosingStockRatio: formRatio(
+            data,
+            "targetClosingStockRatio",
+          ),
+          cutoffLocalTime: formString(data, "cutoffLocalTime"),
         },
         experiments: {
           baseline: {
@@ -453,6 +464,21 @@ export function StoreConfigurationManager({
               <NumberField disabled={!canEditSettings} id="marginWatchRatio" label="Seuil de vigilance marge" defaultValue={percent(settings.recommendations.marginWatchRatio)} min={0} max={100} step={0.01} suffix="%" />
               <NumberField disabled={!canEditSettings} id="pushForecastGrowthRatio" label="Croissance prévisionnelle à pousser" defaultValue={percent(settings.recommendations.pushForecastGrowthRatio)} min={0.01} step={0.01} suffix="%" />
               <NumberField disabled={!canEditSettings} id="reduceForecastDeclineRatio" label="Baisse prévisionnelle à réduire" defaultValue={percent(settings.recommendations.reduceForecastDeclineRatio)} max={-0.01} step={0.01} suffix="%" />
+            </SettingsSection>
+
+            <SettingsSection title="Commande en flux tendu" description={`Brouillons ${settings.ordering.configurationVersion}`}>
+              <NumberField disabled={!canEditSettings} id="targetClosingStockRatio" label="Stock final cible" defaultValue={percent(settings.ordering.targetClosingStockRatio)} min={0} max={100} step={0.01} suffix="%" />
+              <div className="grid gap-1.5">
+                <Label htmlFor="cutoffLocalTime">Heure limite de commande</Label>
+                <Input
+                  defaultValue={settings.ordering.cutoffLocalTime}
+                  disabled={!canEditSettings}
+                  id="cutoffLocalTime"
+                  name="cutoffLocalTime"
+                  required
+                  type="time"
+                />
+              </div>
             </SettingsSection>
 
             <SettingsSection title="Référence des expériences" description={`Moteur ${settings.experiments.baseline.engineVersion}`}>

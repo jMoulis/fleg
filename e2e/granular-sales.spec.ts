@@ -17,14 +17,18 @@ import {
   selectPrimaryDemoStore,
 } from "./demo-store";
 
+const dailyStartDate = "2036-12-31";
+const dailyEndDate = "2037-01-01";
+const dailyIsoWeekKey = "2037-W01";
+
 function dailyCsv(projectName: string) {
   const prefix = projectName === "mobile-390" ? "390" : "1440";
   return [
     "Date;ITM8 Prio;EAN Prio;Libellé;Quantité;Valeur prix vente;Val Marge",
-    `31/12/2026;${prefix}01;3${prefix.padEnd(12, "0")};Produit journalier ${prefix} A;2;20,00;6,00`,
-    "31/12/2026;;;Total;2;20,00;6,00",
-    `01/01/2027;${prefix}02;4${prefix.padEnd(12, "0")};Produit journalier ${prefix} B;3;30,00;9,00`,
-    "01/01/2027;;;Total;3;30,00;9,00",
+    `31/12/2036;${prefix}01;3${prefix.padEnd(12, "0")};Produit journalier ${prefix} A;2;20,00;6,00`,
+    "31/12/2036;;;Total;2;20,00;6,00",
+    `01/01/2037;${prefix}02;4${prefix.padEnd(12, "0")};Produit journalier ${prefix} B;3;30,00;9,00`,
+    "01/01/2037;;;Total;3;30,00;9,00",
   ].join("\n");
 }
 
@@ -83,8 +87,8 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
   const preview = dailyImportPreviewResponseSchema.parse(
     await previewResponse.json(),
   );
-  expect(preview.startDate).toBe("2026-12-31");
-  expect(preview.endDate).toBe("2027-01-01");
+  expect(preview.startDate).toBe(dailyStartDate);
+  expect(preview.endDate).toBe(dailyEndDate);
   expect(preview.excludedRowCount).toBe(2);
   expect(preview.coverage.status).toBe("complete");
 
@@ -106,7 +110,7 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
     dailySection.getByRole("heading", { name: "Import journalier validé" }),
   ).toBeVisible();
 
-  const weeklyRow = page.getByRole("row", { name: /2026-W53/ });
+  const weeklyRow = page.getByRole("row", { name: new RegExp(dailyIsoWeekKey) });
   await expect(weeklyRow).toBeVisible();
   await expect(weeklyRow).toContainText("Partielle · 2/7");
 
@@ -130,21 +134,21 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
   expect(replayedCommit.importedFactCount).toBe(commit.importedFactCount);
 
   const weeklyResponse = await page.request.get(
-    `/api/stores/${stores.primary.id}/sales/weekly?from=2026-12-31&to=2027-01-01`,
+    `/api/stores/${stores.primary.id}/sales/weekly?from=${dailyStartDate}&to=${dailyEndDate}`,
   );
   expect(weeklyResponse.status()).toBe(200);
   const weekly = weeklySalesReadResponseSchema.parse(
     await weeklyResponse.json(),
   );
-  expect(weekly.from).toBe("2026-12-28");
-  expect(weekly.to).toBe("2027-01-03");
+  expect(weekly.from).toBe("2036-12-29");
+  expect(weekly.to).toBe("2037-01-04");
   expect(weekly.weeks[0]).toMatchObject({
-    isoWeekKey: "2026-W53",
+    isoWeekKey: dailyIsoWeekKey,
     coverage: { status: "partial" },
   });
 
   const otherStoreResponse = await page.request.get(
-    `/api/stores/${stores.control.id}/sales/daily?from=2026-12-31&to=2027-01-01`,
+    `/api/stores/${stores.control.id}/sales/daily?from=${dailyStartDate}&to=${dailyEndDate}`,
   );
   expect(otherStoreResponse.status()).toBe(200);
   const otherStoreDaily = dailySalesReadResponseSchema.parse(
@@ -165,13 +169,13 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
   );
   expect(primaryProduct).toBeDefined();
   const xyzResponse = await page.request.get(
-    `/api/stores/${stores.primary.id}/products/xyz?asOf=2026-12-31&productId=${primaryProduct?.id ?? ""}`,
+    `/api/stores/${stores.primary.id}/products/xyz?asOf=${dailyStartDate}&productId=${primaryProduct?.id ?? ""}`,
   );
   expect(xyzResponse.status()).toBe(200);
   const xyz = trueXyzAnalysisResponseSchema.parse(await xyzResponse.json());
   expect(xyz).toMatchObject({
     grain: "complete_weekly_unit_demand",
-    asOf: "2026-12-31",
+    asOf: dailyStartDate,
     productId: primaryProduct?.id,
     config: { windowWeeks: 13, minimumCompleteWeeks: 8 },
   });
@@ -192,7 +196,7 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
   ).toBe(true);
 
   const forecastResponse = await page.request.get(
-    `/api/stores/${stores.primary.id}/products/day-of-week-forecast?asOf=2026-12-31&productId=${primaryProduct?.id ?? ""}&horizonDays=7`,
+    `/api/stores/${stores.primary.id}/products/day-of-week-forecast?asOf=${dailyStartDate}&productId=${primaryProduct?.id ?? ""}&horizonDays=7`,
   );
   expect(forecastResponse.status()).toBe(200);
   const forecast = dayOfWeekForecastAnalysisResponseSchema.parse(
@@ -200,7 +204,7 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
   );
   expect(forecast).toMatchObject({
     grain: "day_of_week_quantity_forecast",
-    asOf: "2026-12-31",
+    asOf: dailyStartDate,
     productId: primaryProduct?.id,
     horizonDays: 7,
     config: { windowWeeks: 12, backtestWeeks: 2 },
@@ -218,7 +222,7 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
   ).toBe(true);
 
   const foreignProductResponse = await page.request.get(
-    `/api/stores/${stores.control.id}/sales/daily?from=2026-12-31&to=2027-01-01&productId=${primaryProduct?.id ?? ""}`,
+    `/api/stores/${stores.control.id}/sales/daily?from=${dailyStartDate}&to=${dailyEndDate}&productId=${primaryProduct?.id ?? ""}`,
   );
   expect(foreignProductResponse.status()).toBe(404);
   const foreignXyzResponse = await page.request.get(

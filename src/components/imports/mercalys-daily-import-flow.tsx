@@ -36,7 +36,7 @@ import {
 
 interface MercalysDailyImportFlowProps {
   storeId: string;
-  onCommitted?: () => void;
+  onCommitted?: (range: { from: string; to: string }) => void;
 }
 
 type Preview = ReturnType<typeof dailyImportPreviewResponseSchema.parse>;
@@ -219,7 +219,7 @@ export function MercalysDailyImportFlow({
         throw new Error("La réponse de validation est invalide.");
       }
       setCommit(result.data);
-      onCommitted?.();
+      onCommitted?.({ from: preview.startDate, to: preview.endDate });
     } catch (caught) {
       setError(
         caught instanceof Error

@@ -21,6 +21,11 @@ V3 context coverage includes active and explicit no-promotion observations,
 product-scoped joins, latest-weather precedence, bounded measurements,
 missing-context preservation, source provenance and deterministic coverage.
 
+V3 order-suggestion coverage includes the A-for-B calendar, Friday weekend
+coverage, Saturday-to-Monday delivery, Sunday exclusion, exact-day stock,
+zero-closing-stock default, pack rounding, missing/negative evidence, forecast
+confidence and justified manager overrides.
+
 ## Integration
 Better Auth session, organization membership, store authorization, import preview/commit/idempotency, product alias mapping, versioned product-space policies, allocation snapshots and attachment object scope.
 
@@ -102,3 +107,16 @@ Explicit adversarial tests for guessed store IDs and cross-org access.
 - foreign-store product joins return 404;
 - mobile and desktop expose separate entry, empty, error and evidence states;
 - contextual observations do not mutate sales, stock, experiments or forecasts.
+
+## V3-06 order suggestion gate
+
+- Friday proposals cover Saturday and Sunday while Saturday proposals deliver Monday;
+- Sunday never creates a shifted or implicit proposal;
+- only the exact order-date stock snapshot is subtracted from covered demand;
+- the zero closing-stock target and current-day-arrival assumption remain visible;
+- pack rounding exposes its unavoidable projected surplus;
+- incomplete forecasts and missing or negative stock remain unavailable;
+- low-confidence forecasts remain labeled and editable rather than upgraded;
+- every override requires a rationale and approval is scoped, idempotent and audited;
+- no API or approval creates or transmits a supplier order;
+- mobile and desktop expose preparation, empty, error, draft and approved states.
