@@ -9,6 +9,11 @@ export const analyticsConfigSchema = z.object({
   minimumSeasonalityBaseRevenueCents: z.number().int().nonnegative(),
   retainedSeasonalityFloor: z.number().positive(),
   retainedSeasonalityCeiling: z.number().positive(),
+  xyzWindowWeeks: z.number().int().min(4).max(52),
+  xyzMinimumCompleteWeeks: z.number().int().min(2).max(52),
+  xyzMinimumMeanWeeklyQuantity: z.number().finite().positive().max(1_000_000),
+  xyzXMaxCoefficientOfVariation: z.number().finite().nonnegative().max(5),
+  xyzYMaxCoefficientOfVariation: z.number().finite().positive().max(5),
 });
 export type AnalyticsConfig = z.infer<typeof analyticsConfigSchema>;
 
@@ -20,6 +25,11 @@ export const defaultAnalyticsConfig: AnalyticsConfig =
     minimumSeasonalityBaseRevenueCents: 10_000,
     retainedSeasonalityFloor: 0.5,
     retainedSeasonalityCeiling: 1.8,
+    xyzWindowWeeks: 13,
+    xyzMinimumCompleteWeeks: 8,
+    xyzMinimumMeanWeeklyQuantity: 1,
+    xyzXMaxCoefficientOfVariation: 0.5,
+    xyzYMaxCoefficientOfVariation: 1,
   });
 
 export const confidenceSchema = z.enum(["low", "medium", "high"]);

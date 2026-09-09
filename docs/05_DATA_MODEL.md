@@ -64,6 +64,12 @@ values carrying a calculation version, data revision and coverage evidence.
 Monthly and daily observations for the same calendar month remain separate and
 are never summed.
 
+`V3-03` does not add a persistence collection. True XYZ is a deterministic
+derived view over active `dailySalesFacts`. Each response freezes the candidate
+window, store configuration version, data revision, calculation version,
+included complete weeks and excluded-week evidence. The existing monthly
+`demand_stability_proxy` remains a separate value and is never overwritten.
+
 `V3-02` adds current `inventoryProductProfiles`, versioned `inventoryCounts` and
 append-versioned `stockSnapshots`. Profiles hold the current manual family,
 unit and last-known pack-size prefill. Each committed snapshot freezes the

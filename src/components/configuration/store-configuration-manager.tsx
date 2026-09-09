@@ -155,6 +155,23 @@ export function StoreConfigurationManager({
             data,
             "retainedSeasonalityCeiling",
           ),
+          xyzWindowWeeks: formNumber(data, "xyzWindowWeeks"),
+          xyzMinimumCompleteWeeks: formNumber(
+            data,
+            "xyzMinimumCompleteWeeks",
+          ),
+          xyzMinimumMeanWeeklyQuantity: formNumber(
+            data,
+            "xyzMinimumMeanWeeklyQuantity",
+          ),
+          xyzXMaxCoefficientOfVariation: formRatio(
+            data,
+            "xyzXMaxCoefficientOfVariation",
+          ),
+          xyzYMaxCoefficientOfVariation: formRatio(
+            data,
+            "xyzYMaxCoefficientOfVariation",
+          ),
         },
         recommendations: {
           minimumActionRevenueCents: formCents(data, "minimumActionRevenue"),
@@ -380,12 +397,17 @@ export function StoreConfigurationManager({
         </CardHeader>
         <CardContent>
           <form key={settings.revision} className="space-y-4" onSubmit={submitSettings}>
-            <SettingsSection title="Analyse et saisonnalité" description={`Moteur ${settings.analytics.calculationVersion}`}>
+            <SettingsSection title="Analyse, saisonnalité et XYZ" description={`Moteur ${settings.analytics.calculationVersion}`}>
               <NumberField disabled={!canEditSettings} id="abcAThreshold" label="Seuil ABC — classe A" defaultValue={percent(settings.analytics.abcAThreshold)} min={0.01} max={99.99} step={0.01} suffix="%" />
               <NumberField disabled={!canEditSettings} id="abcBThreshold" label="Seuil ABC — classe B" defaultValue={percent(settings.analytics.abcBThreshold)} min={0.01} max={100} step={0.01} suffix="%" />
               <NumberField disabled={!canEditSettings} id="minimumSeasonalityBaseRevenue" label="Base CA saisonnalité minimale" defaultValue={euros(settings.analytics.minimumSeasonalityBaseRevenueCents)} min={0} step={0.01} suffix="€" />
               <NumberField disabled={!canEditSettings} id="retainedSeasonalityFloor" label="Indice saisonnier minimum" defaultValue={settings.analytics.retainedSeasonalityFloor} min={0.01} step={0.01} />
               <NumberField disabled={!canEditSettings} id="retainedSeasonalityCeiling" label="Indice saisonnier maximum" defaultValue={settings.analytics.retainedSeasonalityCeiling} min={0.01} step={0.01} />
+              <NumberField disabled={!canEditSettings} id="xyzWindowWeeks" label="Fenêtre XYZ candidate" defaultValue={settings.analytics.xyzWindowWeeks} min={4} max={52} step={1} suffix="sem." />
+              <NumberField disabled={!canEditSettings} id="xyzMinimumCompleteWeeks" label="Semaines complètes minimales" defaultValue={settings.analytics.xyzMinimumCompleteWeeks} min={2} max={52} step={1} suffix="sem." />
+              <NumberField disabled={!canEditSettings} id="xyzMinimumMeanWeeklyQuantity" label="Demande hebdomadaire moyenne minimale" defaultValue={settings.analytics.xyzMinimumMeanWeeklyQuantity} min={0.001} max={1_000_000} step={0.001} suffix="unités" />
+              <NumberField disabled={!canEditSettings} id="xyzXMaxCoefficientOfVariation" label="CV maximum — classe X" defaultValue={percent(settings.analytics.xyzXMaxCoefficientOfVariation)} min={0} max={500} step={0.01} suffix="%" />
+              <NumberField disabled={!canEditSettings} id="xyzYMaxCoefficientOfVariation" label="CV maximum — classe Y" defaultValue={percent(settings.analytics.xyzYMaxCoefficientOfVariation)} min={0.01} max={500} step={0.01} suffix="%" />
             </SettingsSection>
 
             <SettingsSection title="Recommandations" description={`Règles ${settings.recommendations.modelVersion}`}>
@@ -454,7 +476,7 @@ function SettingsSection({
   title: string;
 }) {
   return (
-    <details className="group rounded-xl border" open={title === "Analyse et saisonnalité"}>
+    <details className="group rounded-xl border" open={title === "Analyse, saisonnalité et XYZ"}>
       <summary className="cursor-pointer list-none px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
         <span className="font-medium">{title}</span>
         <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>

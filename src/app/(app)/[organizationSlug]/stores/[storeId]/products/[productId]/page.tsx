@@ -10,6 +10,7 @@ import { formatMoney, formatQuantity, formatRatio } from "@/lib/formatting";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { getDashboardMetrics, getProductMetrics } from "@/server/services/analytics-service";
 import { getRecommendations } from "@/server/services/recommendation-service";
+import { getTrueXyzAnalysis } from "@/server/services/true-xyz-service";
 
 export const metadata: Metadata = { title: "Détail produit — F&L Cockpit" };
 
@@ -49,6 +50,11 @@ export default async function ProductDetailPage({
 
   if (!product || !recommendation) notFound();
 
+  const xyzAnalysis = await getTrueXyzAnalysis(context, { productId });
+  const xyz = xyzAnalysis.products[0];
+
+  if (!xyz) notFound();
+
   const canApprove = context.permissions.includes("recommendations.approve");
 
   return (
@@ -59,6 +65,9 @@ export default async function ProductDetailPage({
           <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em]">{product.label}</h1>
           <div className="mt-3 flex flex-wrap gap-2">
             <Badge>ABC {product.abcClass}</Badge>
+            <Badge variant={xyz.xyzClass ? "secondary" : "outline"}>
+              XYZ {xyz.xyzClass ?? "non classé"}
+            </Badge>
             <Badge variant="secondary">Confiance {product.confidence}</Badge>
             <Badge variant="outline">{typeLabels[recommendation.type]}</Badge>
           </div>
@@ -75,6 +84,40 @@ export default async function ProductDetailPage({
         <DetailMetric icon={CircleGauge} label="Prévision" value={formatMoney(product.forecastRevenueCents)} helper={`Indice retenu ${product.retainedSeasonalityIndex.toFixed(2)}`} />
         <DetailMetric icon={ArrowDownLeft} label="Quantité" value={formatQuantity(product.quantity)} helper="Valeur observée" />
       </section>
+
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle>Stabilité de la demande · XYZ réel</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Calcul sur les semaines journalières complètes uniquement ; les jours absents ne sont jamais assimilés à zéro.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <XyzMetric label="Classe" value={xyz.xyzClass ?? "Non classé"} />
+            <XyzMetric label="Coefficient de variation" value={formatRatio(xyz.coefficientOfVariation)} />
+            <XyzMetric label="Demande moyenne / semaine" value={xyz.meanWeeklyQuantity === null ? "—" : formatQuantity(xyz.meanWeeklyQuantity)} />
+            <XyzMetric label="Semaines complètes" value={`${xyz.completeWeekCount} / ${xyz.requiredCompleteWeekCount}`} />
+          </div>
+          <p className="mt-5 text-xs text-muted-foreground">
+            Fenêtre {xyzAnalysis.from} → {xyzAnalysis.to} · données au {xyzAnalysis.asOf} · calcul {xyzAnalysis.calculationVersion} · configuration {xyzAnalysis.config.configurationVersion} · révision des données {xyzAnalysis.dataRevision}.
+          </p>
+          {xyz.warnings.length > 0 ? (
+            <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+              {xyz.warnings.map((warning) => (
+                <li key={warning.code}>• {warning.message}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Toutes les conditions de classification sont satisfaites.
+            </p>
+          )}
+          <p className="mt-4 rounded-lg bg-muted p-3 text-xs leading-5 text-muted-foreground">
+            Cette classe mesure la variabilité de la demande unitaire journalière agrégée à la semaine. Elle reste distincte du proxy de stabilité calculé sur les imports mensuels.
+          </p>
+        </CardContent>
+      </Card>
 
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
         <Card>
@@ -124,6 +167,15 @@ export default async function ProductDetailPage({
         </Card>
       </section>
     </main>
+  );
+}
+
+function XyzMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-2 text-lg font-semibold">{value}</p>
+    </div>
   );
 }
 

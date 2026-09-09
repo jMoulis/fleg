@@ -234,6 +234,20 @@ non-positive mean demand or unresolved negative corrections returns an
 unclassified result with warnings. The existing monthly stability proxy remains
 visibly distinct.
 
+This boundary is implemented as a read-only derived view. Defaults are 13
+candidate ISO weeks, at least 8 complete weeks, a minimum weekly mean of 1
+unit, X at `CV <= 0.50`, Y at `CV <= 1.00`, then Z. The product matrix exposes
+an independent XYZ filter and the product detail exposes the mean, CV,
+complete-week count, excluded coverage and typed warnings.
+
+Implemented route:
+
+- `GET /api/stores/:storeId/products/xyz?asOf&productId?`.
+
+The route requires `analytics.read`, reauthorizes the optional product and
+returns the exact candidate window, calculation/configuration versions and data
+revision. No XYZ collection is introduced and no monthly metric is mutated.
+
 ## V3-04 to V3-06 boundaries
 
 Day-of-week forecasts consume versioned daily facts and preserve training
