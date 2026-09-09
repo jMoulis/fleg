@@ -77,7 +77,6 @@ Grounded analytics Q&A, recommendation explanation, action-plan draft, cross-sto
 ## F16 Photos
 Attach photos to store/layout/fixture/event. MVP manual reference. Later computer vision may infer presentation state, never silently overwrite geometry.
 
-
 ## F17 Tests & Experiments
 Define merchandising/commercial tests before execution, link them to product/TG/space decisions, freeze hypothesis/treatment/baseline/KPIs, evaluate actual vs expected performance, calculate uplift and incremental economics, expose evidence quality/confounders, then record manager verdict and rollout/retest decision. See `17_EXPERIMENT_ENGINE.md`.
 
@@ -177,3 +176,19 @@ Acceptance criteria for AI-02:
 - store and network interfaces expose responsive empty, loading, configuration and error states without exposing the provider API key;
 - provider responses use server-only configuration, disable response storage and preserve required reasoning items during stateless tool continuation;
 - cross-store questions in store mode are redirected to the authorized network mode, while a one-store network scope remains explicit about its limitation.
+
+## F18 Context observations
+Record promotion and weather as separate, immutable, store/date-scoped evidence.
+Promotion can explicitly state that no promotion was observed; an absent record
+stays unknown. Weather keeps bounded conditions and optional measures with
+manual or provider provenance. A product/date feature join exposes coverage
+without mutating sales, stock, experiments or forecasts.
+
+Acceptance criteria for V3-05:
+- promotion and weather use separate collections and strict Zod contracts;
+- writes require `context.write`, are idempotent, audited and increment the store data revision;
+- every product and linked commercial-event reference is revalidated inside the authorized store;
+- an explicit no-promotion observation is distinct from missing promotion context;
+- the latest weather evidence is selected deterministically while prior evidence remains immutable;
+- joins are bounded by authorized store, business date and optional product;
+- no contextual observation changes another business fact or feeds a forecast/recommendation in V3-05.

@@ -1,7 +1,7 @@
 # 05 — MongoDB data model
 
 ## Collections
-`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `dailySalesFacts`, `markdownFacts`, `inventoryProductProfiles`, `inventoryCounts`, `stockSnapshots`, `inventoryCommands`, `periodTargets`, `importJobs`, `dailySalesImportJobs`, `layoutVersions`, `allocationPlans`, `productSpacePolicySets`, `productSpacePolicyCommands`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `recommendationRuns`, `recommendations`, `aiActionPlans`, `decisionLogs`, `attachments`, `auditLogs`, `benchmarkGroups`.
+`stores`, `storeMemberships`, `departments`, `products`, `productAliases`, `salesFacts`, `dailySalesFacts`, `markdownFacts`, `promotionContextObservations`, `weatherContextObservations`, `contextObservationCommands`, `inventoryProductProfiles`, `inventoryCounts`, `stockSnapshots`, `inventoryCommands`, `periodTargets`, `importJobs`, `dailySalesImportJobs`, `layoutVersions`, `allocationPlans`, `productSpacePolicySets`, `productSpacePolicyCommands`, `commercialEvents`, `experiments`, `experimentAnalyses`, `experimentConclusions`, `recommendationRuns`, `recommendations`, `aiActionPlans`, `decisionLogs`, `attachments`, `auditLogs`, `benchmarkGroups`.
 
 ## Mandatory tenant fields
 All business documents include `organizationId`, `storeId` where store-scoped, and usually `departmentId`.
@@ -15,6 +15,10 @@ All business documents include `organizationId`, `storeId` where store-scoped, a
 - periodTargets `{organizationId:1,storeId:1,periodKey:1}` unique
 - markdownFacts `{storeId:1,date:1,productId:1}`
 - markdownCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
+- promotionContextObservations `{organizationId:1,storeId:1,businessDate:1,recordedAt:1}`
+- promotionContextObservations `{organizationId:1,storeId:1,productIds:1,businessDate:1}`
+- weatherContextObservations `{organizationId:1,storeId:1,businessDate:1,recordedAt:1}`
+- contextObservationCommands `{organizationId:1,storeId:1,idempotencyKey:1}` unique
 - inventoryProductProfiles `{organizationId:1,storeId:1,productId:1}` unique
 - inventoryCounts `{organizationId:1,storeId:1,businessDate:1,version:1}` unique
 - inventoryCounts `{organizationId:1,storeId:1,businessDate:1}` unique where `status:"draft"`
@@ -75,6 +79,17 @@ response freezes the authorized training and forecast windows, current store
 configuration version, active-fact data revision, model version, weekday
 coefficients, holdout points and error metrics. No forecast collection is added
 and no daily or monthly observed fact is mutated.
+
+`V3-05` adds two separate immutable evidence logs. Promotion observations
+record either an active product-scoped mechanic or an explicit store-level
+absence; weather observations record a bounded condition and optional
+temperature/precipitation values. Both freeze source provenance, business date,
+actor and recording time. A later record does not update or delete the earlier
+record. The derived daily context view applies the latest explicit
+no-promotion reset before aggregating later applicable promotions, and selects
+the latest weather record while exposing its observation count. Missing
+promotion or weather dates remain explicit. Context writes are idempotent,
+audited and increment `stores.dataRevision` once.
 
 `V3-02` adds current `inventoryProductProfiles`, versioned `inventoryCounts` and
 append-versioned `stockSnapshots`. Profiles hold the current manual family,

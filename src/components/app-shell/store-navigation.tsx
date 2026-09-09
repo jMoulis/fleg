@@ -7,6 +7,7 @@ import {
   Boxes,
   CalendarRange,
   CircleGauge,
+  CloudSun,
   ClipboardCheck,
   FileSpreadsheet,
   History,
@@ -38,6 +39,7 @@ const navigation = [
     requiresInventory: true,
   },
   { label: "Espace", segment: "space", icon: Ruler },
+  { label: "Contexte", segment: "context", icon: CloudSun },
   { label: "TG", segment: "tg", icon: CalendarRange },
   { label: "Tests", segment: "experiments", icon: FlaskConical },
   { label: "Démarque", segment: "markdown", icon: PackageX },
@@ -72,7 +74,7 @@ export function StoreNavigation({
     return (
       <nav
         aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-50 isolate grid w-full max-w-[100vw] grid-cols-9 border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 isolate flex w-full max-w-[100vw] overflow-x-auto border-t bg-background px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
       >
         {navigation
           .filter(
@@ -92,7 +94,7 @@ export function StoreNavigation({
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.6rem] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                  "flex min-h-14 min-w-16 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[0.6rem] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                   active ? "text-primary" : "text-muted-foreground",
                 )}
               >

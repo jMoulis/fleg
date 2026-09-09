@@ -56,4 +56,17 @@ describe("admin schemas", () => {
     expect(defaultStorePermissionsByRole.viewer).toContain("inventory.read");
     expect(defaultStorePermissionsByRole.viewer).not.toContain("inventory.write");
   });
+
+  it("reserves contextual observation entry for managers by default", () => {
+    expect(defaultStorePermissionsByRole.store_director).toContain(
+      "context.write",
+    );
+    expect(defaultStorePermissionsByRole.department_manager).toContain(
+      "context.write",
+    );
+    expect(defaultStorePermissionsByRole.employee).not.toContain(
+      "context.write",
+    );
+    expect(defaultStorePermissionsByRole.viewer).not.toContain("context.write");
+  });
 });
