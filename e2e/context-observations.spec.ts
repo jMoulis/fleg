@@ -1,24 +1,93 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import {
   businessContextResponseSchema,
   promotionObservationResponseSchema,
   weatherObservationResponseSchema,
 } from "@/domain/context-observations/schemas";
+import {
+  dailyImportCommitResponseSchema,
+  dailyImportPreviewResponseSchema,
+} from "@/domain/imports/daily-schemas";
 import { productOptionsResponseSchema } from "@/domain/products/schemas";
 import { getDemoStorePair } from "./demo-store";
 
-const dateByProject = {
-  "mobile-390": "2026-09-08",
-  "desktop-1440": "2026-09-09",
+const fixtureByProject = {
+  "mobile-390": {
+    businessDate: "2026-09-08",
+    sourceDate: "08/09/2026",
+    itm8: "539001",
+    ean: "3390000000001",
+    productLabel: "Produit contexte V3-05 mobile",
+  },
+  "desktop-1440": {
+    businessDate: "2026-09-09",
+    sourceDate: "09/09/2026",
+    itm8: "514401",
+    ean: "3144000000001",
+    productLabel: "Produit contexte V3-05 desktop",
+  },
 } as const;
+
+async function importContextProduct(
+  page: Page,
+  storeId: string,
+  projectName: keyof typeof fixtureByProject,
+) {
+  const fixture = fixtureByProject[projectName];
+  const csv = [
+    "Date;ITM8 Prio;EAN Prio;Libellé;Quantité;Valeur prix vente;Val Marge",
+    `${fixture.sourceDate};${fixture.itm8};${fixture.ean};${fixture.productLabel};2;20,00;6,00`,
+    `${fixture.sourceDate};;;Total;2;20,00;6,00`,
+  ].join("\n");
+  const previewResponse = await page.request.post(
+    `/api/stores/${storeId}/imports/daily/preview`,
+    {
+      multipart: {
+        file: {
+          name: `context-v3-05-${projectName}.csv`,
+          mimeType: "text/csv",
+          buffer: Buffer.from(csv),
+        },
+      },
+    },
+  );
+  const previewPayload: unknown = await previewResponse.json();
+  expect(previewResponse.status(), JSON.stringify(previewPayload)).toBe(200);
+  const preview = dailyImportPreviewResponseSchema.parse(previewPayload);
+
+  const commitResponse = await page.request.post(
+    `/api/stores/${storeId}/imports/daily/${preview.importId}/commit`,
+    {
+      data: {
+        resolutions: preview.unresolvedAliases.map((alias) => ({
+          externalKey: alias.externalKey,
+          action: "create" as const,
+          canonicalLabel: alias.sourceLabel,
+        })),
+      },
+    },
+  );
+  const commitPayload: unknown = await commitResponse.json();
+  expect(commitResponse.status(), JSON.stringify(commitPayload)).toBe(200);
+  expect(
+    dailyImportCommitResponseSchema.parse(commitPayload).importedFactCount,
+  ).toBeGreaterThan(0);
+
+  return fixture;
+}
 
 test("V3-05 joint des preuves promotionnelles et météo sans combler les absences", async ({
   page,
 }, testInfo) => {
-  const projectName = testInfo.project.name as keyof typeof dateByProject;
-  const businessDate = dateByProject[projectName];
+  const projectName = testInfo.project.name as keyof typeof fixtureByProject;
   const stores = await getDemoStorePair(page);
+  const fixture = await importContextProduct(
+    page,
+    stores.primary.id,
+    projectName,
+  );
+  const businessDate = fixture.businessDate;
   const productsResponse = await page.request.get(
     `/api/stores/${stores.primary.id}/products/options`,
   );
@@ -26,8 +95,13 @@ test("V3-05 joint des preuves promotionnelles et météo sans combler les absenc
   const products = productOptionsResponseSchema.parse(
     await productsResponse.json(),
   ).products;
-  expect(products.length).toBeGreaterThan(0);
-  const product = products[0]!;
+  const product = products.find(
+    (candidate) => candidate.label === fixture.productLabel,
+  );
+  expect(product).toBeDefined();
+  if (!product) {
+    throw new Error(`Produit de recette introuvable: ${fixture.productLabel}`);
+  }
 
   const beforeResponse = await page.request.get(
     `/api/stores/${stores.primary.id}/context?from=${businessDate}&to=${businessDate}&productId=${product.id}`,
