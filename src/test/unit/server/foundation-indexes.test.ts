@@ -59,6 +59,9 @@ describe("foundation indexes", () => {
         "stock_snapshots_scope_product_date_active_unique",
         "stock_snapshots_scope_product_date_version_unique",
         "inventory_commands_scope_key_unique",
+        "order_suggestions_scope_date_generated",
+        "order_suggestions_scope_status_delivery",
+        "order_suggestion_commands_scope_key_unique",
       ]),
     );
   });

@@ -24,6 +24,7 @@ import { defaultAnalyticsConfig } from "@/domain/analytics/schemas";
 import { defaultBaselineEngineConfig } from "@/domain/experiments/baseline";
 import { defaultEvaluationEngineConfig } from "@/domain/experiments/evaluation-schemas";
 import { defaultRecommendationConfig } from "@/domain/recommendations/schemas";
+import { defaultOrderSuggestionConfig } from "@/domain/ordering/schemas";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 
 interface StoreSettingsDocument extends EditableStoreSettings {
@@ -83,6 +84,14 @@ function toSettingsSnapshot(
       ...values.recommendations,
       modelVersion: configVersion(
         defaultRecommendationConfig.modelVersion,
+        revision,
+      ),
+    },
+    ordering: {
+      ...defaultOrderSuggestionConfig,
+      ...values.ordering,
+      configurationVersion: configVersion(
+        defaultOrderSuggestionConfig.modelVersion,
         revision,
       ),
     },

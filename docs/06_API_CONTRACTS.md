@@ -148,6 +148,23 @@ count lines, freezes packaging evidence, versions changed product/date stock
 snapshots, updates current product profiles and audits the mutation in one
 transaction. All mutations require `inventory.write`.
 
+## Order suggestions
+
+GET `/api/stores/:storeId/order-suggestions?orderDate=YYYY-MM-DD` returns the
+authorized delivery cycle, exact-day stock readiness and latest persisted
+proposal. It requires `analytics.read` and `inventory.read`.
+
+POST `/api/stores/:storeId/order-suggestions` accepts an order date and UUID
+idempotency key. It additionally requires `recommendations.approve`, freezes the
+exact stock and forecast inputs, and returns an editable draft. Sunday requests
+are rejected rather than shifted silently.
+
+POST `/api/stores/:storeId/order-suggestions/:suggestionId/approve` accepts the
+optimistic generation timestamp, every commandable product's approved case
+count, a mandatory reason for each changed count, an optional general note and
+a UUID idempotency key. The scoped, audited decision never triggers an external
+supplier action.
+
 ## Manual photos
 GET/POST `/api/stores/:storeId/attachments`
 

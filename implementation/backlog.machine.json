@@ -333,9 +333,10 @@
       "title": "Evidence-backed order suggestion drafts",
       "priority": "P1",
       "acceptance": [
-        "separate demand stock safety lead-time and pack inputs",
+        "A-for-B calendar with Friday weekend coverage and Saturday-to-Monday delivery",
+        "zero closing-stock default with exact morning stock and pack rounding",
         "persisted coefficients confidence evidence and limitations",
-        "explicit authorized approval boundary",
+        "explicit authorized approval with reasons for case-count overrides",
         "no automatic supplier order"
       ]
     }
