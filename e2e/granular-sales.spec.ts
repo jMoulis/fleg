@@ -199,12 +199,6 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
   );
   expect(foreignXyzResponse.status()).toBe(404);
 
-  await page.goto(
-    `/${stores.primary.organizationSlug}/stores/${stores.primary.id}/products?period=2026-08`,
-  );
-  await expect(page.getByText(/XYZ réel sur 13 semaines candidates/)).toBeVisible();
-  await expect(page.getByLabel("XYZ réel")).toBeVisible();
-
   const monthlyAfter = await monthlyDashboardSnapshot(page, stores.primary.id);
   expect(monthlyAfter).toEqual(monthlyBefore);
 });

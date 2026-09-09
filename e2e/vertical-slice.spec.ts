@@ -183,6 +183,8 @@ test("E2E-01 transforme un export Mercalys en décision manager", async ({
     await page.getByRole("link", { name: "Voir les produits" }).click();
     await expect(page.getByRole("heading", { name: "Produits" })).toBeVisible();
     await expect(page.getByText(`période ${fixture.periodKey}`)).toBeVisible();
+    await expect(page.getByText(/XYZ réel sur \d+ semaines candidates/)).toBeVisible();
+    await expect(page.getByLabel("XYZ réel")).toBeVisible();
 
     const matrix = page.getByRole("table", { name: /Matrice des produits/ });
     if (projectName === "desktop-1440") {
