@@ -15,7 +15,17 @@ describe("product matrix query schema", () => {
       period: "2026-08",
       q: "",
       abc: undefined,
+      xyz: undefined,
       sort: "label_asc",
     });
+  });
+
+  it("accepts XYZ classes and the explicit unclassified state", () => {
+    expect(
+      productMatrixQuerySchema.parse({ xyz: "unclassified" }).xyz,
+    ).toBe("unclassified");
+    expect(productMatrixQuerySchema.safeParse({ xyz: "W" }).success).toBe(
+      false,
+    );
   });
 });

@@ -49,12 +49,24 @@ GET `/api/stores/:storeId/sales/weekly?from=YYYY-MM-DD&to=YYYY-MM-DD&productId=.
 
 GET `/api/stores/:storeId/sales/reconciliation?period=YYYY-MM&productId=...`
 
+GET `/api/stores/:storeId/products/xyz?asOf=YYYY-MM-DD&productId=...`
+
 Daily and weekly ranges accept either both `from` and `to`, or neither. An
 omitted range ends at the latest authorized observation and spans 28 days; an
 explicit range is limited to 366 days. A weekly response expands intersecting
 weeks to their full ISO Monday-to-Sunday boundaries so partial coverage cannot
 be hidden by a narrow query. All three reads require `analytics.read` and
 validate an optional product inside the same authorized store.
+
+The XYZ read requires `analytics.read`. Its optional `asOf` defaults to the
+latest authorized daily observation for the selected scope. It returns one
+result per active canonical product, or one reauthorized product when
+`productId` is supplied. The response exposes the complete ISO weeks included
+in the coefficient of variation, every incomplete week excluded without zero
+filling, warnings, store configuration version, data revision and
+`true-xyz-v1` calculation version. A historical `asOf` never loads observations
+after that date; the remainder of its ISO week is therefore explicit missing
+coverage.
 
 ## Layout
 GET `/api/stores/:storeId/layout`

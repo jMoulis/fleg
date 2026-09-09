@@ -8,6 +8,10 @@ kilogram and piece constraints, explicit zero versus unknown blank values,
 partial-count rejection, negative-stock anomaly preservation, observation age
 and correction-aware stock snapshot versioning.
 
+V3 true-XYZ unit coverage includes X/Y/Z boundaries, population CV, exclusion
+of incomplete weeks without zero filling, minimum-history and small-mean
+guards, unresolved negative demand and visible corrected-fact evidence.
+
 ## Integration
 Better Auth session, organization membership, store authorization, import preview/commit/idempotency, product alias mapping, versioned product-space policies, allocation snapshots and attachment object scope.
 
@@ -51,3 +55,16 @@ Explicit adversarial tests for guessed store IDs and cross-org access.
 - daily and weekly reads reject foreign store/product/import identifiers;
 - complete daily months reconcile to monthly observations without replacing or summing them;
 - the daily import-to-weekly-view flow passes at mobile and desktop widths.
+
+## V3-03 true-XYZ gate
+
+- the read uses only complete Monday-to-Sunday product weeks from the configured
+  candidate window;
+- incomplete dates remain visible and are excluded rather than converted to
+  zero demand;
+- insufficient, small-base, zero or negative evidence remains unclassified
+  with typed warnings;
+- a product identifier from another authorized store returns 404;
+- matrix and product-detail views show true XYZ separately from ABC and the
+  monthly stability proxy;
+- thresholds, evidence guards and their configuration revision are visible.

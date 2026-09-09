@@ -12,6 +12,7 @@ import {
   getProductMetrics,
 } from "@/server/services/analytics-service";
 import { getRecommendations } from "@/server/services/recommendation-service";
+import { getTrueXyzAnalysis } from "@/server/services/true-xyz-service";
 
 export const metadata: Metadata = {
   title: "Produits — F&L Cockpit",
@@ -23,6 +24,7 @@ interface ProductsPageProps {
     period?: string;
     q?: string;
     abc?: string;
+    xyz?: string;
     sort?: string;
   }>;
 }
@@ -58,12 +60,16 @@ export default async function ProductsPage({
     );
   }
 
-  const [metrics, recommendations] = await Promise.all([
+  const [metrics, recommendations, xyzAnalysis] = await Promise.all([
     getProductMetrics(context, dashboard.periodKey),
     getRecommendations(context, dashboard.periodKey),
+    getTrueXyzAnalysis(context, {}),
   ]);
   const recommendationByProduct = new Map(
     recommendations.map((recommendation) => [recommendation.productId, recommendation]),
+  );
+  const xyzByProduct = new Map(
+    xyzAnalysis.products.map((result) => [result.productId, result]),
   );
   const normalizedSearch = query.q.toLocaleLowerCase("fr-FR");
   const products = metrics.products
@@ -71,7 +77,11 @@ export default async function ProductsPage({
       (product) =>
         (!normalizedSearch ||
           product.label.toLocaleLowerCase("fr-FR").includes(normalizedSearch)) &&
-        (!query.abc || product.abcClass === query.abc),
+        (!query.abc || product.abcClass === query.abc) &&
+        (!query.xyz ||
+          (query.xyz === "unclassified"
+            ? xyzByProduct.get(product.productId)?.xyzClass === null
+            : xyzByProduct.get(product.productId)?.xyzClass === query.xyz)),
     )
     .sort((a, b) => {
       switch (query.sort) {
@@ -94,9 +104,12 @@ export default async function ProductsPage({
         <p className="mt-2 text-sm text-muted-foreground">
           {products.length} produit(s) · période {dashboard.periodKey}
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          XYZ réel sur {xyzAnalysis.config.windowWeeks} semaines candidates · au moins {xyzAnalysis.config.minimumCompleteWeeks} semaines complètes · données au {xyzAnalysis.asOf}
+        </p>
       </div>
 
-      <form className="mt-6 grid gap-3 rounded-2xl border bg-card p-4 sm:grid-cols-[1fr_auto_auto_auto]" method="get">
+      <form className="mt-6 grid gap-3 rounded-2xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]" method="get">
         <input type="hidden" name="period" value={dashboard.periodKey} />
         <label className="grid gap-1 text-xs font-medium text-muted-foreground">
           Recherche
@@ -106,6 +119,16 @@ export default async function ProductsPage({
             placeholder="Banane, pomme…"
             className="h-9 rounded-lg border bg-background px-3 text-sm text-foreground"
           />
+        </label>
+        <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+          XYZ réel
+          <select name="xyz" defaultValue={query.xyz ?? ""} className="h-9 rounded-lg border bg-background px-3 text-sm text-foreground">
+            <option value="">Toutes</option>
+            <option value="X">X — demande stable</option>
+            <option value="Y">Y — demande variable</option>
+            <option value="Z">Z — demande irrégulière</option>
+            <option value="unclassified">Non classé</option>
+          </select>
         </label>
         <label className="grid gap-1 text-xs font-medium text-muted-foreground">
           ABC
@@ -141,6 +164,7 @@ export default async function ProductsPage({
           <div className="mt-6 space-y-3 md:hidden">
             {products.map((product) => {
               const recommendation = recommendationByProduct.get(product.productId);
+              const xyz = xyzByProduct.get(product.productId);
               return (
                 <Link
                   key={product.productId}
@@ -154,12 +178,18 @@ export default async function ProductsPage({
                         {formatMoney(product.revenueCents)} · marge {formatRatio(product.marginRatio)}
                       </p>
                     </div>
-                    <Badge>ABC {product.abcClass}</Badge>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <Badge>ABC {product.abcClass}</Badge>
+                      <Badge variant="outline">XYZ {xyz?.xyzClass ?? "non classé"}</Badge>
+                    </div>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <span><span className="block text-xs text-muted-foreground">Prévision</span>{formatMoney(product.forecastRevenueCents)}</span>
                     <span><span className="block text-xs text-muted-foreground">Recommandation</span>{recommendation ? recommendationLabels[recommendation.type] : "—"}</span>
                   </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    XYZ : {xyz?.completeWeekCount ?? 0}/{xyz?.requiredCompleteWeekCount ?? xyzAnalysis.config.minimumCompleteWeeks} semaines complètes
+                  </p>
                 </Link>
               );
             })}
@@ -172,6 +202,7 @@ export default async function ProductsPage({
                 <tr>
                   <th className="sticky left-0 z-10 bg-muted px-4 py-3 font-medium">Produit</th>
                   <th className="px-4 py-3 font-medium">ABC</th>
+                  <th className="px-4 py-3 font-medium">XYZ réel</th>
                   <th className="px-4 py-3 text-right font-medium">CA</th>
                   <th className="px-4 py-3 text-right font-medium">Marge</th>
                   <th className="px-4 py-3 text-right font-medium">Quantité</th>
@@ -184,6 +215,7 @@ export default async function ProductsPage({
               <tbody>
                 {products.map((product) => {
                   const recommendation = recommendationByProduct.get(product.productId);
+                  const xyz = xyzByProduct.get(product.productId);
                   return (
                     <tr key={product.productId} className="border-t hover:bg-muted/35">
                       <th className="sticky left-0 z-10 bg-card px-4 py-3 text-left font-medium">
@@ -192,6 +224,14 @@ export default async function ProductsPage({
                         </Link>
                       </th>
                       <td className="px-4 py-3"><Badge variant="outline">{product.abcClass}</Badge></td>
+                      <td className="px-4 py-3">
+                        <Badge variant={xyz?.xyzClass ? "secondary" : "outline"}>
+                          {xyz?.xyzClass ?? "Non classé"}
+                        </Badge>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {xyz?.completeWeekCount ?? 0}/{xyz?.requiredCompleteWeekCount ?? xyzAnalysis.config.minimumCompleteWeeks} sem.
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatMoney(product.revenueCents)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatMoney(product.marginCents)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatQuantity(product.quantity)}</td>

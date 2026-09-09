@@ -4,6 +4,7 @@ import {
   dailySalesReadResponseSchema,
   weeklySalesReadResponseSchema,
 } from "@/domain/analytics/granular-sales-schemas";
+import { trueXyzAnalysisResponseSchema } from "@/domain/analytics/true-xyz-schemas";
 import { dashboardResponseSchema } from "@/domain/analytics/schemas";
 import {
   dailyImportCommitResponseSchema,
@@ -162,10 +163,47 @@ test("V3-01 importe le journalier et expose une semaine ISO sans changer le mens
     (product) => product.label === `Produit journalier ${projectName === "mobile-390" ? "390" : "1440"} A`,
   );
   expect(primaryProduct).toBeDefined();
+  const xyzResponse = await page.request.get(
+    `/api/stores/${stores.primary.id}/products/xyz?asOf=2026-12-31&productId=${primaryProduct?.id ?? ""}`,
+  );
+  expect(xyzResponse.status()).toBe(200);
+  const xyz = trueXyzAnalysisResponseSchema.parse(await xyzResponse.json());
+  expect(xyz).toMatchObject({
+    grain: "complete_weekly_unit_demand",
+    asOf: "2026-12-31",
+    productId: primaryProduct?.id,
+    config: { windowWeeks: 13, minimumCompleteWeeks: 8 },
+  });
+  expect(xyz.products[0]).toMatchObject({
+    status: "unclassified",
+    xyzClass: null,
+    completeWeekCount: 0,
+    candidateWeekCount: 13,
+  });
+  expect(xyz.products[0]?.warnings.map(({ code }) => code)).toEqual(
+    expect.arrayContaining([
+      "INCOMPLETE_WEEKS_EXCLUDED",
+      "INSUFFICIENT_COMPLETE_WEEKS",
+    ]),
+  );
+  expect(
+    xyz.products[0]?.weeks.every(({ includedInCalculation }) => !includedInCalculation),
+  ).toBe(true);
+
   const foreignProductResponse = await page.request.get(
     `/api/stores/${stores.control.id}/sales/daily?from=2026-12-31&to=2027-01-01&productId=${primaryProduct?.id ?? ""}`,
   );
   expect(foreignProductResponse.status()).toBe(404);
+  const foreignXyzResponse = await page.request.get(
+    `/api/stores/${stores.control.id}/products/xyz?productId=${primaryProduct?.id ?? ""}`,
+  );
+  expect(foreignXyzResponse.status()).toBe(404);
+
+  await page.goto(
+    `/${stores.primary.organizationSlug}/stores/${stores.primary.id}/products?period=2026-08`,
+  );
+  await expect(page.getByText(/XYZ réel sur 13 semaines candidates/)).toBeVisible();
+  await expect(page.getByLabel("XYZ réel")).toBeVisible();
 
   const monthlyAfter = await monthlyDashboardSnapshot(page, stores.primary.id);
   expect(monthlyAfter).toEqual(monthlyBefore);

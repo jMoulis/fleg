@@ -130,6 +130,26 @@ export const storeSettingsUpdateInputSchema = z
         message: "La borne haute de saisonnalité doit dépasser la borne basse",
       });
     }
+    if (
+      input.settings.analytics.xyzMinimumCompleteWeeks >
+      input.settings.analytics.xyzWindowWeeks
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["settings", "analytics", "xyzMinimumCompleteWeeks"],
+        message: "Le minimum de semaines complètes ne peut pas dépasser la fenêtre XYZ",
+      });
+    }
+    if (
+      input.settings.analytics.xyzXMaxCoefficientOfVariation >=
+      input.settings.analytics.xyzYMaxCoefficientOfVariation
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["settings", "analytics", "xyzYMaxCoefficientOfVariation"],
+        message: "Le seuil Y doit être supérieur au seuil X",
+      });
+    }
     addNestedIssues(
       analyticsConfigSchema.safeParse({
         ...defaultAnalyticsConfig,

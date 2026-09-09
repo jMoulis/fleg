@@ -18,7 +18,7 @@ describe("store configuration schemas", () => {
     ).toEqual(defaultEditableStoreSettings);
   });
 
-  it("rejects incoherent ABC and seasonality bounds", () => {
+  it("rejects incoherent ABC, seasonality and XYZ bounds", () => {
     const result = storeSettingsUpdateInputSchema.safeParse({
       idempotencyKey: "82c3b328-a80e-4bbb-9d3e-93b89e25eea8",
       basedOnUpdatedAt: null,
@@ -30,6 +30,10 @@ describe("store configuration schemas", () => {
           abcBThreshold: 0.95,
           retainedSeasonalityFloor: 2,
           retainedSeasonalityCeiling: 1,
+          xyzWindowWeeks: 4,
+          xyzMinimumCompleteWeeks: 5,
+          xyzXMaxCoefficientOfVariation: 1,
+          xyzYMaxCoefficientOfVariation: 0.5,
         },
       },
     });
@@ -40,6 +44,8 @@ describe("store configuration schemas", () => {
         expect.arrayContaining([
           "settings.analytics.abcBThreshold",
           "settings.analytics.retainedSeasonalityCeiling",
+          "settings.analytics.xyzMinimumCompleteWeeks",
+          "settings.analytics.xyzYMaxCoefficientOfVariation",
         ]),
       );
     }

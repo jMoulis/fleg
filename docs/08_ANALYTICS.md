@@ -48,6 +48,13 @@ windows. Window length, minimum complete weeks, small-mean guard and X/Y
 thresholds are configurable and versioned. Insufficient coverage or non-positive
 mean demand produces an explicit unclassified result.
 
+The implemented defaults are a 13-week candidate window, at least 8 complete
+weeks, a minimum weekly mean of 1 unit, X for `CV <= 0.50`, Y for
+`0.50 < CV <= 1.00`, and Z above 1.00. A negative complete weekly net demand
+blocks classification until resolved. Corrected active facts remain usable but
+are surfaced as evidence. The matrix and product detail always display the
+complete-week count and keep `demand_stability_proxy` explicitly separate.
+
 ## Recommendation score
 Do not reduce decisions to one opaque score. Keep components:
 - economic weight,
