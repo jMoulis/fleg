@@ -1,57 +1,79 @@
-# F&L Cockpit — Product & Technical Specification
+# F&L Cockpit
 
-**Version:** 1.1 — 2026-09-01  
-**Purpose:** autonomous coding-agent handoff.
+F&L Cockpit est une application multi-magasins d'aide au pilotage d'un rayon
+fruits et légumes. Elle relie les exports Mercalys, le stock du matin, les
+prévisions, l'implantation, la démarque, les opérations commerciales et les
+décisions du manager.
 
-## Vision
-A production-grade, multi-point-of-sale application for supermarket Fruit & Vegetable departments. It transforms Mercalys sales/margin exports, markdown data, store geometry, merchandising allocation, commercial events and manager knowledge into operational decisions.
+Le cycle produit est :
 
-## Mandatory stack
-- Next.js 16+ App Router
-- React + strict TypeScript
-- MongoDB Atlas + official Node.js driver
-- Better Auth + MongoDB adapter + Organization plugin
-- AI SDK
-- Tailwind CSS
-- shadcn/ui
-- Zod
-- pnpm
-- Recharts recommended for dashboards
-- AG Grid Community recommended for dense analytical tables
+**Importer → comprendre → prévoir → décider → implanter → exécuter → mesurer → apprendre**
 
-Before implementation, verify the current stable versions and migration notes for every dependency. Do not downgrade merely to match this document.
+## État du produit
 
-## Tenancy
-```text
-Organization / Group
- ├─ Store A
- │   └─ F&L Department
- ├─ Store B
- │   └─ F&L Department
- └─ Store N
+Le socle V3 est livré et prêt pour un pilote mono-magasin instrumenté. La
+prochaine étape métier dépend de données Mercalys réelles : elles permettront
+de mesurer le rituel du matin, de contrôler les prévisions quotidiennes et de
+calibrer les propositions de commande sans inventer de preuve.
+
+En attendant ces données, le travail de consolidation porte sur la qualité du
+dépôt et la documentation utilisateur. Voir
+[`implementation/18_POST_V3_CONSOLIDATION.md`](./implementation/18_POST_V3_CONSOLIDATION.md).
+
+## Démarrer
+
+Prérequis : Node.js compatible avec Next.js 16 et une base MongoDB.
+
+```bash
+npm ci
+npm run dev
 ```
-A user authenticates once, belongs to an organization and may have access to one or several stores, with a different role per store.
 
-## Core product loop
-**Import → Understand → Forecast → Decide → Allocate → Execute → Measure → Learn**
+Les commandes de validation principales sont :
 
-## Primary optimization target
-Maximize **post-markdown gross margin per scarce effective display capacity**, while protecting traffic products, availability, assortment quality and operational simplicity.
+```bash
+npm run check
+npm run build
+npm run test:e2e
+```
 
-## Start here
-1. `AGENTS.md`
-2. `docs/00_TENANCY_AUTH.md`
-3. `docs/01_PRD.md`
-4. `docs/04_ARCHITECTURE.md`
-5. `docs/05_DATA_MODEL.md`
-6. `docs/14_BUILD_PLAN.md`
-7. `docs/18_OPERATIONS.md`
-8. `docs/20_DEVOPS_BASELINE.md`
+Copier les variables nécessaires depuis `.env.example` dans `.env.local`. Les
+secrets, notamment `OPENAI_API_KEY`, restent exclusivement côté serveur.
 
+## Documentation
 
-## Implementation Blueprint
-For coding-agent execution, start with `implementation/START_HERE_FOR_AGENT.md` and `implementation/00_IMPLEMENTATION_BLUEPRINT.md`.
+- [Portail documentaire](./docs/README.md)
+- [Guide utilisateur — commencer ici](./docs/user/00_START_HERE.md)
+- [Architecture et règles de sécurité](./docs/04_ARCHITECTURE.md)
+- [Exploitation](./docs/18_OPERATIONS.md)
+- [Déploiement Vercel](./docs/19_VERCEL_DEPLOYMENT.md)
+- [Point de départ des agents de développement](./implementation/START_HERE_FOR_AGENT.md)
 
+## Principes structurants
 
-## v1.3 addition — Experiment Engine
-The specification now includes a full Tests & Experiments module for defining commercial tests (e.g. Banane vrac in TG1), freezing the hypothesis/treatment/baseline/KPIs, evaluating actual vs expected results, calculating uplift and incremental economics, explaining evidence quality, and recording rollout/retest decisions. Read `docs/17_EXPERIMENT_ENGINE.md`, `implementation/11_EXPERIMENT_ENGINE.md` and `mockups/06_TESTS_EXPERIMENTS.md`.
+- une organisation Better Auth représente une entreprise ou un groupe, jamais
+  un magasin ;
+- l'accès à chaque magasin est autorisé côté serveur par le domaine métier ;
+- toute donnée métier est limitée à un `storeId` autorisé ;
+- les faits observés restent distincts des prévisions et recommandations ;
+- les calculs déterministes sont versionnés et explicables ;
+- une recommandation ou un plan du Copilote reste un brouillon jusqu'à une
+  décision explicite et auditée ;
+- aucune proposition de commande n'est envoyée automatiquement au fournisseur.
+
+## Socle technique livré
+
+- Next.js 16 App Router, React et TypeScript strict ;
+- MongoDB avec le pilote Node.js officiel ;
+- Better Auth avec l'adaptateur MongoDB et le plugin Organization ;
+- Zod aux frontières externes ;
+- Tailwind CSS et composants shadcn/ui ;
+- SDK OpenAI officiel avec l'API Responses pour le Copilote ;
+- tableaux, visualisations et éditeur d'espace en HTML, CSS et SVG natifs ;
+- Vitest pour les tests automatisés et Playwright pour la recette navigateur.
+
+La spécification produit initiale et les décisions d'architecture sont
+conservées dans `docs/`. Lorsque le plan historique et l'interface livrée
+diffèrent, le portail documentaire signale explicitement le statut du document.
+Le même guide utilisateur est disponible après connexion dans la rubrique
+**Aide** de chaque magasin autorisé.

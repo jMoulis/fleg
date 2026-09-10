@@ -1,4 +1,4 @@
-# 07 — AI SDK Copilot
+# 07 — Copilote OpenAI
 
 ## Role
 Analytical copilot, not autonomous store operator.

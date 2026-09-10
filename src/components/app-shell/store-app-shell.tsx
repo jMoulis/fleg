@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   Bot,
   ChevronDown,
+  CircleHelp,
   Leaf,
   Network,
   Settings2,
@@ -50,6 +51,16 @@ export function StoreAppShell({
           </Link>
 
           <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href={`/${organizationSlug}/stores/${storeId}/help`}
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "shrink-0 md:hidden",
+              )}
+              aria-label="Ouvrir l’aide et le guide utilisateur"
+            >
+              <CircleHelp aria-hidden="true" />
+            </Link>
             <Link
               href={`/${organizationSlug}/stores/${storeId}/settings`}
               className={cn(

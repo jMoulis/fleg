@@ -6,6 +6,14 @@ describe("Next.js hardening", () => {
   it("removes framework disclosure and sends browser security headers", async () => {
     expect(nextConfig.poweredByHeader).toBe(false);
     expect(nextConfig.compress).toBe(true);
+    expect(nextConfig.outputFileTracingIncludes).toEqual({
+      "/\\[organizationSlug\\]/stores/\\[storeId\\]/help": [
+        "./docs/user/*.md",
+      ],
+      "/\\[organizationSlug\\]/stores/\\[storeId\\]/help/\\[section\\]": [
+        "./docs/user/*.md",
+      ],
+    });
 
     const entries = await nextConfig.headers?.();
     const globalHeaders = entries?.find(

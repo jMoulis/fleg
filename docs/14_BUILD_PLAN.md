@@ -1,5 +1,10 @@
 # 14 — Autonomous agent build plan
 
+> Historical implementation plan. The milestones are retained for traceability;
+> the delivered stack uses the official OpenAI SDK with the Responses API and
+> native responsive product tables rather than the initially suggested AI SDK
+> and AG Grid dependencies.
+
 ## M0 — Foundation
 - scaffold Next.js/TS/Tailwind/shadcn,
 - Mongo client,
@@ -29,7 +34,7 @@
 - ABC,
 - stability proxy,
 - recommendation engine,
-- AG Grid product matrix,
+- native responsive product matrix,
 - charts.
 
 ## M4 — Physical retail
@@ -46,7 +51,7 @@
 - decision log/outcome.
 
 ## M6 — AI
-- AI SDK tools,
+- official OpenAI SDK and Responses API tools,
 - store copilot,
 - network copilot,
 - draft action plans,

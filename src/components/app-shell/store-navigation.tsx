@@ -12,6 +12,7 @@ import {
   FileSpreadsheet,
   History,
   FlaskConical,
+  CircleHelp,
   PackageX,
   ShoppingBasket,
   Warehouse,
@@ -51,6 +52,7 @@ const navigation = [
   { label: "Tests", segment: "experiments", icon: FlaskConical },
   { label: "Démarque", segment: "markdown", icon: PackageX },
   { label: "Imports", segment: "imports", icon: FileSpreadsheet },
+  { label: "Aide", segment: "help", icon: CircleHelp, desktopOnly: true },
   { label: "Décisions", segment: "decisions", icon: History, desktopOnly: true },
   {
     label: "Paramètres",
