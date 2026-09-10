@@ -54,7 +54,8 @@
 | UX-LIST-02 | UX | Scalable paginated product matrix | P0 | UX-LIST-01, UX-03, UX-04 |
 | UX-LIST-03 | UX | Scalable filtered order-review workflow | P0 | UX-LIST-02, V3-06 |
 | UX-LIST-04 | UX | Searchable bounded allocation product selectors | P0 | UX-LIST-03, PREV3-03 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-04, Mercalys access |
+| UX-LIST-05 | UX | Scalable markdown capture and history | P0 | UX-LIST-04, MD-01 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-05, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -205,6 +206,17 @@
 - configured-product, capacity, economics, authorization and persistence
   semantics remain unchanged;
 - responsive browser acceptance covers policy selection and direct allocation.
+
+### UX-LIST-05
+
+- markdown product selection searches before pages of 10 candidates;
+- the selected product remains explicit and can be changed before submission;
+- history search and reason filters apply before pages of 25 facts;
+- the complete loaded history still supplies the summary while each list view
+  remains bounded;
+- observed-fact, missing-quantity, authorization, audit and data-revision
+  semantics remain unchanged;
+- responsive browser acceptance covers selection, capture and history search.
 
 ### PILOT-01
 

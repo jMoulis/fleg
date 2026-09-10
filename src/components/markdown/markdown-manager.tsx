@@ -7,8 +7,11 @@ import {
   LoaderCircle,
   PackageX,
   ReceiptEuro,
+  Search,
 } from "lucide-react";
 
+import { BoundedProductPicker } from "@/components/products/bounded-product-picker";
+import { BoundedListPagination } from "@/components/ui/bounded-list-pagination";
 import {
   markdownReasonLabels,
   markdownReasonSchema,
@@ -52,6 +55,7 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
   dateStyle: "medium",
   timeZone: "UTC",
 });
+const historyPageSize = 25;
 
 function apiMessage(payload: unknown): string | null {
   if (
@@ -93,6 +97,11 @@ export function MarkdownManager({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyReason, setHistoryReason] = useState<MarkdownReason | "all">(
+    "all",
+  );
+  const [historyPage, setHistoryPage] = useState(1);
 
   const productById = useMemo(
     () => new Map(products.map((product) => [product.id, product.label])),
@@ -106,6 +115,35 @@ export function MarkdownManager({
         return byDate !== 0 ? byDate : right.createdAt.localeCompare(left.createdAt);
       }),
     [facts],
+  );
+  const normalizedHistorySearch = historySearch
+    .trim()
+    .toLocaleLowerCase("fr-FR");
+  const filteredFacts = useMemo(
+    () =>
+      sortedFacts.filter((fact) => {
+        const matchesReason =
+          historyReason === "all" || fact.reason === historyReason;
+        const matchesSearch =
+          !normalizedHistorySearch ||
+          (productById.get(fact.productId) ?? "")
+            .toLocaleLowerCase("fr-FR")
+            .includes(normalizedHistorySearch) ||
+          (fact.notes ?? "")
+            .toLocaleLowerCase("fr-FR")
+            .includes(normalizedHistorySearch);
+        return matchesReason && matchesSearch;
+      }),
+    [historyReason, normalizedHistorySearch, productById, sortedFacts],
+  );
+  const historyPageCount = Math.max(
+    1,
+    Math.ceil(filteredFacts.length / historyPageSize),
+  );
+  const safeHistoryPage = Math.min(historyPage, historyPageCount);
+  const visibleFacts = filteredFacts.slice(
+    (safeHistoryPage - 1) * historyPageSize,
+    safeHistoryPage * historyPageSize,
   );
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -160,6 +198,9 @@ export function MarkdownManager({
       setAmountEuros("");
       setQuantity("");
       setNotes("");
+      setHistorySearch("");
+      setHistoryReason("all");
+      setHistoryPage(1);
       setNotice("Démarque enregistrée. La révision des données du magasin a été mise à jour.");
     } catch (caught) {
       setError(
@@ -217,24 +258,16 @@ export function MarkdownManager({
                   </Alert>
                 ) : null}
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="markdown-product">Produit</Label>
-                  <Select
-                    onValueChange={(value) => setProductId(value ?? "")}
-                    value={productId}
-                  >
-                    <SelectTrigger className="w-full" id="markdown-product">
-                      <SelectValue placeholder="Sélectionner un produit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <BoundedProductPicker
+                  id="markdown-product"
+                  label="Produit"
+                  onSelect={(selectedProductId) => {
+                    setProductId(selectedProductId);
+                    setError(null);
+                  }}
+                  products={products}
+                  selectedProductId={productId}
+                />
 
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                   <div className="space-y-1.5">
@@ -356,41 +389,123 @@ export function MarkdownManager({
                 </p>
               </div>
             ) : (
-              <ul className="divide-y" aria-label="Historique des démarques">
-                {sortedFacts.map((fact) => (
-                  <li
-                    className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
-                    key={fact.id}
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_15rem]">
+                  <div className="relative">
+                    <Search
+                      aria-hidden="true"
+                      className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                    />
+                    <Input
+                      aria-label="Rechercher dans l’historique"
+                      className="pl-9"
+                      onChange={(event) => {
+                        setHistorySearch(event.target.value);
+                        setHistoryPage(1);
+                      }}
+                      placeholder="Produit ou note…"
+                      value={historySearch}
+                    />
+                  </div>
+                  <Select
+                    onValueChange={(value) => {
+                      setHistoryReason(
+                        value === "all"
+                          ? "all"
+                          : markdownReasonSchema.parse(value),
+                      );
+                      setHistoryPage(1);
+                    }}
+                    value={historyReason}
                   >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-medium">
-                          {productById.get(fact.productId) ?? "Produit indisponible"}
-                        </p>
-                        <Badge variant="secondary">
-                          {markdownReasonLabels[fact.reason]}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {dateFormatter.format(
-                          new Date(`${fact.occurredOn}T00:00:00.000Z`),
-                        )}
-                        {fact.quantity === null
-                          ? " · quantité non renseignée"
-                          : ` · ${formatQuantity(fact.quantity)} unité${fact.quantity > 1 ? "s" : ""}`}
-                      </p>
-                      {fact.notes ? (
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                          {fact.notes}
-                        </p>
-                      ) : null}
-                    </div>
-                    <p className="font-semibold tabular-nums sm:text-right">
-                      {formatMoney(fact.amountCents)}
+                    <SelectTrigger
+                      aria-label="Filtrer l’historique par motif"
+                      className="w-full"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les motifs</SelectItem>
+                      {markdownReasonSchema.options.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {markdownReasonLabels[option]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <BoundedListPagination
+                  ariaLabel="Pagination de l’historique des démarques"
+                  currentPage={safeHistoryPage}
+                  itemLabel="saisie(s)"
+                  onPageChange={setHistoryPage}
+                  pageSize={historyPageSize}
+                  totalItems={filteredFacts.length}
+                />
+
+                {visibleFacts.length === 0 ? (
+                  <div className="rounded-xl border border-dashed px-6 py-10 text-center">
+                    <p className="font-medium">Aucune saisie trouvée</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Modifiez la recherche ou le motif sélectionné.
                     </p>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                ) : (
+                  <ul
+                    aria-label="Historique des démarques"
+                    className="divide-y"
+                    data-markdown-history-page-size={historyPageSize}
+                  >
+                    {visibleFacts.map((fact) => (
+                      <li
+                        className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+                        data-markdown-history-item
+                        key={fact.id}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate font-medium">
+                              {productById.get(fact.productId) ??
+                                "Produit indisponible"}
+                            </p>
+                            <Badge variant="secondary">
+                              {markdownReasonLabels[fact.reason]}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {dateFormatter.format(
+                              new Date(`${fact.occurredOn}T00:00:00.000Z`),
+                            )}
+                            {fact.quantity === null
+                              ? " · quantité non renseignée"
+                              : ` · ${formatQuantity(fact.quantity)} unité${fact.quantity > 1 ? "s" : ""}`}
+                          </p>
+                          {fact.notes ? (
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                              {fact.notes}
+                            </p>
+                          ) : null}
+                        </div>
+                        <p className="font-semibold tabular-nums sm:text-right">
+                          {formatMoney(fact.amountCents)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {filteredFacts.length > historyPageSize ? (
+                  <BoundedListPagination
+                    ariaLabel="Pagination de l’historique des démarques en bas de liste"
+                    currentPage={safeHistoryPage}
+                    itemLabel="saisie(s)"
+                    onPageChange={setHistoryPage}
+                    pageSize={historyPageSize}
+                    totalItems={filteredFacts.length}
+                  />
+                ) : null}
+              </div>
             )}
 
             {summary.quantity !== null && summary.factCount > 0 ? (
