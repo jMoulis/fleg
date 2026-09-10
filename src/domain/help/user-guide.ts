@@ -9,6 +9,7 @@ const userGuideSectionSlugValues = [
   "decisions-copilot",
   "administration",
   "glossary-troubleshooting",
+  "pilot-beta-checklist",
 ] as const;
 
 export const userGuideSectionSlugSchema = z.enum(
@@ -180,6 +181,26 @@ const userGuideSectionBySlug = {
       "erreur",
       "aide",
       "problème",
+    ],
+  },
+  "pilot-beta-checklist": {
+    slug: "pilot-beta-checklist",
+    fileName: "08_PILOT_BETA_CHECKLIST.md",
+    eyebrow: "Pilote terrain",
+    title: "Checklist du bêta-testeur",
+    summary:
+      "Répéter le parcours réel, consigner les écarts et produire un compte rendu utile pour PILOT-01.",
+    keywords: [
+      "pilote",
+      "bêta",
+      "terrain",
+      "checklist",
+      "compte rendu",
+      "test",
+      "friction",
+      "override",
+      "fraîcheur",
+      "validation",
     ],
   },
 } satisfies Record<UserGuideSectionSlug, UserGuideSection>;

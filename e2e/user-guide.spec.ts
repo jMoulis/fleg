@@ -41,4 +41,19 @@ test("DOC-01 rend le guide métier consultable dans l’application", async ({
   await expect(
     page.getByText(/Nombre de kilogrammes ou de pièces contenus dans un colis/),
   ).toBeVisible();
+
+  await page.getByRole("link", { name: "Tous les chapitres" }).click();
+  await search.fill("bêta");
+  await expect(page.getByText("1 chapitre(s) disponible(s)")).toBeVisible();
+  await page
+    .getByRole("link")
+    .filter({ hasText: "Checklist du bêta-testeur" })
+    .click();
+  await expect(page).toHaveURL(/\/help\/pilot-beta-checklist$/);
+  await expect(
+    page.getByRole("heading", { name: "Checklist terrain du pilote bêta" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Modèle de compte rendu hebdomadaire" }),
+  ).toBeVisible();
 });

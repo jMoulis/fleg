@@ -37,6 +37,9 @@ describe("user guide", () => {
     ).toBe(`${baseHref}/glossary-troubleshooting#copilote`);
     expect(resolveUserGuideHref("../README.md", baseHref)).toBe(baseHref);
     expect(resolveUserGuideHref("#imports", baseHref)).toBe("#imports");
+    expect(
+      resolveUserGuideHref("./08_PILOT_BETA_CHECKLIST.md", baseHref),
+    ).toBe(`${baseHref}/pilot-beta-checklist`);
   });
 
   it("rejects unknown sections and unsafe or unresolved links", () => {
