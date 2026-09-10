@@ -5,13 +5,19 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
   ClipboardPenLine,
   LoaderCircle,
   PackageCheck,
+  PencilLine,
   RotateCcw,
   Save,
   Search,
+  Settings2,
   ShieldCheck,
+  Store as StoreIcon,
   Warehouse,
 } from "lucide-react";
 
@@ -55,6 +61,47 @@ interface EditableLine {
 type EditableLines = Record<string, EditableLine>;
 type PendingAction = "create" | "save" | "commit" | null;
 type FamilyFilter = "all" | "3400" | "3402" | "unconfigured";
+type StatusFilter = "all" | "todo" | "done" | "stockout";
+type InventoryStep = "reserve" | "shelf" | "review" | "configuration";
+
+const pageSize = 25;
+
+const stepContent = {
+  reserve: {
+    label: "Réserve",
+    description:
+      "Comptez les colis présents en réserve et vérifiez le colisage utilisé aujourd’hui.",
+    icon: Warehouse,
+  },
+  shelf: {
+    label: "Rayon",
+    description:
+      "Ajoutez la quantité restante en rayon, dans l’unité propre à chaque article.",
+    icon: StoreIcon,
+  },
+  review: {
+    label: "Vérifier",
+    description:
+      "Contrôlez les lignes complètes, les ruptures explicites et les saisies à terminer.",
+    icon: ClipboardCheck,
+  },
+  configuration: {
+    label: "Configurer",
+    description:
+      "Renseignez la famille, l’unité et le colisage des articles à intégrer au comptage.",
+    icon: Settings2,
+  },
+} satisfies Record<
+  InventoryStep,
+  { label: string; description: string; icon: typeof Warehouse }
+>;
+
+const workflowSteps: InventoryStep[] = [
+  "reserve",
+  "shelf",
+  "review",
+  "configuration",
+];
 
 function emptyLine(): EditableLine {
   return {
@@ -148,10 +195,6 @@ function serializeLines(
   });
 }
 
-function fingerprint(lines: EditableLines): string {
-  return JSON.stringify(lines);
-}
-
 function responseMessage(payload: unknown, fallback: string): string {
   const parsed = apiErrorSchema.safeParse(payload);
   return parsed.success ? parsed.data.message : fallback;
@@ -184,8 +227,32 @@ function lineTotal(line: EditableLine): number | null {
   });
 }
 
+function reserveTotal(line: EditableLine): number | null {
+  const packSize = parseOptionalNumber(line.packSize);
+  const reserveCaseCount = parseOptionalNumber(line.reserveCaseCount);
+  if (
+    packSize === null ||
+    packSize === undefined ||
+    reserveCaseCount === null ||
+    reserveCaseCount === undefined
+  ) {
+    return null;
+  }
+  return calculateOnHandQuantity({
+    reserveCaseCount,
+    packSize,
+    shelfQuantity: 0,
+  });
+}
+
 function isConfigured(line: EditableLine): boolean {
   return Boolean(line.familyCode && line.stockUnit && line.packSize.trim());
+}
+
+function hasCountStarted(line: EditableLine): boolean {
+  return (
+    line.reserveCaseCount.trim() !== "" || line.shelfQuantity.trim() !== ""
+  );
 }
 
 function isCompleteCount(line: EditableLine): boolean {
@@ -194,6 +261,42 @@ function isCompleteCount(line: EditableLine): boolean {
     line.reserveCaseCount.trim() !== "" &&
     line.shelfQuantity.trim() !== ""
   );
+}
+
+function isDoneForStep(step: InventoryStep, line: EditableLine): boolean {
+  switch (step) {
+    case "configuration":
+      return isConfigured(line);
+    case "reserve":
+      return isConfigured(line) && line.reserveCaseCount.trim() !== "";
+    case "shelf":
+      return isConfigured(line) && line.shelfQuantity.trim() !== "";
+    case "review":
+      return isCompleteCount(line);
+  }
+}
+
+function matchesStatusFilter(
+  step: InventoryStep,
+  statusFilter: StatusFilter,
+  line: EditableLine,
+): boolean {
+  if (statusFilter === "all") return true;
+  if (statusFilter === "stockout") {
+    return isCompleteCount(line) && lineTotal(line) === 0;
+  }
+  const done = isDoneForStep(step, line);
+  return statusFilter === "done" ? done : !done;
+}
+
+function statusLabels(step: InventoryStep) {
+  if (step === "configuration") {
+    return { todo: "À configurer", done: "Configurés" };
+  }
+  if (step === "review") {
+    return { todo: "À compléter", done: "Complets" };
+  }
+  return { todo: "À saisir", done: "Saisis" };
 }
 
 export function InventoryCountManager({
@@ -214,39 +317,47 @@ export function InventoryCountManager({
     [initialWorkspace],
   );
   const [lines, setLines] = useState<EditableLines>(initialLines);
-  const [savedFingerprint, setSavedFingerprint] = useState(() =>
-    fingerprint(initialLines),
-  );
+  const [dirty, setDirty] = useState(false);
+  const [step, setStep] = useState<InventoryStep>("reserve");
   const [query, setQuery] = useState("");
   const [familyFilter, setFamilyFilter] = useState<FamilyFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [page, setPage] = useState(1);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [createKey, setCreateKey] = useState(() => crypto.randomUUID());
   const [saveKey, setSaveKey] = useState(() => crypto.randomUUID());
   const [commitKey, setCommitKey] = useState(() => crypto.randomUUID());
-  const dirty = fingerprint(lines) !== savedFingerprint;
   const editable = canWrite && count?.status === "draft";
 
   const summary = useMemo(() => {
     let configured = 0;
+    let reserve = 0;
+    let shelf = 0;
     let complete = 0;
+    let partial = 0;
     let stockouts = 0;
     for (const product of products) {
       const line = lines[product.id] ?? emptyLine();
       if (isConfigured(line)) configured += 1;
+      if (isConfigured(line) && line.reserveCaseCount.trim() !== "") reserve += 1;
+      if (isConfigured(line) && line.shelfQuantity.trim() !== "") shelf += 1;
       if (isCompleteCount(line)) {
         complete += 1;
         if (lineTotal(line) === 0) stockouts += 1;
+      } else if (hasCountStarted(line)) {
+        partial += 1;
       }
     }
-    return { configured, complete, stockouts };
+    return { configured, reserve, shelf, complete, partial, stockouts };
   }, [lines, products]);
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("fr-FR");
     return products.filter((product) => {
       const line = lines[product.id] ?? emptyLine();
+      const matchesStep = step === "configuration" || isConfigured(line);
       const matchesQuery =
         !normalizedQuery ||
         product.label.toLocaleLowerCase("fr-FR").includes(normalizedQuery);
@@ -255,18 +366,62 @@ export function InventoryCountManager({
         (familyFilter === "unconfigured"
           ? !isConfigured(line)
           : line.familyCode === familyFilter);
-      return matchesQuery && matchesFamily;
+      return (
+        matchesStep &&
+        matchesQuery &&
+        matchesFamily &&
+        matchesStatusFilter(step, statusFilter, line)
+      );
     });
-  }, [familyFilter, lines, products, query]);
+  }, [familyFilter, lines, products, query, statusFilter, step]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageProducts = filteredProducts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
 
   function updateLine(productId: string, update: Partial<EditableLine>) {
     setLines((current) => ({
       ...current,
       [productId]: { ...(current[productId] ?? emptyLine()), ...update },
     }));
+    setDirty(true);
     setSaveKey(crypto.randomUUID());
     setError(null);
     setNotice(null);
+  }
+
+  function selectStep(nextStep: InventoryStep) {
+    setStep(nextStep);
+    setQuery("");
+    setFamilyFilter("all");
+    setStatusFilter("all");
+    setPage(1);
+  }
+
+  function changeQuery(value: string) {
+    setQuery(value);
+    setPage(1);
+  }
+
+  function changeFamilyFilter(value: FamilyFilter) {
+    setFamilyFilter(value);
+    setPage(1);
+  }
+
+  function changeStatusFilter(value: StatusFilter) {
+    setStatusFilter(value);
+    setPage(1);
+  }
+
+  function editProduct(product: InventoryWorkspaceProduct, nextStep: InventoryStep) {
+    setStep(nextStep);
+    setQuery(product.label);
+    setFamilyFilter("all");
+    setStatusFilter("all");
+    setPage(1);
   }
 
   async function startDraft() {
@@ -293,12 +448,13 @@ export function InventoryCountManager({
       const nextLines = buildEditableLines(products, created);
       setCount(created);
       setLines(nextLines);
-      setSavedFingerprint(fingerprint(nextLines));
+      setDirty(false);
       setCreateKey(crypto.randomUUID());
+      setStep("reserve");
       setNotice(
         created.version > 1
           ? `Correction ${created.version} ouverte. Le relevé validé reste inchangé jusqu’à la prochaine validation.`
-          : "Brouillon ouvert. Vous pouvez commencer par la réserve puis compléter en rayon.",
+          : "Brouillon ouvert. Commencez par la réserve, puis passez en rayon.",
       );
     } catch (caught) {
       setError(
@@ -341,7 +497,7 @@ export function InventoryCountManager({
     }
     const saved = inventoryCountResponseSchema.parse(payload).count;
     setCount(saved);
-    setSavedFingerprint(fingerprint(lines));
+    setDirty(false);
     setSaveKey(crypto.randomUUID());
     return saved;
   }
@@ -365,8 +521,32 @@ export function InventoryCountManager({
     }
   }
 
-  async function commitDraft() {
+  async function saveAndSelectStep(nextStep: InventoryStep) {
+    if (!dirty) {
+      selectStep(nextStep);
+      return;
+    }
     if (!editable || pendingAction) return;
+    setPendingAction("save");
+    setError(null);
+    setNotice(null);
+    try {
+      await persistDraft();
+      selectStep(nextStep);
+      setNotice("Brouillon enregistré. Vous pouvez poursuivre le comptage.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Le brouillon n’a pas pu être enregistré.",
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function commitDraft() {
+    if (!editable || pendingAction || summary.partial > 0) return;
     setPendingAction("commit");
     setError(null);
     setNotice(null);
@@ -410,7 +590,7 @@ export function InventoryCountManager({
         }),
       );
       setCount(result.count);
-      setSavedFingerprint(fingerprint(lines));
+      setDirty(false);
       setCommitKey(crypto.randomUUID());
       setNotice(
         `Comptage validé : ${result.changedSnapshotCount} observation${result.changedSnapshotCount === 1 ? "" : "s"} versionnée${result.changedSnapshotCount === 1 ? "" : "s"}` +
@@ -439,27 +619,25 @@ export function InventoryCountManager({
     router.push(`${pathname}?businessDate=${encodeURIComponent(value)}`);
   }
 
+  const nextStep =
+    step === "reserve"
+      ? "shelf"
+      : step === "shelf"
+        ? "review"
+        : step === "configuration"
+          ? "reserve"
+          : null;
+
   return (
     <div className="mt-6 space-y-6">
-      <section className="grid gap-3 sm:grid-cols-3" aria-label="Résumé du comptage">
-        <Card>
-          <CardContent className="py-4">
-            <p className="text-2xl font-semibold tabular-nums">{summary.configured}</p>
-            <p className="text-sm text-muted-foreground">articles configurés</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <p className="text-2xl font-semibold tabular-nums">{summary.complete}</p>
-            <p className="text-sm text-muted-foreground">articles comptés</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <p className="text-2xl font-semibold tabular-nums">{summary.stockouts}</p>
-            <p className="text-sm text-muted-foreground">ruptures explicites</p>
-          </CardContent>
-        </Card>
+      <section
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+        aria-label="Progression du comptage"
+      >
+        <ProgressCard label="Configurés" value={summary.configured} total={products.length} />
+        <ProgressCard label="Réserve saisie" value={summary.reserve} total={summary.configured} />
+        <ProgressCard label="Rayon saisi" value={summary.shelf} total={summary.configured} />
+        <ProgressCard label="Prêts à valider" value={summary.complete} total={summary.configured} />
       </section>
 
       <Card>
@@ -495,7 +673,7 @@ export function InventoryCountManager({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className={cn("space-y-5", editable && "pb-28 md:pb-4")}>
           {!canWrite ? (
             <Alert>
               <ShieldCheck aria-hidden="true" />
@@ -530,41 +708,6 @@ export function InventoryCountManager({
             </Alert>
           ) : (
             <>
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="relative min-w-0 flex-1 sm:max-w-md">
-                  <Search
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    aria-label="Rechercher un article"
-                    className="pl-9"
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Rechercher un article…"
-                    value={query}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2" aria-label="Filtrer les articles">
-                  {([
-                    ["all", "Tous"],
-                    ["3400", "Fruits · 3400"],
-                    ["3402", "Légumes · 3402"],
-                    ["unconfigured", "À configurer"],
-                  ] as const).map(([value, label]) => (
-                    <Button
-                      aria-pressed={familyFilter === value}
-                      key={value}
-                      onClick={() => setFamilyFilter(value)}
-                      size="sm"
-                      type="button"
-                      variant={familyFilter === value ? "default" : "outline"}
-                    >
-                      {label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
               {!count || count.status === "committed" ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 p-4">
                   <div>
@@ -592,218 +735,150 @@ export function InventoryCountManager({
                 </div>
               ) : null}
 
-              <div className="space-y-3">
-                {filteredProducts.length === 0 ? (
-                  <div className="rounded-xl border border-dashed px-6 py-12 text-center">
-                    <p className="font-medium">Aucun article ne correspond au filtre</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Modifiez la recherche ou affichez toutes les familles.
-                    </p>
-                  </div>
-                ) : (
-                  filteredProducts.map((product) => {
-                    const line = lines[product.id] ?? emptyLine();
-                    const total = lineTotal(line);
-                    const partial =
-                      (line.reserveCaseCount.trim() !== "" ||
-                        line.shelfQuantity.trim() !== "") &&
-                      !isCompleteCount(line);
-                    return (
-                      <article
-                        className="rounded-xl border bg-card p-4 shadow-sm"
-                        key={product.id}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h2 className="font-medium leading-5">{product.label}</h2>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {isConfigured(line) ? (
-                                <Badge variant="secondary">
-                                  {line.familyCode} · {line.stockUnit === "kg" ? "kg" : "pièce"}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline">À configurer</Badge>
-                              )}
-                              {product.latestAvailability ? (
-                                <Badge
-                                  variant={
-                                    product.latestAvailability.isStockout
-                                      ? "destructive"
-                                      : "outline"
-                                  }
-                                >
-                                  Dernier stock : {formatQuantity(
-                                    product.latestAvailability.snapshot.onHandQuantity,
-                                    product.latestAvailability.snapshot.stockUnit,
-                                  )} · {product.latestAvailability.observationAgeHours} h
-                                </Badge>
-                              ) : null}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground">Stock calculé</p>
-                            <p
-                              className={cn(
-                                "mt-1 text-lg font-semibold tabular-nums",
-                                total !== null && total < 0 && "text-destructive",
-                              )}
-                            >
-                              {total === null || !line.stockUnit
-                                ? "—"
-                                : formatQuantity(total, line.stockUnit)}
-                            </p>
-                            {partial ? (
-                              <p className="text-xs text-amber-700">À compléter</p>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                          <div className="space-y-1.5">
-                            <Label htmlFor={`family-${product.id}`}>Famille</Label>
-                            <select
-                              aria-label={`Famille de ${product.label}`}
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-                              disabled={!editable}
-                              id={`family-${product.id}`}
-                              onChange={(event) =>
-                                updateLine(product.id, {
-                                  familyCode: event.target.value as "" | InventoryFamilyCode,
-                                })
-                              }
-                              value={line.familyCode}
-                            >
-                              <option value="">Non renseignée</option>
-                              {Object.entries(inventoryFamilyLabels).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                  {value} · {label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor={`unit-${product.id}`}>Unité de stock</Label>
-                            <select
-                              aria-label={`Unité de ${product.label}`}
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-                              disabled={!editable}
-                              id={`unit-${product.id}`}
-                              onChange={(event) =>
-                                updateLine(product.id, {
-                                  stockUnit: event.target.value as "" | StockUnit,
-                                })
-                              }
-                              value={line.stockUnit}
-                            >
-                              <option value="">Non renseignée</option>
-                              {Object.entries(stockUnitLabels).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                  {label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor={`pack-${product.id}`}>Colisage (CDT)</Label>
-                            <Input
-                              aria-label={`Colisage de ${product.label}`}
-                              disabled={!editable}
-                              id={`pack-${product.id}`}
-                              inputMode="decimal"
-                              min="0.001"
-                              onChange={(event) =>
-                                updateLine(product.id, { packSize: event.target.value })
-                              }
-                              placeholder={line.stockUnit === "kg" ? "Ex. 18,5" : "Ex. 9"}
-                              step={line.stockUnit === "piece" ? "1" : "0.001"}
-                              type="number"
-                              value={line.packSize}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor={`reserve-${product.id}`}>Réserve (colis)</Label>
-                            <Input
-                              aria-label={`Colis en réserve pour ${product.label}`}
-                              disabled={!editable}
-                              id={`reserve-${product.id}`}
-                              inputMode="numeric"
-                              min="0"
-                              onChange={(event) =>
-                                updateLine(product.id, {
-                                  reserveCaseCount: event.target.value,
-                                })
-                              }
-                              placeholder="Vide = inconnu"
-                              step="1"
-                              type="number"
-                              value={line.reserveCaseCount}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor={`shelf-${product.id}`}>
-                              Rayon ({line.stockUnit === "kg" ? "kg" : "pièces"})
-                            </Label>
-                            <Input
-                              aria-label={`Quantité en rayon pour ${product.label}`}
-                              disabled={!editable}
-                              id={`shelf-${product.id}`}
-                              inputMode="decimal"
-                              onChange={(event) =>
-                                updateLine(product.id, { shelfQuantity: event.target.value })
-                              }
-                              placeholder="Vide = inconnu"
-                              step={line.stockUnit === "piece" ? "1" : "0.001"}
-                              type="number"
-                              value={line.shelfQuantity}
-                            />
-                          </div>
-                        </div>
-
-                        {total !== null && total < 0 ? (
-                          <p className="mt-3 text-sm text-destructive" role="alert">
-                            Stock négatif conservé comme anomalie : vérifiez la saisie avant validation.
-                          </p>
-                        ) : null}
-                      </article>
-                    );
-                  })
-                )}
-              </div>
+              <WorkflowNavigation
+                activeStep={step}
+                productCount={products.length}
+                summary={summary}
+                onSelect={selectStep}
+              />
 
               {editable ? (
-                <div className="sticky bottom-20 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur md:bottom-4">
-                  <p className="text-sm text-muted-foreground">
-                    {dirty ? "Modifications non enregistrées" : "Brouillon enregistré"} · {summary.complete} article{summary.complete === 1 ? "" : "s"} compté{summary.complete === 1 ? "" : "s"}
+                <ActionDock
+                  completeCount={summary.complete}
+                  dirty={dirty}
+                  partialCount={summary.partial}
+                  pendingAction={pendingAction}
+                  step={step}
+                  onAdvance={nextStep ? () => saveAndSelectStep(nextStep) : commitDraft}
+                  onSave={saveDraft}
+                />
+              ) : null}
+
+              {step !== "configuration" && summary.configured === 0 ? (
+                <Alert>
+                  <Settings2 aria-hidden="true" />
+                  <AlertTitle>Aucun article configuré</AlertTitle>
+                  <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                    <span>
+                      Configurez les articles F&amp;L avant de commencer le passage en réserve.
+                    </span>
+                    <Button onClick={() => selectStep("configuration")} size="sm" type="button">
+                      Configurer les articles
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              <section aria-labelledby="inventory-step-title" className="space-y-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                    {step === "configuration" ? "Préparation" : "Comptage du matin"}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      disabled={pendingAction !== null || !dirty}
-                      onClick={saveDraft}
-                      type="button"
-                      variant="outline"
-                    >
-                      {pendingAction === "save" ? (
-                        <LoaderCircle aria-hidden="true" className="animate-spin" />
-                      ) : (
-                        <Save aria-hidden="true" />
-                      )}
-                      Enregistrer le brouillon
-                    </Button>
-                    <Button
-                      disabled={pendingAction !== null || summary.complete === 0}
-                      onClick={commitDraft}
-                      type="button"
-                    >
-                      {pendingAction === "commit" ? (
-                        <LoaderCircle aria-hidden="true" className="animate-spin" />
-                      ) : (
-                        <PackageCheck aria-hidden="true" />
-                      )}
-                      Valider le comptage
-                    </Button>
+                  <h2 id="inventory-step-title" className="mt-1 text-xl font-semibold">
+                    {stepContent[step].label}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {stepContent[step].description}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 rounded-xl border bg-muted/20 p-3">
+                  <div className="relative min-w-0 sm:max-w-xl">
+                    <Search
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                    />
+                    <Input
+                      aria-label="Rechercher un article"
+                      className="pl-9"
+                      onChange={(event) => changeQuery(event.target.value)}
+                      placeholder="Rechercher un article…"
+                      value={query}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2" aria-label="Filtrer par famille">
+                    {([
+                      ["all", "Toutes familles"],
+                      ["3400", "Fruits · 3400"],
+                      ["3402", "Légumes · 3402"],
+                      ...(step === "configuration"
+                        ? ([["unconfigured", "Sans configuration"]] as const)
+                        : []),
+                    ] as const).map(([value, label]) => (
+                      <Button
+                        aria-pressed={familyFilter === value}
+                        key={value}
+                        onClick={() => changeFamilyFilter(value)}
+                        size="sm"
+                        type="button"
+                        variant={familyFilter === value ? "default" : "outline"}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2" aria-label="Filtrer par avancement">
+                    {([
+                      ["all", "Tous"],
+                      ["todo", statusLabels(step).todo],
+                      ["done", statusLabels(step).done],
+                      ...(step === "review"
+                        ? ([["stockout", "Ruptures"]] as const)
+                        : []),
+                    ] as const).map(([value, label]) => (
+                      <Button
+                        aria-pressed={statusFilter === value}
+                        key={value}
+                        onClick={() => changeStatusFilter(value)}
+                        size="sm"
+                        type="button"
+                        variant={statusFilter === value ? "secondary" : "ghost"}
+                      >
+                        {label}
+                      </Button>
+                    ))}
                   </div>
                 </div>
-              ) : null}
+
+                <ListPosition
+                  currentPage={currentPage}
+                  pageCount={pageCount}
+                  resultCount={filteredProducts.length}
+                  onPageChange={setPage}
+                />
+
+                <div className="space-y-3" data-inventory-page-size={pageSize}>
+                  {pageProducts.length === 0 ? (
+                    <div className="rounded-xl border border-dashed px-6 py-12 text-center">
+                      <p className="font-medium">Aucun article ne correspond au filtre</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Modifiez la recherche, la famille ou le filtre d’avancement.
+                      </p>
+                    </div>
+                  ) : (
+                    pageProducts.map((product) => (
+                      <InventoryProductCard
+                        editable={editable}
+                        key={product.id}
+                        line={lines[product.id] ?? emptyLine()}
+                        product={product}
+                        step={step}
+                        onEditProduct={editProduct}
+                        onUpdate={updateLine}
+                      />
+                    ))
+                  )}
+                </div>
+
+                {pageCount > 1 ? (
+                  <ListPosition
+                    currentPage={currentPage}
+                    pageCount={pageCount}
+                    resultCount={filteredProducts.length}
+                    onPageChange={setPage}
+                  />
+                ) : null}
+              </section>
             </>
           )}
         </CardContent>
@@ -816,6 +891,487 @@ export function InventoryCountManager({
           Le stock à commander et le stock réservé restent inconnus pour cette première version. Ils ne sont ni inventés ni déduits des ventes.
         </AlertDescription>
       </Alert>
+    </div>
+  );
+}
+
+function ProgressCard({ label, total, value }: { label: string; total: number; value: number }) {
+  const ratio = total === 0 ? 0 : Math.round((value / total) * 100);
+  return (
+    <Card size="sm">
+      <CardContent>
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-xl font-semibold tabular-nums">
+            {value}<span className="text-sm font-normal text-muted-foreground">/{total}</span>
+          </p>
+          <span className="text-xs tabular-nums text-muted-foreground">{ratio} %</span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+        <div aria-hidden="true" className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-[width]"
+            style={{ width: `${ratio}%` }}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WorkflowNavigation({
+  activeStep,
+  onSelect,
+  productCount,
+  summary,
+}: {
+  activeStep: InventoryStep;
+  onSelect: (step: InventoryStep) => void;
+  productCount: number;
+  summary: { configured: number; reserve: number; shelf: number; complete: number };
+}) {
+  const counts: Record<InventoryStep, string> = {
+    reserve: `${summary.reserve}/${summary.configured}`,
+    shelf: `${summary.shelf}/${summary.configured}`,
+    review: `${summary.complete}/${summary.configured}`,
+    configuration: `${summary.configured}/${productCount}`,
+  };
+  return (
+    <nav aria-label="Étapes du comptage">
+      <ol className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {workflowSteps.map((candidate, index) => {
+          const content = stepContent[candidate];
+          const Icon = content.icon;
+          const operationalIndex = candidate === "configuration" ? null : index + 1;
+          return (
+            <li key={candidate}>
+              <button
+                aria-current={activeStep === candidate ? "step" : undefined}
+                className={cn(
+                  "flex min-h-14 w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                  activeStep === candidate
+                    ? "border-primary bg-primary/[0.06] text-foreground"
+                    : "bg-background text-muted-foreground hover:bg-muted/50",
+                )}
+                onClick={() => onSelect(candidate)}
+                type="button"
+              >
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">
+                  {operationalIndex ?? <Icon aria-hidden="true" className="size-4" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium text-foreground">{content.label}</span>
+                  <span className="block text-xs tabular-nums">{counts[candidate]}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function ActionDock({
+  completeCount,
+  dirty,
+  onAdvance,
+  onSave,
+  partialCount,
+  pendingAction,
+  step,
+}: {
+  completeCount: number;
+  dirty: boolean;
+  onAdvance: () => void;
+  onSave: () => void;
+  partialCount: number;
+  pendingAction: PendingAction;
+  step: InventoryStep;
+}) {
+  const review = step === "review";
+  const primaryLabel = review
+    ? "Valider le comptage"
+    : step === "reserve"
+      ? "Passer au rayon"
+      : step === "shelf"
+        ? "Vérifier"
+        : "Revenir au comptage";
+  const blockedCommit = review && (completeCount === 0 || partialCount > 0);
+  return (
+    <div className="fixed inset-x-3 bottom-20 z-40 flex items-center justify-between gap-2 rounded-xl border bg-background/95 p-3 shadow-xl backdrop-blur md:sticky md:inset-auto md:top-20 md:bottom-auto">
+      <p className="min-w-0 text-xs text-muted-foreground sm:text-sm" aria-live="polite">
+        <span className="block font-medium text-foreground">
+          {dirty ? "Modifications non enregistrées" : "Brouillon enregistré"}
+        </span>
+        <span className="block">
+          {completeCount} prêt{completeCount === 1 ? "" : "s"}
+          {partialCount > 0 ? ` · ${partialCount} à compléter` : " · aucune saisie partielle"}
+        </span>
+      </p>
+      <div className="flex shrink-0 gap-2">
+        <Button
+          aria-label="Enregistrer le brouillon"
+          disabled={pendingAction !== null || !dirty}
+          onClick={onSave}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {pendingAction === "save" ? (
+            <LoaderCircle aria-hidden="true" className="animate-spin" />
+          ) : (
+            <Save aria-hidden="true" />
+          )}
+          <span className="hidden sm:inline">Enregistrer</span>
+        </Button>
+        <Button
+          disabled={pendingAction !== null || blockedCommit}
+          onClick={onAdvance}
+          size="sm"
+          type="button"
+        >
+          {pendingAction === "commit" || (pendingAction === "save" && !review) ? (
+            <LoaderCircle aria-hidden="true" className="animate-spin" />
+          ) : review ? (
+            <PackageCheck aria-hidden="true" />
+          ) : (
+            <ChevronRight aria-hidden="true" />
+          )}
+          {primaryLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ListPosition({
+  currentPage,
+  onPageChange,
+  pageCount,
+  resultCount,
+}: {
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  pageCount: number;
+  resultCount: number;
+}) {
+  const first = resultCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const last = Math.min(currentPage * pageSize, resultCount);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-muted-foreground" role="status">
+        {resultCount} résultat{resultCount === 1 ? "" : "s"} · {first}–{last} affichés
+      </p>
+      {pageCount > 1 ? (
+        <div className="flex items-center gap-2" aria-label="Pagination des articles">
+          <Button
+            aria-label="Page précédente"
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            <ChevronLeft aria-hidden="true" />
+          </Button>
+          <span className="text-sm tabular-nums">Page {currentPage}/{pageCount}</span>
+          <Button
+            aria-label="Page suivante"
+            disabled={currentPage === pageCount}
+            onClick={() => onPageChange(currentPage + 1)}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            <ChevronRight aria-hidden="true" />
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function InventoryProductCard({
+  editable,
+  line,
+  onEditProduct,
+  onUpdate,
+  product,
+  step,
+}: {
+  editable: boolean;
+  line: EditableLine;
+  onEditProduct: (product: InventoryWorkspaceProduct, step: InventoryStep) => void;
+  onUpdate: (productId: string, update: Partial<EditableLine>) => void;
+  product: InventoryWorkspaceProduct;
+  step: InventoryStep;
+}) {
+  const total = lineTotal(line);
+  const reserveQuantity = reserveTotal(line);
+  const shelfQuantity = parseOptionalNumber(line.shelfQuantity);
+  const partial = hasCountStarted(line) && !isCompleteCount(line);
+  return (
+    <article
+      className="rounded-xl border bg-card p-4 shadow-sm"
+      data-inventory-product={product.id}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-medium leading-5">{product.label}</h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {isConfigured(line) ? (
+              <Badge variant="secondary">
+                {line.familyCode} · {line.stockUnit === "kg" ? "kg" : "pièce"}
+              </Badge>
+            ) : (
+              <Badge variant="outline">À configurer</Badge>
+            )}
+            {product.latestAvailability ? (
+              <Badge
+                variant={product.latestAvailability.isStockout ? "destructive" : "outline"}
+              >
+                Dernier stock : {formatQuantity(
+                  product.latestAvailability.snapshot.onHandQuantity,
+                  product.latestAvailability.snapshot.stockUnit,
+                )} · {product.latestAvailability.observationAgeHours} h
+              </Badge>
+            ) : null}
+          </div>
+        </div>
+        {step === "review" ? (
+          <Badge
+            variant={
+              isCompleteCount(line)
+                ? total === 0
+                  ? "destructive"
+                  : "default"
+                : partial
+                  ? "secondary"
+                  : "outline"
+            }
+          >
+            {isCompleteCount(line)
+              ? total === 0
+                ? "Rupture confirmée"
+                : "Complet"
+              : partial
+                ? "À compléter"
+                : "Non compté"}
+          </Badge>
+        ) : null}
+      </div>
+
+      {step === "configuration" ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={`family-${product.id}`}>Famille</Label>
+            <select
+              aria-label={`Famille de ${product.label}`}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!editable}
+              id={`family-${product.id}`}
+              onChange={(event) =>
+                onUpdate(product.id, {
+                  familyCode: event.target.value as "" | InventoryFamilyCode,
+                })
+              }
+              value={line.familyCode}
+            >
+              <option value="">Non renseignée</option>
+              {Object.entries(inventoryFamilyLabels).map(([value, label]) => (
+                <option key={value} value={value}>{value} · {label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`unit-${product.id}`}>Unité de stock</Label>
+            <select
+              aria-label={`Unité de ${product.label}`}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!editable}
+              id={`unit-${product.id}`}
+              onChange={(event) =>
+                onUpdate(product.id, { stockUnit: event.target.value as "" | StockUnit })
+              }
+              value={line.stockUnit}
+            >
+              <option value="">Non renseignée</option>
+              {Object.entries(stockUnitLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <PackSizeField editable={editable} line={line} onUpdate={onUpdate} product={product} />
+        </div>
+      ) : null}
+
+      {step === "reserve" ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          <PackSizeField editable={editable} line={line} onUpdate={onUpdate} product={product} />
+          <div className="space-y-1.5">
+            <Label htmlFor={`reserve-${product.id}`}>Réserve (colis)</Label>
+            <Input
+              aria-label={`Colis en réserve pour ${product.label}`}
+              disabled={!editable}
+              id={`reserve-${product.id}`}
+              inputMode="numeric"
+              min="0"
+              onChange={(event) => onUpdate(product.id, { reserveCaseCount: event.target.value })}
+              placeholder="Vide = non compté"
+              step="1"
+              type="number"
+              value={line.reserveCaseCount}
+            />
+          </div>
+          <Evidence
+            label="Quantité réserve"
+            value={
+              reserveQuantity === null || !line.stockUnit
+                ? "—"
+                : formatQuantity(reserveQuantity, line.stockUnit)
+            }
+          />
+        </div>
+      ) : null}
+
+      {step === "shelf" ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-end">
+          <Evidence
+            label="Déjà en réserve"
+            value={
+              reserveQuantity === null || !line.stockUnit
+                ? "Non compté"
+                : formatQuantity(reserveQuantity, line.stockUnit)
+            }
+          />
+          <div className="space-y-1.5">
+            <Label htmlFor={`shelf-${product.id}`}>
+              Rayon ({line.stockUnit === "kg" ? "kg" : "pièces"})
+            </Label>
+            <Input
+              aria-label={`Quantité en rayon pour ${product.label}`}
+              disabled={!editable}
+              id={`shelf-${product.id}`}
+              inputMode="decimal"
+              onChange={(event) => onUpdate(product.id, { shelfQuantity: event.target.value })}
+              placeholder="Vide = non compté"
+              step={line.stockUnit === "piece" ? "1" : "0.001"}
+              type="number"
+              value={line.shelfQuantity}
+            />
+          </div>
+          <Evidence
+            label="Stock total"
+            value={total === null || !line.stockUnit ? "—" : formatQuantity(total, line.stockUnit)}
+            destructive={total !== null && total < 0}
+          />
+        </div>
+      ) : null}
+
+      {step === "review" ? (
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Evidence
+              label="Réserve"
+              value={
+                line.reserveCaseCount.trim() && reserveQuantity !== null && line.stockUnit
+                  ? `${line.reserveCaseCount} colis · ${formatQuantity(reserveQuantity, line.stockUnit)}`
+                  : "Non compté"
+              }
+            />
+            <Evidence
+              label="Rayon"
+              value={
+                shelfQuantity !== null && shelfQuantity !== undefined && line.stockUnit
+                  ? formatQuantity(shelfQuantity, line.stockUnit)
+                  : "Non compté"
+              }
+            />
+            <Evidence
+              label="Stock total"
+              value={total === null || !line.stockUnit ? "—" : formatQuantity(total, line.stockUnit)}
+              destructive={total !== null && total < 0}
+            />
+          </div>
+          {editable ? (
+            <div className="flex flex-wrap gap-2 border-t pt-3">
+              <Button
+                onClick={() => onEditProduct(product, "reserve")}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <PencilLine aria-hidden="true" />
+                Modifier la réserve
+              </Button>
+              <Button
+                onClick={() => onEditProduct(product, "shelf")}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <PencilLine aria-hidden="true" />
+                Modifier le rayon
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {total !== null && total < 0 ? (
+        <p className="mt-3 text-sm text-destructive" role="alert">
+          Stock négatif conservé comme anomalie : vérifiez la saisie avant validation.
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function PackSizeField({
+  editable,
+  line,
+  onUpdate,
+  product,
+}: {
+  editable: boolean;
+  line: EditableLine;
+  onUpdate: (productId: string, update: Partial<EditableLine>) => void;
+  product: InventoryWorkspaceProduct;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={`pack-${product.id}`}>Colisage du jour (CDT)</Label>
+      <Input
+        aria-label={`Colisage de ${product.label}`}
+        disabled={!editable}
+        id={`pack-${product.id}`}
+        inputMode="decimal"
+        min="0.001"
+        onChange={(event) => onUpdate(product.id, { packSize: event.target.value })}
+        placeholder={line.stockUnit === "kg" ? "Ex. 18,5" : "Ex. 9"}
+        step={line.stockUnit === "piece" ? "1" : "0.001"}
+        type="number"
+        value={line.packSize}
+      />
+    </div>
+  );
+}
+
+function Evidence({
+  destructive = false,
+  label,
+  value,
+}: {
+  destructive?: boolean;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-32 rounded-lg bg-muted/45 px-3 py-2">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn("mt-1 font-medium tabular-nums", destructive && "text-destructive")}>
+        {value}
+      </p>
     </div>
   );
 }

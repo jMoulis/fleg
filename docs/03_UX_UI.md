@@ -31,6 +31,14 @@ selector / Current section / User
 - Recommendations are decided from their product detail.
 - An order override requires a reason. Destructive changes require confirmation.
 
+## Long operational lists
+
+Inventory uses bounded pages of 25 product cards rather than rendering the
+complete product reference. Its progressive workflow follows the physical
+reserve pass, shelf pass and final review; article configuration remains a
+separate view. Draft actions stay reachable from the viewport and edits remain
+in the full persisted draft when filters, steps or pages change.
+
 ## Delivered visualization approach
 
 - Native responsive HTML/CSS for product and operational matrices.

@@ -18,12 +18,32 @@ async function openPrimaryStore(page: Page) {
   return { storeBaseUrl: match?.[1] ?? "", storeId: match?.[2] ?? "" };
 }
 
-function isolatedBusinessDate(projectName: string): string {
-  const projectOffset = projectName === "mobile-390" ? 0 : 1;
-  const randomOffset = Number.parseInt(crypto.randomUUID().slice(0, 4), 16) % 300;
-  return new Date(Date.UTC(2095, 0, 1 + projectOffset * 400 + randomOffset))
-    .toISOString()
-    .slice(0, 10);
+async function isolatedBusinessDate(
+  page: Page,
+  storeId: string,
+  projectName: string,
+): Promise<string> {
+  const projectYear = projectName === "mobile-390" ? 2100 : 5000;
+  const randomOffset =
+    Number.parseInt(crypto.randomUUID().slice(0, 8), 16) % 900_000;
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = new Date(
+      Date.UTC(projectYear, 0, 1 + randomOffset + attempt),
+    )
+      .toISOString()
+      .slice(0, 10);
+    const response = await page.request.get(
+      `/api/stores/${storeId}/inventory/counts?businessDate=${candidate}`,
+    );
+    expect(response.status()).toBe(200);
+    const workspace = inventoryWorkspaceResponseSchema.parse(
+      await response.json(),
+    ).workspace;
+    if (!workspace.count) return candidate;
+  }
+
+  throw new Error("Impossible de réserver une date de comptage isolée");
 }
 
 test("V3-02 saisit, reprend et versionne un comptage manuel", async ({
@@ -35,13 +55,18 @@ test("V3-02 saisit, reprend et versionne un comptage manuel", async ({
     `/api/stores/${storeId}/products/options`,
   );
   expect(optionsResponse.status()).toBe(200);
-  const product = productOptionsResponseSchema.parse(
+  const products = productOptionsResponseSchema.parse(
     await optionsResponse.json(),
-  ).products[0];
+  ).products;
+  const product = products[0];
   expect(product, "Le seed doit exposer un article").toBeDefined();
   if (!product) throw new Error("Article de recette absent");
 
-  const businessDate = isolatedBusinessDate(testInfo.project.name);
+  const businessDate = await isolatedBusinessDate(
+    page,
+    storeId,
+    testInfo.project.name,
+  );
   await page.goto(
     `${storeBaseUrl}/inventory?businessDate=${encodeURIComponent(businessDate)}`,
   );
@@ -50,12 +75,31 @@ test("V3-02 saisit, reprend et versionne un comptage manuel", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Démarrer le comptage" }).click();
   await expect(page.getByText("Brouillon ouvert.")).toBeVisible();
+  const saveButton = page.getByRole("button", {
+    name: "Enregistrer le brouillon",
+  });
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeInViewport();
+
+  await page
+    .getByRole("navigation", { name: "Étapes du comptage" })
+    .getByRole("button", { name: /Configurer/ })
+    .click();
+  await expect(page.locator("[data-inventory-product]")).toHaveCount(
+    Math.min(products.length, 25),
+  );
 
   await page.getByLabel("Rechercher un article").fill(product.label);
   await page.getByLabel(`Famille de ${product.label}`).selectOption("3400");
   await page.getByLabel(`Unité de ${product.label}`).selectOption("kg");
   await page.getByLabel(`Colisage de ${product.label}`).fill("18.5");
+
+  await page.getByRole("button", { name: /Réserve/ }).click();
+  await page.getByLabel("Rechercher un article").fill(product.label);
   await page.getByLabel(`Colis en réserve pour ${product.label}`).fill("2");
+
+  await page.getByRole("button", { name: /Rayon/ }).click();
+  await page.getByLabel("Rechercher un article").fill(product.label);
   await page
     .getByLabel(`Quantité en rayon pour ${product.label}`)
     .fill("3.25");
@@ -93,6 +137,9 @@ test("V3-02 saisit, reprend et versionne un comptage manuel", async ({
   await expect(
     page.getByLabel(`Colis en réserve pour ${product.label}`),
   ).toHaveValue("2");
+
+  await page.getByRole("button", { name: /Vérifier/ }).click();
+  await page.getByLabel("Rechercher un article").fill(product.label);
 
   const commitResponsePromise = page.waitForResponse(
     (response) =>

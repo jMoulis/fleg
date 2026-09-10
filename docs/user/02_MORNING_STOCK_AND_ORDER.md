@@ -28,10 +28,21 @@ servi à son calcul, afin qu'une modification future ne change pas l'historique.
 Les quantités en pièces sont entières. Les quantités en kilogrammes peuvent
 être décimales.
 
+Utiliser l'étape **Configurer** pour retrouver les articles non renseignés. La
+liste est découpée en pages de 25 articles ; la recherche et les filtres servent
+à isoler une famille ou l'état de configuration sans perdre le brouillon.
+
 ## Compter le stock
 
 Le matin, compter d'abord la réserve en colis, puis ajouter le reste présent en
 rayon dans l'unité de l'article.
+
+L'écran suit ce déplacement :
+
+1. **Réserve** affiche le colisage du jour et le nombre de colis ;
+2. **Rayon** affiche le sous-total déjà compté et demande le reste en rayon ;
+3. **Vérifier** distingue les lignes complètes, partielles, non comptées et les
+   ruptures confirmées avant validation.
 
 ```text
 Stock total observé = colis en réserve × colisage + quantité en rayon
@@ -45,6 +56,8 @@ Exemple : 2 colis de 9 pièces et 5 pièces en rayon donnent 23 pièces observé
   en zéro.
 
 Utiliser **Enregistrer le brouillon** pour interrompre et reprendre le comptage.
+Les actions restent visibles pendant le défilement. Passer à l'étape suivante
+avec l'action principale enregistre également les modifications en attente.
 Un changement de date nécessite d'abord de sauvegarder le travail en cours.
 Une ligne commencée doit être complète avant validation. Les articles non
 configurés ou non comptés peuvent rester vides.
