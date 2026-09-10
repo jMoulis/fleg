@@ -492,7 +492,21 @@ test("REL-03 planifie, démarre et termine une expérience", async ({
   page,
 }, testInfo) => {
   const marker = recipeMarker(testInfo.project.name);
-  const { storeBaseUrl } = await signInToStore(page);
+  const { storeBaseUrl, storeId } = await signInToStore(page);
+  await importProjectFixture({
+    page,
+    projectName: testInfo.project.name,
+    storeId,
+  });
+  const productOptionsResponse = await page.request.get(
+    `/api/stores/${storeId}/products/options`,
+  );
+  expect(productOptionsResponse.status()).toBe(200);
+  const productOptions = productOptionsResponseSchema.parse(
+    await productOptionsResponse.json(),
+  );
+  expect(productOptions.products.length).toBeGreaterThan(0);
+  const testedProduct = productOptions.products[0]!;
 
   await page.goto(`${storeBaseUrl}/experiments/new`);
   await expect(
@@ -504,7 +518,28 @@ test("REL-03 planifie, démarre et termine une expérience", async ({
     .fill("Si la présentation est renforcée, alors le chiffre d’affaires progressera sans dégrader la démarque.");
   await page.getByRole("button", { name: "Continuer" }).click();
 
+  expect(
+    await page.locator("[data-experiment-event-picker-option]").count(),
+  ).toBeLessThanOrEqual(10);
   await chooseFirstOption(page.locator("#experiment-fixture"), page);
+  expect(
+    await page.locator("[data-product-picker-option]").count(),
+  ).toBeLessThanOrEqual(10);
+  await page
+    .getByRole("textbox", { name: "Ajouter un produit testé" })
+    .fill(testedProduct.label);
+  await page
+    .getByRole("button", {
+      name: `Ajouter ${testedProduct.label}`,
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: `Retirer ${testedProduct.label}`,
+      exact: true,
+    }),
+  ).toBeVisible();
   await page.getByLabel(/Famille, si le test porte/).fill("Fruits de recette");
   await page
     .getByLabel("Traitement prévu")
@@ -567,6 +602,16 @@ test("REL-03 planifie, démarre et termine une expérience", async ({
   await expect(page.getByText(/Exécution terminée/).first()).toBeVisible();
   await page.waitForTimeout(500);
   await page.waitForLoadState("networkidle");
+
+  await page.goto(`${storeBaseUrl}/experiments`);
+  await page.getByRole("tab", { name: /À analyser/ }).click();
+  expect(
+    await page.locator("[data-experiment-list-item]").count(),
+  ).toBeLessThanOrEqual(25);
+  await page.getByLabel("Rechercher dans les tests").fill(marker);
+  await expect(
+    page.getByRole("heading", { name: `Test recette ${marker}` }),
+  ).toBeVisible();
 });
 
 test("REL-04 ouvre la vue réseau dans le périmètre autorisé", async ({

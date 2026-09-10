@@ -47,7 +47,9 @@ Before extending the learning network, complete the bridge defined in
    history;
 8. `UX-LIST-06` — searchable TG product composition and paginated cancelled
    operations;
-9. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
+9. `UX-LIST-07` — searchable, bounded experiment inputs and paginated lifecycle
+   histories;
+10. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
    access and real daily exports.
 
 No unavailable operational observation may be replaced with synthetic pilot

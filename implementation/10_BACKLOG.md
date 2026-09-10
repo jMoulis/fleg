@@ -56,7 +56,8 @@
 | UX-LIST-04 | UX | Searchable bounded allocation product selectors | P0 | UX-LIST-03, PREV3-03 |
 | UX-LIST-05 | UX | Scalable markdown capture and history | P0 | UX-LIST-04, MD-01 |
 | UX-LIST-06 | UX | Scalable TG product selection and cancelled history | P0 | UX-LIST-05, TG-01 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-06, Mercalys access |
+| UX-LIST-07 | UX | Scalable experiment selectors and history | P0 | UX-LIST-06, EXP-02 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-07, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -229,6 +230,18 @@
 - event lifecycle, product limits, authorization, audit and attachment semantics
   remain unchanged;
 - responsive browser acceptance covers product addition and cancelled history.
+
+### UX-LIST-07
+
+- experiment search applies within the active lifecycle category before pages
+  of 25 cards;
+- linked-operation and tested-product search apply before pages of 10 options;
+- selecting a product adds it directly and removes it from available results;
+- the optional linked operation remains explicit, replaceable and removable;
+- experiment lifecycle, evaluation, authorization and audit semantics remain
+  unchanged;
+- responsive browser acceptance covers product selection, lifecycle completion
+  and list search.
 
 ### PILOT-01
 
