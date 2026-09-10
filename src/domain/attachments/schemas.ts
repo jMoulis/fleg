@@ -61,10 +61,6 @@ export type AttachmentCreateMetadata = z.infer<
 export const attachmentDeleteInputSchema = z.object({
   idempotencyKey: z.uuid(),
 });
-export type AttachmentDeleteInput = z.infer<
-  typeof attachmentDeleteInputSchema
->;
-
 export const attachmentSchema = z.object({
   id: mongoIdSchema,
   organizationId: z.string().min(1),

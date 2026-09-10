@@ -108,11 +108,6 @@ export const recommendationFollowUpResponseSchema = z.object({
   requestId: z.uuid(),
 });
 
-export const recommendationFollowUpsResponseSchema = z.object({
-  followUps: z.array(recommendationFollowUpSchema),
-  requestId: z.uuid(),
-});
-
 export const decisionWorkspaceResponseSchema = z.object({
   decisions: z.array(decisionLogEntrySchema),
   followUps: z.array(recommendationFollowUpSchema),

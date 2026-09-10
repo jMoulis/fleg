@@ -98,7 +98,7 @@ export class ImportRepository {
   private readonly auditLogs;
 
   constructor(
-    private readonly db: Db,
+    db: Db,
     private readonly client: MongoClient,
   ) {
     this.importJobs = db.collection<ImportJobDocument>("importJobs");

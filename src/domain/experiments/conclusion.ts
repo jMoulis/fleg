@@ -2,7 +2,6 @@ import * as z from "zod";
 
 import {
   evidenceGradeSchema,
-  experimentAnalysisSchema,
   type ExperimentAnalysis,
 } from "@/domain/experiments/evaluation-schemas";
 import {
@@ -96,12 +95,6 @@ export const experimentConclusionResponseSchema = z.object({
   conclusion: experimentConclusionSchema,
   experiment: experimentSchema,
   requestId: z.uuid(),
-});
-
-export const experimentConclusionWithSnapshotsSchema = z.object({
-  conclusion: experimentConclusionSchema,
-  experimentSnapshot: experimentSchema,
-  analysisSnapshot: experimentAnalysisSchema,
 });
 
 function normalizedRelativeEffect(

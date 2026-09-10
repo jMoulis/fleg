@@ -57,20 +57,12 @@ export const experimentTreatmentPlanSchema = z.object({
   expectedChange: z.string().trim().min(1).max(1_000),
   instructions: z.array(z.string().trim().min(1).max(500)).max(30),
 });
-export type ExperimentTreatmentPlan = z.infer<
-  typeof experimentTreatmentPlanSchema
->;
-
 export const experimentTreatmentActualSchema = z.object({
   summary: z.string().trim().min(1).max(1_000),
   fixtureId: z.string().trim().min(1).max(100).nullable(),
   implementationNotes: z.string().trim().max(2_000).nullable(),
   deviations: z.array(z.string().trim().min(1).max(500)).max(30),
 });
-export type ExperimentTreatmentActual = z.infer<
-  typeof experimentTreatmentActualSchema
->;
-
 export const experimentBaselineConfigSchema = z
   .object({
     method: baselineMethodSchema,
@@ -116,10 +108,6 @@ export const experimentBaselineConfigSchema = z
       });
     }
   });
-export type ExperimentBaselineConfig = z.infer<
-  typeof experimentBaselineConfigSchema
->;
-
 export const experimentDefinitionSchema = z
   .object({
     title: z.string().trim().min(1).max(180),

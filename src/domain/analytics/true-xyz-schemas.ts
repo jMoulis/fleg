@@ -47,10 +47,6 @@ export const trueXyzWeekEvidenceSchema = z
     includedInCalculation: z.boolean(),
   })
   .strict();
-export type TrueXyzWeekEvidence = z.infer<
-  typeof trueXyzWeekEvidenceSchema
->;
-
 export const trueXyzProductResultSchema = z
   .object({
     productId: z.string().regex(/^[a-f\d]{24}$/i),
@@ -98,8 +94,6 @@ export const trueXyzAnalysisSchema = z
     calculationVersion: z.literal(trueXyzCalculationVersion),
   })
   .strict();
-export type TrueXyzAnalysis = z.infer<typeof trueXyzAnalysisSchema>;
-
 export const trueXyzAnalysisResponseSchema = trueXyzAnalysisSchema.extend({
   requestId: z.uuid(),
 });

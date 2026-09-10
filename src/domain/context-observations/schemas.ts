@@ -63,10 +63,6 @@ export const promotionProvenanceSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
 ]);
-export type PromotionProvenance = z.infer<
-  typeof promotionProvenanceSchema
->;
-
 export const weatherProvenanceSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("manual") }).strict(),
   z
@@ -77,8 +73,6 @@ export const weatherProvenanceSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
 ]);
-export type WeatherProvenance = z.infer<typeof weatherProvenanceSchema>;
-
 const promotionValueSchema = z
   .object({
     businessDate: z.iso.date(),
@@ -273,10 +267,6 @@ export const dailyBusinessContextFeatureSchema = z.object({
   promotion: promotionContextFeatureSchema,
   weather: weatherContextFeatureSchema,
 });
-export type DailyBusinessContextFeature = z.infer<
-  typeof dailyBusinessContextFeatureSchema
->;
-
 export const businessContextCoverageSchema = z.object({
   status: z.enum(["complete", "partial", "unknown"]),
   expectedDates: z.array(z.iso.date()),

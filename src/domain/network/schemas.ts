@@ -7,10 +7,6 @@ export const networkDashboardQuerySchema = z.object({
   storeIds: z.array(storeIdSchema).min(1).max(50),
   period: periodKeySchema.optional(),
 });
-export type NetworkDashboardQuery = z.infer<
-  typeof networkDashboardQuerySchema
->;
-
 export const networkStoreMetricsSchema = z.object({
   storeId: storeIdSchema,
   code: z.string().min(1),
@@ -39,8 +35,6 @@ export const networkStoreMetricsSchema = z.object({
   normalizedRank: z.number().int().positive().nullable(),
   prioritizedActionCount: z.number().int().nonnegative(),
 });
-export type NetworkStoreMetrics = z.infer<typeof networkStoreMetricsSchema>;
-
 export const networkWarningSchema = z.object({
   code: z.enum([
     "SINGLE_STORE",

@@ -48,10 +48,3 @@ export async function getDecisionWorkspace(input: {
 
   return { decisions, followUps };
 }
-
-export async function listDecisionLog(input: {
-  context: AuthorizedStoreContext;
-  requestHeaders: Headers;
-}) {
-  return (await getDecisionWorkspace(input)).decisions;
-}

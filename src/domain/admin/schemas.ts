@@ -165,10 +165,6 @@ export const organizationInvitationSchema = z.object({
   status: z.enum(["pending", "accepted", "rejected", "canceled"]),
   expiresAt: z.iso.datetime(),
 });
-export type OrganizationInvitation = z.infer<
-  typeof organizationInvitationSchema
->;
-
 export const organizationInvitationCreateInputSchema = z.object({
   email: z.email(),
   role: z.enum(["admin", "member"]),

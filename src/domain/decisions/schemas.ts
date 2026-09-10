@@ -92,10 +92,6 @@ export const aiActionPlanDecisionRecordSchema = z.object({
   idempotencyKey: z.uuid(),
   decidedAt: z.iso.datetime(),
 });
-export type AiActionPlanDecisionRecord = z.infer<
-  typeof aiActionPlanDecisionRecordSchema
->;
-
 export const decisionLogEntrySchema = z.discriminatedUnion("entryType", [
   recommendationDecisionRecordSchema,
   experimentDecisionRecordSchema,
@@ -105,10 +101,5 @@ export type DecisionLogEntry = z.infer<typeof decisionLogEntrySchema>;
 
 export const decisionResponseSchema = z.object({
   decision: recommendationDecisionRecordSchema,
-  requestId: z.uuid(),
-});
-
-export const decisionLogResponseSchema = z.object({
-  decisions: z.array(decisionLogEntrySchema),
   requestId: z.uuid(),
 });

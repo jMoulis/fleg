@@ -30,10 +30,6 @@ export const allocationModelVersionSchema = z.enum([
   "space-allocation-heuristic-v1",
   "space-allocation-heuristic-v2",
 ]);
-export type AllocationModelVersion = z.infer<
-  typeof allocationModelVersionSchema
->;
-
 export const allocationProductSchema = z.object({
   id: mongoIdSchema,
   label: z.string().trim().min(1).max(200),

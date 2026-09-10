@@ -89,10 +89,6 @@ function addDuplicateLineIssues(
 }
 
 export const inventoryCountStatusSchema = z.enum(["draft", "committed"]);
-export type InventoryCountStatus = z.infer<
-  typeof inventoryCountStatusSchema
->;
-
 export const inventoryCountSchema = z
   .object({
     id: mongoIdSchema,
@@ -150,10 +146,6 @@ export const stockAvailabilityEvidenceSchema = z.object({
   observationAgeHours: z.number().finite().nonnegative(),
   isStockout: z.boolean(),
 });
-export type StockAvailabilityEvidence = z.infer<
-  typeof stockAvailabilityEvidenceSchema
->;
-
 export const inventoryWorkspaceProductSchema = z.object({
   id: mongoIdSchema,
   label: z.string().min(1),
