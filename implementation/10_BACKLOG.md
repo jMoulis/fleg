@@ -50,7 +50,8 @@
 | V3-06 | Ordering | Evidence-backed order suggestion drafts | P1 | V3-02, V3-04 |
 | HARD-02 | Hardening | Dead-code audit and repository hygiene | P1 | V3-06 |
 | DOC-01 | Documentation | Documentation hub and French user guide | P1 | HARD-02 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | DOC-01, Mercalys access |
+| UX-LIST-01 | UX | Scalable reserve/shelf inventory workflow | P0 | DOC-01, V3-02 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-01, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -156,6 +157,14 @@
 - user terminology, permissions, confidence, missing-data states and non-automatic actions are explained consistently;
 - stack, commands, navigation and feature status match the delivered application rather than the initial recommendations;
 - screenshots are added only when representative pilot data is available and are not required for the first textual guide.
+
+### UX-LIST-01
+
+- inventory follows separate reserve, shelf and review passes, with article configuration still reachable;
+- no view renders more than 25 product cards at once and edits survive filters, steps and pages;
+- save and next/commit actions remain reachable without traversing the full list;
+- blank versus explicit zero, variable pack size, versioning and authorization semantics remain unchanged;
+- mobile and desktop acceptance cover a complete persisted inventory workflow.
 
 ### PILOT-01
 

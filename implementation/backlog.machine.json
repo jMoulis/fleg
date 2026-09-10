@@ -367,6 +367,20 @@
       ]
     },
     {
+      "id": "UX-LIST-01",
+      "epic": "ux",
+      "title": "Scalable reserve and shelf inventory workflow",
+      "priority": "P0",
+      "acceptance": [
+        "separate reserve shelf review and configuration views",
+        "at most 25 product cards rendered per view",
+        "draft edits retained across filters steps and pages",
+        "save and workflow actions reachable without list traversal",
+        "blank zero pack-size versioning and authorization semantics unchanged",
+        "mobile and desktop workflow acceptance"
+      ]
+    },
+    {
       "id": "PILOT-01",
       "epic": "product_validation",
       "title": "Instrumented single-store operational pilot",

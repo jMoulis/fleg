@@ -39,7 +39,16 @@ Keep the existing technical history, then add a clear audience entry point:
 The first version is text-first. Representative screenshots follow after pilot
 data exists, so the guide does not encode misleading empty or synthetic states.
 
-### 3. PILOT-01 — instrumented single-store pilot
+### 3. UX-LIST-01 — scalable morning inventory workflow
+
+Before the pilot, remove the already observed usability barrier caused by
+rendering the complete product reference and every input at once. Keep the
+V3-02 contracts unchanged while splitting inventory into reserve, shelf, review
+and configuration views, bounding visible product cards and keeping draft
+actions reachable. The implementation contract is
+`implementation/21_INVENTORY_LIST_UX.md`.
+
+### 4. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
@@ -55,6 +64,7 @@ The bridge to V4 is complete only when:
 
 - the repository cleanup is merged with no regression;
 - the user guide matches the production interface;
+- the inventory workflow remains usable with hundreds of product records;
 - the pilot has enough observed data to identify real friction and evaluate the
   ordering assumptions;
 - the next roadmap is chosen from evidence rather than feature availability.

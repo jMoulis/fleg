@@ -38,7 +38,8 @@ Before extending the learning network, complete the bridge defined in
 
 1. `HARD-02` — behavior-preserving dead-code and repository-hygiene audit;
 2. `DOC-01` — documentation hub and French user guide;
-3. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
+3. `UX-LIST-01` — reserve/shelf inventory workflow and bounded product lists;
+4. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
    access and real daily exports.
 
 No unavailable operational observation may be replaced with synthetic pilot

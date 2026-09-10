@@ -62,6 +62,7 @@ seront ajoutées avec les données du pilote réel afin de ne pas documenter des
 - [Roadmap produit](./13_ROADMAP.md)
 - [Consolidation post-V3](../implementation/18_POST_V3_CONSOLIDATION.md)
 - [Audit de cohérence documentaire DOC-01](../implementation/20_DOCUMENTATION_AUDIT.md)
+- [Parcours de comptage UX-LIST-01](../implementation/21_INVENTORY_LIST_UX.md)
 
 ## Règle de lecture
 
