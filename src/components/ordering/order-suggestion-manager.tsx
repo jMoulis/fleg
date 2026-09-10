@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Calculator,
   CalendarClock,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   LoaderCircle,
   PackageCheck,
   PackageOpen,
   RefreshCw,
+  Search,
   ShieldCheck,
   Warehouse,
 } from "lucide-react";
@@ -46,6 +49,17 @@ interface OrderSuggestionManagerProps {
   organizationSlug: string;
   storeId: string;
 }
+
+type OrderLineStatusFilter =
+  | "calculated"
+  | "ready"
+  | "no_order"
+  | "unavailable"
+  | "modified"
+  | "all";
+type OrderLineFamilyFilter = "all" | "3400" | "3402" | "unknown";
+
+const orderLinePageSize = 25;
 
 function dateLabel(date: string) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -85,6 +99,35 @@ function initialCaseCounts(suggestion: OrderSuggestionDraft | null) {
   );
 }
 
+function approvedCaseCount(
+  suggestion: OrderSuggestionDraft,
+  line: OrderSuggestionLine,
+  caseCounts: Record<string, string>,
+): number | null {
+  if (suggestion.status === "approved") {
+    return (
+      suggestion.decision?.lines.find(
+        ({ productId }) => productId === line.productId,
+      )?.approvedCaseCount ?? null
+    );
+  }
+  const rawValue = caseCounts[line.productId];
+  if (rawValue === undefined || rawValue.trim() === "") return null;
+  const value = Number(rawValue);
+  return Number.isInteger(value) && value >= 0 && value <= 100_000
+    ? value
+    : null;
+}
+
+function isModifiedLine(
+  suggestion: OrderSuggestionDraft,
+  line: OrderSuggestionLine,
+  caseCounts: Record<string, string>,
+): boolean {
+  if (line.suggestedCaseCount === null) return false;
+  return approvedCaseCount(suggestion, line, caseCounts) !== line.suggestedCaseCount;
+}
+
 export function OrderSuggestionManager({
   canApprove,
   initialWorkspace,
@@ -103,12 +146,23 @@ export function OrderSuggestionManager({
   const [pending, setPending] = useState<"create" | "approve" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState<OrderLineStatusFilter>("calculated");
+  const [familyFilter, setFamilyFilter] =
+    useState<OrderLineFamilyFilter>("all");
+  const [page, setPage] = useState(1);
+  const listStartRef = useRef<HTMLDivElement>(null);
   const cycle = initialWorkspace.cycle;
 
   function replaceSuggestion(next: OrderSuggestionDraft) {
     setSuggestion(next);
     setCaseCounts(initialCaseCounts(next));
     setReasons({});
+    setQuery("");
+    setStatusFilter("calculated");
+    setFamilyFilter("all");
+    setPage(1);
   }
 
   function changeOrderDate(orderDate: string) {
@@ -195,6 +249,83 @@ export function OrderSuggestionManager({
 
   const orderableLines =
     suggestion?.lines.filter((line) => line.suggestedCaseCount !== null) ?? [];
+  const modifiedLineCount =
+    suggestion?.lines.filter((line) =>
+      isModifiedLine(suggestion, line, caseCounts),
+    ).length ?? 0;
+  const invalidCaseCount = suggestion
+    ? orderableLines.filter(
+        (line) => approvedCaseCount(suggestion, line, caseCounts) === null,
+      ).length
+    : 0;
+  const missingOverrideReasonCount =
+    suggestion?.status === "draft"
+      ? orderableLines.filter(
+          (line) => {
+            const approvedCount = approvedCaseCount(
+              suggestion,
+              line,
+              caseCounts,
+            );
+            return (
+              approvedCount !== null &&
+              approvedCount !== line.suggestedCaseCount &&
+              (reasons[line.productId]?.trim().length ?? 0) < 3
+            );
+          },
+        ).length
+      : 0;
+  const filteredLines = useMemo(() => {
+    if (!suggestion) return [];
+    const normalizedQuery = query.trim().toLocaleLowerCase("fr-FR");
+    return suggestion.lines.filter((line) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        line.productLabel.toLocaleLowerCase("fr-FR").includes(normalizedQuery);
+      const matchesFamily =
+        familyFilter === "all" ||
+        (familyFilter === "unknown"
+          ? line.familyCode === null
+          : line.familyCode === familyFilter);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "calculated"
+          ? line.suggestedCaseCount !== null
+          : statusFilter === "modified"
+            ? isModifiedLine(suggestion, line, caseCounts)
+            : line.status === statusFilter);
+      return matchesQuery && matchesFamily && matchesStatus;
+    });
+  }, [caseCounts, familyFilter, query, statusFilter, suggestion]);
+  const pageCount = Math.max(
+    1,
+    Math.ceil(filteredLines.length / orderLinePageSize),
+  );
+  const currentPage = Math.min(page, pageCount);
+  const pageLines = filteredLines.slice(
+    (currentPage - 1) * orderLinePageSize,
+    currentPage * orderLinePageSize,
+  );
+
+  function changeQuery(value: string) {
+    setQuery(value);
+    setPage(1);
+  }
+
+  function changeStatusFilter(value: OrderLineStatusFilter) {
+    setStatusFilter(value);
+    setPage(1);
+  }
+
+  function changeFamilyFilter(value: OrderLineFamilyFilter) {
+    setFamilyFilter(value);
+    setPage(1);
+  }
+
+  function changePage(value: number) {
+    listStartRef.current?.scrollIntoView({ block: "start" });
+    setPage(value);
+  }
 
   return (
     <div className="mt-8 space-y-6">
@@ -301,72 +432,200 @@ export function OrderSuggestionManager({
           </AlertDescription>
         </Alert>
       ) : (
-        <form className="space-y-6" onSubmit={approveSuggestion}>
+        <form
+          className={cn(
+            "space-y-6",
+            suggestion.status === "draft" &&
+              orderableLines.length > 0 &&
+              "pb-28 md:pb-0",
+          )}
+          onSubmit={approveSuggestion}
+        >
           <SuggestionSummary suggestion={suggestion} />
-          <div className="grid gap-4">
-            {suggestion.lines.map((line) => (
-              <SuggestionLineCard
-                approvedCaseCount={caseCounts[line.productId] ?? ""}
-                disabled={
-                  suggestion.status === "approved" || !canApprove || pending !== null
-                }
-                key={line.productId}
-                line={line}
-                onApprovedCaseCountChange={(value) =>
-                  setCaseCounts((current) => ({
-                    ...current,
-                    [line.productId]: value,
-                  }))
-                }
-                onReasonChange={(value) =>
-                  setReasons((current) => ({
-                    ...current,
-                    [line.productId]: value,
-                  }))
-                }
-                reason={reasons[line.productId] ?? ""}
-                suggestion={suggestion}
-              />
-            ))}
-          </div>
 
           {suggestion.status === "draft" && orderableLines.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShieldCheck aria-hidden="true" className="size-5 text-primary" />
-                  Validation manager
-                </CardTitle>
-                <CardDescription>
-                  La validation fige votre décision, mais ne transmet rien au fournisseur.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="approval-note">Note générale facultative</Label>
-                  <Textarea
-                    disabled={!canApprove || pending !== null}
-                    id="approval-note"
-                    maxLength={1_000}
-                    onChange={(event) => setNote(event.target.value)}
-                    placeholder="Contexte utile pour relire la décision…"
-                    value={note}
-                  />
-                </div>
-                <Button
-                  disabled={!canApprove || pending !== null}
-                  type="submit"
-                >
-                  {pending === "approve" ? (
-                    <LoaderCircle aria-hidden="true" className="animate-spin" />
-                  ) : (
-                    <ClipboardCheck aria-hidden="true" />
-                  )}
-                  Valider la proposition
-                </Button>
-              </CardContent>
-            </Card>
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck
+                      aria-hidden="true"
+                      className="size-5 text-primary"
+                    />
+                    Validation manager
+                  </CardTitle>
+                  <CardDescription>
+                    La validation fige votre décision, mais ne transmet rien au
+                    fournisseur.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="approval-note">
+                      Note générale facultative
+                    </Label>
+                    <Textarea
+                      disabled={!canApprove || pending !== null}
+                      id="approval-note"
+                      maxLength={1_000}
+                      onChange={(event) => setNote(event.target.value)}
+                      placeholder="Contexte utile pour relire la décision…"
+                      value={note}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+              <OrderActionDock
+                canApprove={canApprove}
+                invalidCaseCount={invalidCaseCount}
+                missingOverrideReasonCount={missingOverrideReasonCount}
+                modifiedLineCount={modifiedLineCount}
+                orderableLineCount={orderableLines.length}
+                pending={pending}
+              />
+            </>
           ) : null}
+
+          <section aria-labelledby="order-lines-title" className="space-y-4">
+            <div className="scroll-mt-36" ref={listStartRef}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                Revue article par article
+              </p>
+              <h2 id="order-lines-title" className="mt-1 text-xl font-semibold">
+                Lignes de la proposition
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Commencez par les lignes calculées, puis contrôlez séparément
+                les indisponibilités.
+              </p>
+            </div>
+
+            <div className="grid gap-3 rounded-xl border bg-muted/20 p-3">
+              <div className="relative min-w-0 sm:max-w-xl">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  aria-label="Rechercher une ligne de commande"
+                  className="pl-9"
+                  onChange={(event) => changeQuery(event.target.value)}
+                  placeholder="Rechercher un article…"
+                  value={query}
+                />
+              </div>
+              <div
+                aria-label="Filtrer les lignes de commande par statut"
+                className="flex flex-wrap gap-2"
+              >
+                {([
+                  ["calculated", `Calculées · ${orderableLines.length}`],
+                  ["ready", `À commander · ${suggestion.readyLineCount}`],
+                  ["no_order", `Sans commande · ${suggestion.noOrderLineCount}`],
+                  [
+                    "unavailable",
+                    `Indisponibles · ${suggestion.unavailableLineCount}`,
+                  ],
+                  ["modified", `Modifiées · ${modifiedLineCount}`],
+                  ["all", `Toutes les lignes · ${suggestion.lines.length}`],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    aria-pressed={statusFilter === value}
+                    key={value}
+                    onClick={() => changeStatusFilter(value)}
+                    size="sm"
+                    type="button"
+                    variant={statusFilter === value ? "secondary" : "ghost"}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <div
+                aria-label="Filtrer les lignes de commande par famille"
+                className="flex flex-wrap gap-2"
+              >
+                {([
+                  ["all", "Toutes familles"],
+                  ["3400", "Fruits · 3400"],
+                  ["3402", "Légumes · 3402"],
+                  ["unknown", "Sans famille"],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    aria-pressed={familyFilter === value}
+                    key={value}
+                    onClick={() => changeFamilyFilter(value)}
+                    size="sm"
+                    type="button"
+                    variant={familyFilter === value ? "default" : "outline"}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <OrderListPosition
+              ariaLabel="Pagination des lignes de commande avant la liste"
+              currentPage={currentPage}
+              onPageChange={changePage}
+              pageCount={pageCount}
+              resultCount={filteredLines.length}
+            />
+
+            <div
+              className="grid gap-4"
+              data-order-page-size={orderLinePageSize}
+            >
+              {pageLines.length === 0 ? (
+                <div className="rounded-xl border border-dashed px-6 py-12 text-center">
+                  <p className="font-medium">
+                    Aucune ligne ne correspond à ces filtres
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Modifiez la recherche, le statut ou la famille affichée.
+                  </p>
+                </div>
+              ) : (
+                pageLines.map((line) => (
+                  <SuggestionLineCard
+                    approvedCaseCount={caseCounts[line.productId] ?? ""}
+                    disabled={
+                      suggestion.status === "approved" ||
+                      !canApprove ||
+                      pending !== null
+                    }
+                    key={line.productId}
+                    line={line}
+                    onApprovedCaseCountChange={(value) =>
+                      setCaseCounts((current) => ({
+                        ...current,
+                        [line.productId]: value,
+                      }))
+                    }
+                    onReasonChange={(value) =>
+                      setReasons((current) => ({
+                        ...current,
+                        [line.productId]: value,
+                      }))
+                    }
+                    reason={reasons[line.productId] ?? ""}
+                    suggestion={suggestion}
+                  />
+                ))
+              )}
+            </div>
+
+            {pageCount > 1 ? (
+              <OrderListPosition
+                ariaLabel="Pagination des lignes de commande après la liste"
+                currentPage={currentPage}
+                onPageChange={changePage}
+                pageCount={pageCount}
+                resultCount={filteredLines.length}
+              />
+            ) : null}
+          </section>
         </form>
       )}
     </div>
@@ -443,6 +702,108 @@ function SuggestionSummary({ suggestion }: { suggestion: OrderSuggestionDraft })
         </Alert>
       </CardContent>
     </Card>
+  );
+}
+
+function OrderActionDock({
+  canApprove,
+  invalidCaseCount,
+  missingOverrideReasonCount,
+  modifiedLineCount,
+  orderableLineCount,
+  pending,
+}: {
+  canApprove: boolean;
+  invalidCaseCount: number;
+  missingOverrideReasonCount: number;
+  modifiedLineCount: number;
+  orderableLineCount: number;
+  pending: "create" | "approve" | null;
+}) {
+  const issueCount = invalidCaseCount + missingOverrideReasonCount;
+  return (
+    <div className="fixed inset-x-3 bottom-20 z-40 flex items-center justify-between gap-2 rounded-xl border bg-background/95 p-3 shadow-xl backdrop-blur md:sticky md:inset-auto md:top-20 md:bottom-auto">
+      <p
+        aria-live="polite"
+        className="min-w-0 text-xs text-muted-foreground sm:text-sm"
+      >
+        <span className="block font-medium text-foreground">
+          {orderableLineCount} ligne{orderableLineCount === 1 ? "" : "s"} à
+          valider
+        </span>
+        <span className="block">
+          {modifiedLineCount} modifiée{modifiedLineCount === 1 ? "" : "s"}
+          {issueCount > 0
+            ? ` · ${issueCount} saisie${issueCount === 1 ? "" : "s"} à compléter`
+            : " · prête pour validation"}
+        </span>
+      </p>
+      <Button
+        className="shrink-0"
+        disabled={!canApprove || pending !== null || issueCount > 0}
+        size="sm"
+        type="submit"
+      >
+        {pending === "approve" ? (
+          <LoaderCircle aria-hidden="true" className="animate-spin" />
+        ) : (
+          <ClipboardCheck aria-hidden="true" />
+        )}
+        Valider la proposition
+      </Button>
+    </div>
+  );
+}
+
+function OrderListPosition({
+  ariaLabel,
+  currentPage,
+  onPageChange,
+  pageCount,
+  resultCount,
+}: {
+  ariaLabel: string;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  pageCount: number;
+  resultCount: number;
+}) {
+  const first =
+    resultCount === 0 ? 0 : (currentPage - 1) * orderLinePageSize + 1;
+  const last = Math.min(currentPage * orderLinePageSize, resultCount);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-muted-foreground" role="status">
+        {first}–{last} sur {resultCount} ligne{resultCount === 1 ? "" : "s"}
+      </p>
+      {pageCount > 1 ? (
+        <div aria-label={ariaLabel} className="flex items-center gap-2" role="navigation">
+          <Button
+            aria-label="Page précédente"
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            <ChevronLeft aria-hidden="true" />
+          </Button>
+          <span aria-current="page" className="text-sm tabular-nums">
+            Page {currentPage}/{pageCount}
+          </span>
+          <Button
+            aria-label="Page suivante"
+            disabled={currentPage === pageCount}
+            onClick={() => onPageChange(currentPage + 1)}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            <ChevronRight aria-hidden="true" />
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

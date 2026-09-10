@@ -40,7 +40,8 @@ Before extending the learning network, complete the bridge defined in
 2. `DOC-01` — documentation hub and French user guide;
 3. `UX-LIST-01` — reserve/shelf inventory workflow and bounded product lists;
 4. `UX-LIST-02` — URL-paginated mobile and desktop product matrix;
-5. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
+5. `UX-LIST-03` — filtered, paginated order review with persistent approval;
+6. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
    access and real daily exports.
 
 No unavailable operational observation may be replaced with synthetic pilot

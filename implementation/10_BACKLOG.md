@@ -52,7 +52,8 @@
 | DOC-01 | Documentation | Documentation hub and French user guide | P1 | HARD-02 |
 | UX-LIST-01 | UX | Scalable reserve/shelf inventory workflow | P0 | DOC-01, V3-02 |
 | UX-LIST-02 | UX | Scalable paginated product matrix | P0 | UX-LIST-01, UX-03, UX-04 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-02, Mercalys access |
+| UX-LIST-03 | UX | Scalable filtered order-review workflow | P0 | UX-LIST-02, V3-06 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-03, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -177,6 +178,20 @@
   the list;
 - metric, recommendation, authorization and product-detail semantics remain
   unchanged.
+
+### UX-LIST-03
+
+- order review defaults to calculated lines while every unavailable line
+  remains explicitly reachable;
+- search, status and family filters are applied before pages of 25 cards;
+- case-count overrides, per-line reasons and the general note survive filters
+  and pages;
+- the persistent approval action reports incomplete entries and never bypasses
+  the existing client/server validation;
+- A-for-B calculation, store scope, audit and supplier non-execution semantics
+  remain unchanged;
+- mobile and desktop acceptance cover pagination and retained edits on a
+  suggestion with more than 25 lines.
 
 ### PILOT-01
 

@@ -1,5 +1,5 @@
 {
-  "version": "1.3",
+  "version": "1.4",
   "tickets": [
     {
       "id": "FND-01",
@@ -392,6 +392,20 @@
         "filter submissions reset to the first result page",
         "accessible result range and controls before and after the list",
         "unchanged metrics recommendations authorization and drill-down semantics"
+      ]
+    },
+    {
+      "id": "UX-LIST-03",
+      "epic": "ux",
+      "title": "Scalable filtered order-review workflow",
+      "priority": "P0",
+      "acceptance": [
+        "calculated lines shown by default with unavailable evidence reachable",
+        "search status and family filters before pages of 25 cards",
+        "case overrides reasons and general note retained across filters and pages",
+        "persistent approval action reports incomplete entries",
+        "unchanged A-for-B store authorization audit and non-execution semantics",
+        "mobile and desktop pagination and retained-edit acceptance"
       ]
     },
     {

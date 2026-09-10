@@ -45,6 +45,11 @@ remain distinct responsive presentations, but neither renders the complete
 filtered catalog at once. The result interval and page controls are available
 above and below the list.
 
+Order review defaults to calculated lines and separates ready, no-order,
+unavailable and modified states. Search, family filters and pages of 25 evidence
+cards preserve all draft quantities and reasons. The approval action remains
+reachable in a persistent dock while the manager reviews the list.
+
 ## Delivered visualization approach
 
 - Native responsive HTML/CSS for product and operational matrices.

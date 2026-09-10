@@ -56,7 +56,14 @@ while preserving the separate mobile-card and desktop-table representations.
 The implementation contract is
 `implementation/22_PRODUCT_MATRIX_LIST_UX.md`.
 
-### 5. PILOT-01 — instrumented single-store pilot
+### 5. UX-LIST-03 — scalable order review
+
+Focus the morning decision on calculated lines, with explicit access to
+unavailable evidence, search, status/family filters and bounded pages. Preserve
+all overrides across navigation and keep manager approval reachable. The
+implementation contract is `implementation/23_ORDER_LIST_UX.md`.
+
+### 6. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
@@ -74,6 +81,8 @@ The bridge to V4 is complete only when:
 - the user guide matches the production interface;
 - the inventory workflow remains usable with hundreds of product records;
 - the product matrix remains navigable with hundreds of filtered products;
+- order review remains actionable with hundreds of calculated and unavailable
+  lines;
 - the pilot has enough observed data to identify real friction and evaluate the
   ordering assumptions;
 - the next roadmap is chosen from evidence rather than feature availability.
