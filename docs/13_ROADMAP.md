@@ -51,7 +51,9 @@ Before extending the learning network, complete the bridge defined in
    histories;
 10. `UX-LIST-08` — searchable promotion composition and paginated contextual
     evidence histories;
-11. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
+11. `UX-LIST-09` — searchable, bounded photo targets for TG operations and
+    layout fixtures;
+12. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
    access and real daily exports.
 
 No unavailable operational observation may be replaced with synthetic pilot

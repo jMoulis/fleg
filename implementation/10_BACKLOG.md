@@ -58,7 +58,8 @@
 | UX-LIST-06 | UX | Scalable TG product selection and cancelled history | P0 | UX-LIST-05, TG-01 |
 | UX-LIST-07 | UX | Scalable experiment selectors and history | P0 | UX-LIST-06, EXP-02 |
 | UX-LIST-08 | UX | Scalable context product selection and evidence histories | P0 | UX-LIST-07, V3-05 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-08, Mercalys access |
+| UX-LIST-09 | UX | Searchable bounded photo target selection | P0 | UX-LIST-08, PREV3-04 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-09, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -255,6 +256,17 @@
   revision semantics remain unchanged;
 - responsive browser acceptance covers product selection, contextual joins and
   bounded evidence histories.
+
+### UX-LIST-09
+
+- the current photo target and its description remain explicit;
+- target search applies to labels and descriptions before pages of 10 options;
+- no photo-target picker renders more than 10 candidates at once;
+- the existing 20-photo server limit keeps each selected-target gallery bounded;
+- attachment validation, store authorization, audit, idempotency and permanent
+  deletion semantics remain unchanged;
+- responsive browser acceptance covers finding a TG operation and displaying
+  its attached photo.
 
 ### PILOT-01
 

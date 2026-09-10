@@ -42,6 +42,14 @@ list queries and audit snapshots from carrying image bytes.
 Photo content has no public object URL. The authorized content route returns
 `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
 
+## Interface
+
+La cible courante et sa description restent visibles dans la photothèque.
+Utiliser **Changer** pour rechercher une opération TG, un plan ou un mobilier
+par son nom ou sa description. La recherche est appliquée avant des pages de 10
+cibles ; seules les photos de la cible retenue sont affichées. La galerie reste
+bornée par la limite serveur de 20 photos par cible.
+
 ## Product boundary
 
 Photos are observations only. Upload, display or deletion never changes layout

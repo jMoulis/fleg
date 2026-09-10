@@ -860,6 +860,29 @@ test("REL-06 sécurise les photos manuelles sans modifier le plan", async ({
   ).layout;
   expect(layoutAfter?.fixtures).toEqual(layoutBefore.fixtures);
 
+  await page.goto(`${storeBaseUrl}/tg`);
+  const operationPhotos = page.getByRole("region", {
+    name: "Photos des opérations commerciales",
+  });
+  await operationPhotos.getByRole("button", { name: "Changer" }).click();
+  expect(
+    await operationPhotos
+      .locator("[data-attachment-target-picker-option]")
+      .count(),
+  ).toBeLessThanOrEqual(10);
+  await operationPhotos
+    .getByRole("textbox", { name: "Élément photographié" })
+    .fill(marker);
+  await operationPhotos
+    .getByRole("button", {
+      name: `Sélectionner ${commercialEvent.title} · ${commercialEvent.fixtureName}`,
+      exact: true,
+    })
+    .click();
+  await expect(
+    operationPhotos.getByText(`Opération ${marker}`),
+  ).toBeVisible();
+
   await page.goto(`${storeBaseUrl}/settings`);
   await expect(page.getByText(`Magasin ${marker}`)).toBeVisible();
   const storePhotoCard = page
