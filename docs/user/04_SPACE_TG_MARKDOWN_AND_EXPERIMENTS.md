@@ -94,6 +94,16 @@ conclusion. L'assistant de création suit cinq étapes :
 4. fixer les critères de succès ;
 5. relire et enregistrer le plan.
 
+À l’étape du traitement, rechercher une opération commerciale par son nom,
+sa TG ou sa date si le test doit y être lié. La liaison reste facultative,
+modifiable et peut être retirée avant l’enregistrement. Rechercher ensuite les
+articles par leur nom et les ajouter directement depuis les résultats ; les
+articles déjà ajoutés ne sont plus proposés.
+
+La page **Tests & Expériences** sépare les tests par état. Dans l’état actif, la
+recherche retrouve un test par son nom, son hypothèse, sa famille, un article ou
+un emplacement. Les résultats sont présentés par pages de 25.
+
 Au démarrage, la définition et le traitement réellement appliqué sont figés.
 À la fin, consigner les écarts, limites et facteurs perturbateurs. L'évaluation
 déterministe n'est produite que lorsque les données nécessaires sont complètes.

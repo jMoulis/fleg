@@ -1,5 +1,5 @@
 {
-  "version": "1.7",
+  "version": "1.8",
   "tickets": [
     {
       "id": "FND-01",
@@ -448,6 +448,20 @@
         "active calendar remains naturally week and endcap bounded",
         "unchanged lifecycle product limits authorization audit and attachments",
         "responsive product addition and cancelled-history acceptance"
+      ]
+    },
+    {
+      "id": "UX-LIST-07",
+      "epic": "ux",
+      "title": "Scalable experiment selectors and history",
+      "priority": "P0",
+      "acceptance": [
+        "experiment search within lifecycle category before pages of 25",
+        "linked-operation and product search before pages of ten options",
+        "direct product addition removes the selected product from candidates",
+        "linked operation remains explicit replaceable and removable",
+        "unchanged lifecycle evaluation authorization and audit semantics",
+        "responsive selection lifecycle and history-search acceptance"
       ]
     },
     {

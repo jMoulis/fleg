@@ -46,8 +46,10 @@ import {
   type ExperimentType,
 } from "@/domain/experiments/schemas";
 import type { ProductOption } from "@/domain/products/schemas";
+import { BoundedProductPicker } from "@/components/products/bounded-product-picker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { BoundedOptionPicker } from "@/components/ui/bounded-option-picker";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -235,7 +237,6 @@ export function ExperimentWizard({
   const [draft, setDraft] = useState<WizardDraft>(() =>
     initialExperiment ? draftFromExperiment(initialExperiment) : defaultDraft(),
   );
-  const [productToAddId, setProductToAddId] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const productById = useMemo(
@@ -249,6 +250,26 @@ export function ExperimentWizard({
   const eventById = useMemo(
     () => new Map(commercialEvents.map((event) => [event.id, event])),
     [commercialEvents],
+  );
+  const commercialEventOptions = useMemo(
+    () =>
+      commercialEvents
+        .filter(
+          (event) =>
+            event.status !== "cancelled" ||
+            event.id === draft.linkedCommercialEventId,
+        )
+        .map((event) => ({
+          id: event.id,
+          label: event.title,
+          description: `${event.fixtureName} · ${event.startsOn} au ${event.endsOn}`,
+        })),
+    [commercialEvents, draft.linkedCommercialEventId],
+  );
+  const availableProducts = useMemo(
+    () =>
+      products.filter((product) => !draft.productIds.includes(product.id)),
+    [draft.productIds, products],
   );
   const controlStoreById = useMemo(
     () => new Map(controlStores.map((store) => [store.id, store])),
@@ -563,33 +584,18 @@ export function ExperimentWizard({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="experiment-event">Opération commerciale liée</Label>
-                <Select
-                  onValueChange={(value) => selectCommercialEvent(value ?? "")}
-                  value={draft.linkedCommercialEventId}
-                >
-                  <SelectTrigger className="h-10 w-full" id="experiment-event">
-                    <SelectValue placeholder="Aucune opération liée">
-                      {eventById.get(draft.linkedCommercialEventId)?.title ?? "Aucune opération liée"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {commercialEvents
-                      .filter((event) => event.status !== "cancelled")
-                      .map((event) => (
-                        <SelectItem key={event.id} value={event.id}>
-                          {event.fixtureName} · {event.title}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {draft.linkedCommercialEventId ? (
-                  <Button onClick={() => update("linkedCommercialEventId", "")} size="sm" type="button" variant="ghost">
-                    <X aria-hidden="true" /> Délier l’opération
-                  </Button>
-                ) : null}
-              </div>
+              <BoundedOptionPicker
+                emptyMessage="Aucune opération ne correspond à cette recherche."
+                id="experiment-event"
+                itemLabel="opération(s)"
+                label="Opération commerciale liée (facultatif)"
+                onClear={() => update("linkedCommercialEventId", "")}
+                onSelect={selectCommercialEvent}
+                options={commercialEventOptions}
+                placeholder="Rechercher par nom, TG ou date…"
+                selectedId={draft.linkedCommercialEventId}
+                testIdPrefix="experiment-event-picker"
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="experiment-fixture">Mobilier ou TG</Label>
@@ -609,39 +615,18 @@ export function ExperimentWizard({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Produits testés</Label>
-                <div className="flex gap-2">
-                  <Select onValueChange={(value) => setProductToAddId(value ?? "")} value={productToAddId}>
-                    <SelectTrigger className="h-10 min-w-0 flex-1">
-                      <SelectValue placeholder="Choisir un produit">
-                        {productById.get(productToAddId) ?? "Choisir un produit"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products
-                        .filter((product) => !draft.productIds.includes(product.id))
-                        .map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.label}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    aria-label="Ajouter le produit"
-                    disabled={!productToAddId}
-                    onClick={() => {
-                      update("productIds", [...draft.productIds, productToAddId]);
-                      setProductToAddId("");
-                    }}
-                    size="icon"
-                    type="button"
-                    variant="outline"
-                  >
-                    <PackagePlus aria-hidden="true" />
-                  </Button>
-                </div>
+              <div className="space-y-3">
+                <BoundedProductPicker
+                  actionLabel="Ajouter"
+                  collapseOnSelect={false}
+                  id="experiment-product"
+                  label="Ajouter un produit testé"
+                  onSelect={(productId) =>
+                    update("productIds", [...draft.productIds, productId])
+                  }
+                  products={availableProducts}
+                  selectedProductId=""
+                />
                 <div className="flex flex-wrap gap-2">
                   {draft.productIds.map((productId) => (
                     <Badge key={productId} variant="secondary">

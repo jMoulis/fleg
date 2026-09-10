@@ -84,7 +84,14 @@ collapsed cancelled-event history by 25. Keep the active weekly calendar intact
 because it is already bounded by week, authorized endcaps and overlap rules.
 The implementation contract is `implementation/26_TG_LIST_UX.md`.
 
-### 9. PILOT-01 — instrumented single-store pilot
+### 9. UX-LIST-07 — scalable experiment selectors and history
+
+Search and bound the tested-product and linked-operation selectors in the
+experiment wizard, then search and paginate each lifecycle category by 25.
+Keep the complete experiment workflow and evidence model unchanged. The
+implementation contract is `implementation/27_EXPERIMENT_LIST_UX.md`.
+
+### 10. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
