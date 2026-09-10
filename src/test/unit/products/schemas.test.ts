@@ -17,6 +17,7 @@ describe("product matrix query schema", () => {
       abc: undefined,
       xyz: undefined,
       sort: "label_asc",
+      page: 1,
     });
   });
 
@@ -27,5 +28,15 @@ describe("product matrix query schema", () => {
     expect(productMatrixQuerySchema.safeParse({ xyz: "W" }).success).toBe(
       false,
     );
+  });
+
+  it("accepts a bounded positive product-list page", () => {
+    expect(productMatrixQuerySchema.parse({ page: "3" }).page).toBe(3);
+    expect(productMatrixQuerySchema.safeParse({ page: "0" }).success).toBe(
+      false,
+    );
+    expect(
+      productMatrixQuerySchema.safeParse({ page: "10001" }).success,
+    ).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 {
-  "version": "1.2",
+  "version": "1.3",
   "tickets": [
     {
       "id": "FND-01",
@@ -378,6 +378,20 @@
         "save and workflow actions reachable without list traversal",
         "blank zero pack-size versioning and authorization semantics unchanged",
         "mobile and desktop workflow acceptance"
+      ]
+    },
+    {
+      "id": "UX-LIST-02",
+      "epic": "ux",
+      "title": "Scalable paginated product matrix",
+      "priority": "P0",
+      "acceptance": [
+        "search filters and sort applied before pagination",
+        "at most 25 mobile cards or desktop rows rendered per page",
+        "URL-backed page navigation preserves analytical context",
+        "filter submissions reset to the first result page",
+        "accessible result range and controls before and after the list",
+        "unchanged metrics recommendations authorization and drill-down semantics"
       ]
     },
     {

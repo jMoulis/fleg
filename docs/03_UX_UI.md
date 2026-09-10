@@ -39,6 +39,12 @@ reserve pass, shelf pass and final review; article configuration remains a
 separate view. Draft actions stay reachable from the viewport and edits remain
 in the full persisted draft when filters, steps or pages change.
 
+The product matrix also uses URL-backed pages of 25 results after applying its
+search, ABC/XYZ filters and sort. Its mobile cards and desktop analytical table
+remain distinct responsive presentations, but neither renders the complete
+filtered catalog at once. The result interval and page controls are available
+above and below the list.
+
 ## Delivered visualization approach
 
 - Native responsive HTML/CSS for product and operational matrices.

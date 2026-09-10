@@ -51,7 +51,8 @@
 | HARD-02 | Hardening | Dead-code audit and repository hygiene | P1 | V3-06 |
 | DOC-01 | Documentation | Documentation hub and French user guide | P1 | HARD-02 |
 | UX-LIST-01 | UX | Scalable reserve/shelf inventory workflow | P0 | DOC-01, V3-02 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-01, Mercalys access |
+| UX-LIST-02 | UX | Scalable paginated product matrix | P0 | UX-LIST-01, UX-03, UX-04 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-02, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -165,6 +166,17 @@
 - save and next/commit actions remain reachable without traversing the full list;
 - blank versus explicit zero, variable pack size, versioning and authorization semantics remain unchanged;
 - mobile and desktop acceptance cover a complete persisted inventory workflow.
+
+### UX-LIST-02
+
+- product search, ABC/XYZ filters and sort are applied before pagination;
+- mobile cards and the desktop table render at most 25 products per page;
+- the URL-backed page navigation preserves the selected analytical context;
+- filtering returns to page 1 and an out-of-range valid page is clamped safely;
+- visible result ranges and accessible controls are available above and below
+  the list;
+- metric, recommendation, authorization and product-detail semantics remain
+  unchanged.
 
 ### PILOT-01
 

@@ -189,9 +189,31 @@ test("E2E-01 transforme un export Mercalys en décision manager", async ({
     const matrix = page.getByRole("table", { name: /Matrice des produits/ });
     if (projectName === "desktop-1440") {
       await expect(matrix).toBeVisible();
+      await expect(matrix.locator("tbody tr")).toHaveCount(25);
     } else {
       await expect(matrix).toBeHidden();
+      await expect(
+        page.locator('[data-product-page-size="25"]:visible > a'),
+      ).toHaveCount(25);
     }
+
+    const pagination = page.getByRole("navigation", {
+      name: "Pagination des produits avant la liste",
+    });
+    await expect(pagination).toBeVisible();
+    await expect(pagination.getByText(/^Page 1\//)).toBeVisible();
+    const nextPage = pagination.getByRole("link", { name: "Page suivante" });
+    await expect(nextPage).toHaveAttribute(
+      "href",
+      new RegExp(`period=${fixture.periodKey}.*sort=revenue_desc.*page=2`),
+    );
+    await nextPage.click();
+    await expect(page).toHaveURL(/(?:\?|&)page=2(?:&|$)/);
+    await expect(
+      page.getByRole("navigation", {
+        name: "Pagination des produits avant la liste",
+      }).getByText(/^Page 2\//),
+    ).toBeVisible();
   });
 
   await test.step("explication, décision explicite et journal immuable", async () => {
