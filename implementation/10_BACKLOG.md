@@ -60,6 +60,7 @@
 | UX-LIST-08 | UX | Scalable context product selection and evidence histories | P0 | UX-LIST-07, V3-05 |
 | UX-LIST-09 | UX | Searchable bounded photo target selection | P0 | UX-LIST-08, PREV3-04 |
 | PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-09, Mercalys access |
+| V4-01 | Commercial intelligence | Weekly commercial brief PDF/image import | P1 | PILOT-01, representative original PDF |
 
 ## Pre-V3 gate acceptance
 
@@ -276,3 +277,26 @@
 - daily coverage, import time, count time, suggestion availability, manager overrides, markdown and availability evidence are measured;
 - order assumptions, especially morning residual stock and exclusion of the current-day arrival, are tested against observed practice;
 - only observed pilot friction can reprioritize the V4 learning roadmap; supplier execution remains out of scope.
+
+### V4-01
+
+- original PDFs are preferred while validated image pages remain a visibly
+  degraded fallback;
+- the store-scoped source is fingerprinted, versioned and idempotent, with raw
+  files kept out of Git, public documentation and application logs;
+- typed extraction separates section kind, source action label, product
+  identifiers, commercial values, sale dates, delivery dates, order deadline
+  and anticipation week;
+- every extracted field keeps page-level provenance, raw text, extraction
+  version, confidence and review state;
+- PLU, EAN and Gencod aliases are resolved before normalized labels, without
+  silently creating or merging canonical products;
+- confirmation validates transcription only; adoption and every downstream TG,
+  promotion, space or order draft remain explicit, separately authorized and
+  audited;
+- document instructions are treated as untrusted source evidence and no import
+  can publish, execute, modify a forecast or contact a supplier;
+- confidential provider processing follows an explicit deployment policy with
+  provider-side response storage disabled;
+- automated tests use sanitized fixtures and cover ambiguity, idempotency,
+  adversarial store isolation and the responsive review workflow.

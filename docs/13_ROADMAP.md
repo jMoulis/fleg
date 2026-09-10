@@ -61,7 +61,21 @@ evidence. V4 priorities are adjusted only from observed pilot friction and
 outcomes.
 
 ## V4 Learning network
-Calibrated location coefficients, comparable-store benchmarks, control-store/difference-in-differences experiment evaluation, experiment-derived location/family response learning, recommendation outcome learning.
+
+V4 remains gated by `PILOT-01`. Its first framed, but not yet scheduled, ticket
+is:
+
+1. `V4-01` — import a weekly central commercial brief from PDF or image pages,
+   review page-grounded extraction, resolve products and confirm a source brief
+   without automatically adopting or executing its recommendations.
+
+The implementation contract is documented in
+`implementation/30_WEEKLY_COMMERCIAL_BRIEF_IMPORT.md`. The broader V4 direction
+remains calibrated location coefficients, comparable-store benchmarks,
+control-store/difference-in-differences experiment evaluation,
+experiment-derived location/family response learning and recommendation
+outcome learning. `V4-01` ordering may still change from observed pilot
+evidence.
 
 ## V5 Advanced
 Computer vision from fixture photos, constrained optimizer, supplier/order integrations, anomaly detection.

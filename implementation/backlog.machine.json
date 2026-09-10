@@ -505,6 +505,22 @@
         "morning stock and current-day arrival assumptions tested against observed practice",
         "pilot evidence informs V4 without automatic supplier execution"
       ]
+    },
+    {
+      "id": "V4-01",
+      "epic": "commercial_intelligence",
+      "title": "Weekly commercial brief PDF and image import",
+      "priority": "P1",
+      "acceptance": [
+        "store-scoped fingerprinted versioned and idempotent source import",
+        "PDF-first extraction with visibly degraded image fallback",
+        "distinct sale delivery deadline publication and target-week semantics",
+        "page-grounded typed fields with confidence and review state",
+        "PLU EAN Gencod and label resolution without silent product creation",
+        "extraction confirmation separated from adoption and execution",
+        "confidential retention and explicit external-provider policy",
+        "no automatic TG allocation forecast order or supplier mutation"
+      ]
     }
   ]
 }
