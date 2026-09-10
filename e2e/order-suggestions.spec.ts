@@ -56,9 +56,16 @@ function dailyHistoryCsv(fixture: (typeof fixtureByProject)[keyof typeof fixture
     const quantity = dailyQuantity(businessDate);
     return `${frenchDate(businessDate)};${fixture.itm8};${fixture.ean};${fixture.productLabel};${quantity};${quantity * 2},00;${quantity},00`;
   });
+  const unavailableCatalogueRows = Array.from({ length: 30 }, (_, index) => {
+    const sequence = index + 1;
+    const itm8 = String(Number(fixture.itm8) + 1_000 + sequence);
+    const ean = String(Number(fixture.ean) + 1_000 + sequence);
+    return `${frenchDate(asOf)};${itm8};${ean};Produit indisponible UX ${sequence} ${fixture.productLabel};1;2,00;1,00`;
+  });
   return [
     "Date;ITM8 Prio;EAN Prio;Libellé;Quantité;Valeur prix vente;Val Marge",
     ...rows,
+    ...unavailableCatalogueRows,
   ].join("\n");
 }
 
@@ -255,6 +262,38 @@ test("V3-06 prépare et valide une commande flux tendu couvrant le week-end", as
     "Cette proposition ne crée et ne transmet aucune commande fournisseur.",
   );
 
+  await expect(
+    page.getByRole("button", { name: /^Calculées/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  const approvedCaseInput = page.getByLabel("Colis validés").first();
+  await approvedCaseInput.fill("3");
+  await expect(
+    page.getByRole("button", { name: "Valider la proposition" }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Motif de l’écart")
+    .fill("Prudence opérationnelle locale");
+  await expect(
+    page.getByRole("button", { name: "Valider la proposition" }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: /^Toutes les lignes/ }).click();
+  await expect(
+    page
+      .locator('[data-order-page-size="25"]')
+      .locator(':scope > [data-slot="card"]'),
+  ).toHaveCount(25);
+  const pagination = page.getByRole("navigation", {
+    name: "Pagination des lignes de commande avant la liste",
+  });
+  await expect(pagination.getByText(/^Page 1\//)).toBeVisible();
+  await pagination.getByRole("button", { name: "Page suivante" }).click();
+  await expect(pagination.getByText(/^Page 2\//)).toBeVisible();
+  await page.getByRole("button", { name: /^Calculées/ }).click();
+  await expect(page.getByLabel("Colis validés").first()).toHaveValue("3");
+  await expect(page.getByLabel("Motif de l’écart")).toHaveValue(
+    "Prudence opérationnelle locale",
+  );
+
   const replay = await page.request.post(
     `/api/stores/${stores.primary.id}/order-suggestions`,
     { data: createResponse.request().postDataJSON() },
@@ -306,8 +345,6 @@ test("V3-06 prépare et valide une commande flux tendu couvrant le week-end", as
   );
   expect(unjustifiedOverride.status()).toBe(400);
 
-  await page.getByLabel(`Colis validés`).first().fill("3");
-  await page.getByLabel("Motif de l’écart").fill("Prudence opérationnelle locale");
   const approvalResponsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith(`/order-suggestions/${suggestion.id}/approve`) &&

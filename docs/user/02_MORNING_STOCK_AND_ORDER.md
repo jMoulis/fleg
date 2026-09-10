@@ -80,6 +80,13 @@ intelligence artificielle. Pour chaque article, l'écran explique la demande
 couverte, le stock observé, le besoin net, l'arrondi en colis et le stock de
 clôture projeté.
 
+La revue s'ouvre sur les lignes **Calculées**, c'est-à-dire celles pour lesquelles
+un nombre de colis, y compris zéro, peut être décidé. La recherche et les filtres
+permettent ensuite d'isoler les articles à commander, sans commande,
+indisponibles, modifiés ou d'une famille donnée. Chaque page contient au plus
+25 articles. Les quantités et motifs déjà saisis restent conservés lors d'un
+changement de filtre ou de page.
+
 ## Calendrier actuellement modélisé
 
 - les commandes sont préparées le matin avant le repère de 9 h 30 ;
@@ -108,7 +115,8 @@ une demande supplémentaire inventée, mais l'effet du conditionnement.
 
 Le manager peut modifier le nombre de colis proposé. Chaque modification exige
 une raison par article ; une note générale peut compléter la décision. La
-validation est auditée.
+validation est auditée. L'action de validation reste visible pendant la revue et
+indique les saisies ou motifs encore incomplets avant de pouvoir être utilisée.
 
 F&L Cockpit ne passe pas la commande dans le système fournisseur. La proposition
 validée reste un support de décision : le manager reporte ensuite les quantités
