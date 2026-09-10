@@ -70,7 +70,14 @@ lists of at most 10 products per page. The shelf picker exposes only compatible,
 not-yet-allocated products and adds directly from the result row. The
 implementation contract is `implementation/24_ALLOCATION_PRODUCT_PICKER_UX.md`.
 
-### 7. PILOT-01 — instrumented single-store pilot
+### 7. UX-LIST-05 — scalable markdown capture and history
+
+Replace the full-catalog markdown selectbox with a searchable picker of at most
+10 candidates, then filter and paginate the loaded fact history by 25. Preserve
+the existing observed-fact, audit and store-isolation contracts. The
+implementation contract is `implementation/25_MARKDOWN_LIST_UX.md`.
+
+### 8. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
@@ -92,6 +99,8 @@ The bridge to V4 is complete only when:
   lines;
 - allocation and product-constraint selection remains usable with hundreds of
   catalog products;
+- markdown capture and history remain usable as products and observed facts
+  accumulate;
 - the pilot has enough observed data to identify real friction and evaluate the
   ordering assumptions;
 - the next roadmap is chosen from evidence rather than feature availability.

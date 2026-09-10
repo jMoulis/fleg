@@ -43,7 +43,9 @@ Before extending the learning network, complete the bridge defined in
 5. `UX-LIST-03` — filtered, paginated order review with persistent approval;
 6. `UX-LIST-04` — searchable, bounded product selection for constraints and
    shelf allocations;
-7. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
+7. `UX-LIST-05` — searchable product selection and filtered, paginated markdown
+   history;
+8. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
    access and real daily exports.
 
 No unavailable operational observation may be replaced with synthetic pilot

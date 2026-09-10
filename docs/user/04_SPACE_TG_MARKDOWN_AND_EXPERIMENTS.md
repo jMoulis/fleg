@@ -64,6 +64,15 @@ traçable. Les photos restent des observations manuelles.
 
 La rubrique **Démarque** enregistre, pour un article et une date, un montant de
 perte positif, une quantité facultative, une raison et une note éventuelle.
+Rechercher l'article par son nom, le sélectionner puis vérifier le choix affiché
+avant la saisie. Le bouton **Changer** permet de corriger l'article sans perdre
+les autres champs.
+
+L'historique est présenté par pages de 25. La recherche porte sur le nom de
+l'article et la note ; le filtre de motif permet d'isoler, par exemple, la
+surmaturité ou les produits abîmés. Le montant et la quantité récapitulatifs
+restent calculés sur tout l'historique chargé, indépendamment de la page ou des
+filtres affichés.
 
 Cette saisie ne réécrit pas les ventes Mercalys et ne change pas la marge
 théorique importée. Elle constitue un fait complémentaire pour analyser

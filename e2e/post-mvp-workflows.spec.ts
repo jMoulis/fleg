@@ -346,6 +346,15 @@ test("REL-02 publie une TG puis consigne une démarque", async ({
     projectName: testInfo.project.name,
     storeId,
   });
+  const productOptionsResponse = await page.request.get(
+    `/api/stores/${storeId}/products/options`,
+  );
+  expect(productOptionsResponse.status()).toBe(200);
+  const markdownProduct = productOptionsResponseSchema.parse(
+    await productOptionsResponse.json(),
+  ).products[0];
+  expect(markdownProduct).toBeDefined();
+  if (!markdownProduct) throw new Error("Produit de démarque absent");
 
   await page.goto(`${storeBaseUrl}/tg`);
   await expect(
@@ -392,7 +401,18 @@ test("REL-02 publie une TG puis consigne une démarque", async ({
 
   await page.goto(`${storeBaseUrl}/markdown`);
   await expect(page.getByRole("heading", { name: "Démarque" })).toBeVisible();
-  await chooseFirstOption(page.locator("#markdown-product"), page);
+  expect(
+    await page.locator("[data-product-picker-option]").count(),
+  ).toBeLessThanOrEqual(10);
+  await page
+    .getByLabel("Produit", { exact: true })
+    .fill(markdownProduct.label);
+  await page
+    .getByRole("button", {
+      name: `Sélectionner ${markdownProduct.label}`,
+      exact: true,
+    })
+    .click();
   await page.getByLabel("Montant de perte (€)").fill("1.23");
   await page.getByLabel("Quantité (facultatif)").fill("1");
   await page
@@ -407,6 +427,11 @@ test("REL-02 publie une TG puis consigne une démarque", async ({
   await page.getByRole("button", { name: "Enregistrer la démarque" }).click();
   expect((await markdownResponsePromise).status()).toBe(201);
   await expect(page.getByText("Saisie enregistrée")).toBeVisible();
+  await expect(page.getByText(`Démarque recette ${marker}`)).toBeVisible();
+  expect(
+    await page.locator("[data-markdown-history-item]").count(),
+  ).toBeLessThanOrEqual(25);
+  await page.getByLabel("Rechercher dans l’historique").fill(marker);
   await expect(page.getByText(`Démarque recette ${marker}`)).toBeVisible();
 });
 

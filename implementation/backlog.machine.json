@@ -1,5 +1,5 @@
 {
-  "version": "1.5",
+  "version": "1.6",
   "tickets": [
     {
       "id": "FND-01",
@@ -420,6 +420,20 @@
         "direct product addition from a result row",
         "unchanged constraints capacity economics authorization and persistence",
         "responsive policy and allocation browser acceptance"
+      ]
+    },
+    {
+      "id": "UX-LIST-05",
+      "epic": "ux",
+      "title": "Scalable markdown capture and history",
+      "priority": "P0",
+      "acceptance": [
+        "product search before pages of ten candidates",
+        "explicit replaceable product selection",
+        "history search and reason filters before pages of 25 facts",
+        "complete loaded-history summary with bounded visible lists",
+        "unchanged observed facts missing quantities authorization audit and revisions",
+        "responsive selection capture and history-search acceptance"
       ]
     },
     {
