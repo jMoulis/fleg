@@ -51,14 +51,17 @@ Pour créer une opération :
 1. choisir la TG ;
 2. donner un nom et, si utile, un thème ;
 3. définir les dates ;
-4. sélectionner les articles ;
+4. rechercher les articles puis les ajouter depuis leurs résultats ;
 5. renseigner au moins un objectif de chiffre d'affaires ou de marge ;
 6. enregistrer le brouillon, puis publier lorsque le dispositif est validé.
 
 Deux opérations actives ne peuvent pas occuper la même TG sur des dates qui se
 chevauchent. Une opération publiée fige sa définition principale. Elle peut
 ensuite être terminée avec ses résultats observés, ou annulée de façon
-traçable. Les photos restent des observations manuelles.
+traçable. Les articles déjà ajoutés disparaissent des résultats mais restent
+visibles et retirables dans la sélection. Les opérations annulées sont classées
+de la plus récente à la plus ancienne et présentées par pages de 25. Les photos
+restent des observations manuelles.
 
 ## Démarque : enregistrer un fait de perte
 

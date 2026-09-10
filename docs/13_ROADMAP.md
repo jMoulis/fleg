@@ -45,7 +45,9 @@ Before extending the learning network, complete the bridge defined in
    shelf allocations;
 7. `UX-LIST-05` — searchable product selection and filtered, paginated markdown
    history;
-8. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
+8. `UX-LIST-06` — searchable TG product composition and paginated cancelled
+   operations;
+9. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
    access and real daily exports.
 
 No unavailable operational observation may be replaced with synthetic pilot
