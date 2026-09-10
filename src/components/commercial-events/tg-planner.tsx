@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 
+import { BoundedProductPicker } from "@/components/products/bounded-product-picker";
+import { BoundedListPagination } from "@/components/ui/bounded-list-pagination";
 import {
   addDays,
   eventCoversDate,
@@ -80,6 +82,7 @@ const statusLabels: Record<CommercialEvent["status"], string> = {
   completed: "Terminée",
   cancelled: "Annulée",
 };
+const cancelledEventPageSize = 25;
 
 function moneyInputValue(cents: number | null): string {
   return cents === null ? "" : String(cents / 100);
@@ -163,7 +166,7 @@ export function TgPlanner({
   const [editor, setEditor] = useState(() =>
     createEditor(endcaps, initialWeek),
   );
-  const [productToAddId, setProductToAddId] = useState("");
+  const [cancelledEventPage, setCancelledEventPage] = useState(1);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -180,17 +183,43 @@ export function TgPlanner({
   const canComplete = editor.status === "published";
   const canEditDraft = canPublish && editable;
   const canEnterActual = canPublish && canComplete;
+  const availableProducts = useMemo(
+    () =>
+      products.filter((product) => !editor.productIds.includes(product.id)),
+    [editor.productIds, products],
+  );
+  const cancelledEvents = useMemo(
+    () =>
+      events
+        .filter((event) => event.status === "cancelled")
+        .sort((left, right) =>
+          (right.cancelledAt ?? right.updatedAt).localeCompare(
+            left.cancelledAt ?? left.updatedAt,
+          ),
+        ),
+    [events],
+  );
+  const cancelledEventPageCount = Math.max(
+    1,
+    Math.ceil(cancelledEvents.length / cancelledEventPageSize),
+  );
+  const safeCancelledEventPage = Math.min(
+    cancelledEventPage,
+    cancelledEventPageCount,
+  );
+  const visibleCancelledEvents = cancelledEvents.slice(
+    (safeCancelledEventPage - 1) * cancelledEventPageSize,
+    safeCancelledEventPage * cancelledEventPageSize,
+  );
 
   function beginNew() {
     setEditor(createEditor(endcaps, weekStart));
-    setProductToAddId("");
     setError(null);
     setNotice(null);
   }
 
   function selectEvent(event: CommercialEvent) {
     setEditor(editorFromEvent(event));
-    setProductToAddId("");
     setError(null);
     setNotice(null);
   }
@@ -202,15 +231,6 @@ export function TgPlanner({
     setEditor((current) => ({ ...current, [key]: value }));
     setError(null);
     setNotice(null);
-  }
-
-  function addProduct() {
-    if (!productToAddId || editor.productIds.includes(productToAddId)) {
-      return;
-    }
-
-    updateEditor("productIds", [...editor.productIds, productToAddId]);
-    setProductToAddId("");
   }
 
   async function submit(
@@ -393,16 +413,27 @@ export function TgPlanner({
           </CardContent>
         </Card>
 
-        {events.some((event) => event.status === "cancelled") ? (
+        {cancelledEvents.length > 0 ? (
           <details className="mt-4 rounded-xl border bg-card p-4">
             <summary className="cursor-pointer text-sm font-medium">
-              Opérations annulées
+              Opérations annulées ({cancelledEvents.length})
             </summary>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {events
-                .filter((event) => event.status === "cancelled")
-                .map((event) => (
+            <div className="mt-4 space-y-3">
+              <BoundedListPagination
+                ariaLabel="Pagination des opérations annulées"
+                currentPage={safeCancelledEventPage}
+                itemLabel="opération(s) annulée(s)"
+                onPageChange={setCancelledEventPage}
+                pageSize={cancelledEventPageSize}
+                totalItems={cancelledEvents.length}
+              />
+              <div
+                className="flex flex-wrap gap-2"
+                data-cancelled-event-page-size={cancelledEventPageSize}
+              >
+                {visibleCancelledEvents.map((event) => (
                   <Button
+                    data-cancelled-event-item
                     key={event.id}
                     onClick={() => selectEvent(event)}
                     size="sm"
@@ -412,6 +443,7 @@ export function TgPlanner({
                     {event.fixtureName} · {event.title}
                   </Button>
                 ))}
+              </div>
             </div>
           </details>
         ) : null}
@@ -523,40 +555,23 @@ export function TgPlanner({
             </div>
 
             <div className="space-y-2">
-              <Label>Produits</Label>
               {canEditDraft ? (
-                <div className="flex gap-2">
-                  <Select
-                    onValueChange={(value) => setProductToAddId(value ?? "")}
-                    value={productToAddId}
-                  >
-                    <SelectTrigger className="h-10 min-w-0 flex-1">
-                      <SelectValue placeholder="Choisir un produit">
-                        {productById.get(productToAddId)?.label ?? "Choisir un produit"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products
-                        .filter((product) => !editor.productIds.includes(product.id))
-                        .map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.label}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    aria-label="Ajouter le produit"
-                    disabled={!productToAddId}
-                    onClick={addProduct}
-                    size="icon"
-                    type="button"
-                    variant="outline"
-                  >
-                    <CirclePlus aria-hidden="true" />
-                  </Button>
-                </div>
+                <BoundedProductPicker
+                  actionLabel="Ajouter"
+                  collapseOnSelect={false}
+                  id="tg-product"
+                  label="Ajouter un produit"
+                  onSelect={(productId) =>
+                    updateEditor("productIds", [
+                      ...editor.productIds,
+                      productId,
+                    ])
+                  }
+                  products={availableProducts}
+                  selectedProductId=""
+                />
               ) : null}
+              <p className="text-sm font-medium">Produits sélectionnés</p>
               <div className="flex flex-wrap gap-2">
                 {editor.productIds.map((productId) => (
                   <Badge key={productId} variant="secondary">

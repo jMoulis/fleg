@@ -55,7 +55,8 @@
 | UX-LIST-03 | UX | Scalable filtered order-review workflow | P0 | UX-LIST-02, V3-06 |
 | UX-LIST-04 | UX | Searchable bounded allocation product selectors | P0 | UX-LIST-03, PREV3-03 |
 | UX-LIST-05 | UX | Scalable markdown capture and history | P0 | UX-LIST-04, MD-01 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-05, Mercalys access |
+| UX-LIST-06 | UX | Scalable TG product selection and cancelled history | P0 | UX-LIST-05, TG-01 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-06, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -217,6 +218,17 @@
 - observed-fact, missing-quantity, authorization, audit and data-revision
   semantics remain unchanged;
 - responsive browser acceptance covers selection, capture and history search.
+
+### UX-LIST-06
+
+- TG product search runs before pages of 10 available candidates;
+- selecting a result adds it directly and removes it from the available list;
+- cancelled operations are ordered by latest cancellation and paginated by 25;
+- the active calendar stays week-scoped and naturally bounded by authorized
+  endcaps and overlap constraints;
+- event lifecycle, product limits, authorization, audit and attachment semantics
+  remain unchanged;
+- responsive browser acceptance covers product addition and cancelled history.
 
 ### PILOT-01
 

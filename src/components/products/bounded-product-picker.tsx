@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 const defaultPageSize = 10;
 
 export function BoundedProductPicker({
+  actionLabel = "Sélectionner",
+  collapseOnSelect = true,
   disabled = false,
   id,
   label,
@@ -20,6 +22,8 @@ export function BoundedProductPicker({
   products,
   selectedProductId,
 }: {
+  actionLabel?: string;
+  collapseOnSelect?: boolean;
   disabled?: boolean;
   id: string;
   label: string;
@@ -135,7 +139,7 @@ export function BoundedProductPicker({
           const selected = product.id === selectedProductId;
           return (
             <button
-              aria-label={`Sélectionner ${product.label}`}
+              aria-label={`${actionLabel} ${product.label}`}
               aria-pressed={selected}
               className={cn(
                 "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
@@ -148,14 +152,20 @@ export function BoundedProductPicker({
                 onSelect(product.id);
                 setSearch("");
                 setPage(1);
-                setOpen(false);
+                if (collapseOnSelect) setOpen(false);
               }}
               type="button"
             >
               <span className="min-w-0 truncate font-medium">
                 {product.label}
               </span>
-              {selected ? <Check aria-hidden="true" /> : null}
+              {selected ? (
+                <Check aria-hidden="true" />
+              ) : (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {actionLabel}
+                </span>
+              )}
             </button>
           );
         })}

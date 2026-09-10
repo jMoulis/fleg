@@ -368,13 +368,21 @@ test("REL-02 publie une TG puis consigne une démarque", async ({
   const operationEditor = page.getByRole("complementary", {
     name: "Configuration de l'opération",
   });
-  await chooseFirstOption(
-    operationEditor.locator('[data-slot="select-trigger"]').nth(1),
-    page,
-  );
+  expect(
+    await operationEditor.locator("[data-product-picker-option]").count(),
+  ).toBeLessThanOrEqual(10);
   await operationEditor
-    .getByRole("button", { name: "Ajouter le produit" })
+    .getByRole("textbox", { name: "Ajouter un produit", exact: true })
+    .fill(markdownProduct.label);
+  await operationEditor
+    .getByRole("button", {
+      name: `Ajouter ${markdownProduct.label}`,
+      exact: true,
+    })
     .click();
+  await expect(
+    operationEditor.getByText(markdownProduct.label, { exact: true }),
+  ).toBeVisible();
   await page.locator("#tg-target-revenue").fill("250");
 
   const publishResponsePromise = page.waitForResponse(
@@ -397,6 +405,51 @@ test("REL-02 publie une TG puis consigne une démarque", async ({
   expect((await completeResponsePromise).status()).toBe(200);
   await expect(
     page.getByText("Résultats enregistrés et opération terminée."),
+  ).toBeVisible();
+
+  const cancelledWindow = isolatedFutureWindow();
+  await operationEditor
+    .getByRole("button", { name: "Créer une autre opération" })
+    .click();
+  await page.locator("#tg-title").fill(`Brouillon annulé ${marker}`);
+  await page.locator("#tg-theme").fill("Validation historique borné");
+  await page.locator("#tg-start").fill(cancelledWindow.startsOn);
+  await page.locator("#tg-end").fill(cancelledWindow.endsOn);
+  await operationEditor
+    .getByRole("textbox", { name: "Ajouter un produit", exact: true })
+    .fill(markdownProduct.label);
+  await operationEditor
+    .getByRole("button", {
+      name: `Ajouter ${markdownProduct.label}`,
+      exact: true,
+    })
+    .click();
+  const draftResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/commercial-events") &&
+      response.request().method() === "POST",
+  );
+  await operationEditor
+    .getByRole("button", { name: "Enregistrer", exact: true })
+    .click();
+  expect((await draftResponsePromise).status()).toBe(201);
+  const cancelResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/commercial-events/") &&
+      response.request().method() === "PATCH",
+  );
+  await operationEditor
+    .getByRole("button", { name: "Annuler ce brouillon" })
+    .click();
+  expect((await cancelResponsePromise).status()).toBe(200);
+  await page.getByText(/Opérations annulées \(\d+\)/).click();
+  expect(
+    await page.locator("[data-cancelled-event-item]").count(),
+  ).toBeLessThanOrEqual(25);
+  await expect(
+    page.getByRole("button", {
+      name: new RegExp(`Brouillon annulé ${marker}$`),
+    }),
   ).toBeVisible();
 
   await page.goto(`${storeBaseUrl}/markdown`);

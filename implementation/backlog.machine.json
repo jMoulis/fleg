@@ -1,5 +1,5 @@
 {
-  "version": "1.6",
+  "version": "1.7",
   "tickets": [
     {
       "id": "FND-01",
@@ -434,6 +434,20 @@
         "complete loaded-history summary with bounded visible lists",
         "unchanged observed facts missing quantities authorization audit and revisions",
         "responsive selection capture and history-search acceptance"
+      ]
+    },
+    {
+      "id": "UX-LIST-06",
+      "epic": "ux",
+      "title": "Scalable TG product selection and cancelled history",
+      "priority": "P0",
+      "acceptance": [
+        "product search before pages of ten available candidates",
+        "direct addition removes the selected product from candidates",
+        "cancelled operations ordered by cancellation and paginated by 25",
+        "active calendar remains naturally week and endcap bounded",
+        "unchanged lifecycle product limits authorization audit and attachments",
+        "responsive product addition and cancelled-history acceptance"
       ]
     },
     {

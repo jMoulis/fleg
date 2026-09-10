@@ -77,7 +77,14 @@ Replace the full-catalog markdown selectbox with a searchable picker of at most
 the existing observed-fact, audit and store-isolation contracts. The
 implementation contract is `implementation/25_MARKDOWN_LIST_UX.md`.
 
-### 8. PILOT-01 — instrumented single-store pilot
+### 8. UX-LIST-06 — scalable TG product selection and cancelled history
+
+Use the shared searchable product picker for TG composition and paginate the
+collapsed cancelled-event history by 25. Keep the active weekly calendar intact
+because it is already bounded by week, authorized endcaps and overlap rules.
+The implementation contract is `implementation/26_TG_LIST_UX.md`.
+
+### 9. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
@@ -101,6 +108,8 @@ The bridge to V4 is complete only when:
   catalog products;
 - markdown capture and history remain usable as products and observed facts
   accumulate;
+- TG product composition and cancelled history remain bounded as the catalog
+  and event history grow;
 - the pilot has enough observed data to identify real friction and evaluate the
   ordering assumptions;
 - the next roadmap is chosen from evidence rather than feature availability.
