@@ -43,6 +43,11 @@ brouillon versionné à contrôler avant toute modification physique du rayon.
 Les photos et observations de contexte documentent le terrain ; elles ne
 modifient jamais automatiquement la géométrie du plan.
 
+Dans une photothèque, la cible active est affichée avec sa description. Utiliser
+**Changer** pour rechercher un plan, un mobilier ou une opération par son nom ou
+sa description, puis la sélectionner. Seules les photos de cette cible sont
+alors présentées.
+
 ## TG : planifier une opération
 
 La rubrique **TG** nécessite un plan contenant au moins une tête de gondole.

@@ -13,6 +13,7 @@ import {
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { BoundedOptionPicker } from "@/components/ui/bounded-option-picker";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,13 +24,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import {
@@ -93,6 +87,15 @@ export function PhotoAttachmentManager({
       new Map(
         targets.map((option) => [attachmentTargetKey(option.target), option]),
       ),
+    [targets],
+  );
+  const targetPickerOptions = useMemo(
+    () =>
+      targets.map((option) => ({
+        id: attachmentTargetKey(option.target),
+        label: option.label,
+        description: option.description,
+      })),
     [targets],
   );
   const selectedTarget = targetByKey.get(selectedTargetKey) ?? null;
@@ -239,39 +242,22 @@ export function PhotoAttachmentManager({
         ) : (
           <>
             <div className="grid gap-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
-              <div className="space-y-2">
-                <Label htmlFor="attachment-target">Élément photographié</Label>
-                <Select
-                  onValueChange={(value) => {
-                    setSelectedTargetKey(value ?? "");
-                    setConfirmDeleteId(null);
-                    setError(null);
-                    setNotice(null);
-                  }}
-                  value={selectedTargetKey}
-                >
-                  <SelectTrigger id="attachment-target" className="w-full">
-                    <SelectValue placeholder="Choisir une cible">
-                      {selectedTarget?.label ?? "Choisir une cible"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {targets.map((option) => {
-                      const key = attachmentTargetKey(option.target);
-                      return (
-                        <SelectItem key={key} value={key}>
-                          {option.label}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {selectedTarget ? (
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    {selectedTarget.description}
-                  </p>
-                ) : null}
-              </div>
+              <BoundedOptionPicker
+                emptyMessage="Aucune cible ne correspond à cette recherche."
+                id="attachment-target"
+                itemLabel="cible(s)"
+                label="Élément photographié"
+                onSelect={(targetKey) => {
+                  setSelectedTargetKey(targetKey);
+                  setConfirmDeleteId(null);
+                  setError(null);
+                  setNotice(null);
+                }}
+                options={targetPickerOptions}
+                placeholder="Rechercher par nom ou description…"
+                selectedId={selectedTargetKey}
+                testIdPrefix="attachment-target-picker"
+              />
 
               {canWrite ? (
                 <div className="grid gap-4 sm:grid-cols-2">

@@ -98,7 +98,14 @@ searchable pages of 10, then paginate promotion and weather evidence separately
 by 25. Preserve the V3-05 observed-fact and missing-context model. The
 implementation contract is `implementation/28_CONTEXT_LIST_UX.md`.
 
-### 11. PILOT-01 — instrumented single-store pilot
+### 11. UX-LIST-09 — searchable photo target selection
+
+Use the shared bounded option picker for photo targets so historical TG
+operations and layout fixtures remain searchable without being rendered all at
+once. Keep PREV3-04 storage, authorization and retention unchanged. The
+implementation contract is `implementation/29_ATTACHMENT_TARGET_PICKER_UX.md`.
+
+### 12. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
@@ -126,6 +133,7 @@ The bridge to V4 is complete only when:
   accumulate;
 - TG product composition and cancelled history remain bounded as the catalog
   and event history grow;
+- photo targets remain searchable as TG and fixture histories grow;
 - the pilot has enough observed data to identify real friction and evaluate the
   ordering assumptions;
 - the next roadmap is chosen from evidence rather than feature availability.

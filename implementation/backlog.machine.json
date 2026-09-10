@@ -1,5 +1,5 @@
 {
-  "version": "1.9",
+  "version": "2.0",
   "tickets": [
     {
       "id": "FND-01",
@@ -476,6 +476,20 @@
         "daily coverage remains bounded by its selected date range",
         "unchanged observed facts missing context provenance authorization audit and revisions",
         "responsive selection contextual-join and history-bound acceptance"
+      ]
+    },
+    {
+      "id": "UX-LIST-09",
+      "epic": "ux",
+      "title": "Searchable bounded photo target selection",
+      "priority": "P0",
+      "acceptance": [
+        "explicit current photo target and description",
+        "label and description search before pages of ten targets",
+        "no photo target picker renders more than ten candidates",
+        "selected target gallery remains bounded by the server limit of twenty",
+        "unchanged validation authorization audit idempotency and deletion semantics",
+        "responsive TG target search and attached-photo acceptance"
       ]
     },
     {
