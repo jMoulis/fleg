@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
   output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   compress: true,
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/\\[organizationSlug\\]/stores/\\[storeId\\]/help": [
+      "./docs/user/*.md",
+    ],
+    "/\\[organizationSlug\\]/stores/\\[storeId\\]/help/\\[section\\]": [
+      "./docs/user/*.md",
+    ],
+  },
   async headers() {
     return [
       {
