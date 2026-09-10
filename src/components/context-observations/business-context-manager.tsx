@@ -8,10 +8,13 @@ import {
   CloudSun,
   LoaderCircle,
   Megaphone,
+  X,
 } from "lucide-react";
 
+import { BoundedProductPicker } from "@/components/products/bounded-product-picker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { BoundedListPagination } from "@/components/ui/bounded-list-pagination";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,6 +64,8 @@ const coverageLabels = {
   partial: "Partielle",
   unknown: "Inconnue",
 } as const;
+
+const contextHistoryPageSize = 25;
 
 function apiMessage(payload: unknown): string | null {
   if (
@@ -119,6 +124,11 @@ export function BusinessContextManager({
     () => new Map(products.map((product) => [product.id, product.label])),
     [products],
   );
+  const availableProducts = useMemo(
+    () =>
+      products.filter((product) => !selectedProductIds.includes(product.id)),
+    [products, selectedProductIds],
+  );
   const days = useMemo(
     () => [...initialView.days].reverse(),
     [initialView.days],
@@ -138,11 +148,15 @@ export function BusinessContextManager({
     [initialView.weatherObservations],
   );
 
-  function toggleProduct(productId: string) {
+  function addProduct(productId: string) {
     setSelectedProductIds((current) =>
-      current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [...current, productId],
+      current.includes(productId) ? current : [...current, productId],
+    );
+  }
+
+  function removeProduct(productId: string) {
+    setSelectedProductIds((current) =>
+      current.filter((id) => id !== productId),
     );
   }
 
@@ -418,21 +432,41 @@ export function BusinessContextManager({
                         Aucun produit disponible. Importez d’abord les ventes.
                       </p>
                     ) : (
-                      <div className="grid max-h-44 gap-2 overflow-y-auto sm:grid-cols-2">
-                        {products.map((product) => (
-                          <label
-                            className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm hover:bg-muted"
-                            key={product.id}
-                          >
-                            <input
-                              checked={selectedProductIds.includes(product.id)}
-                              className="size-4 accent-primary"
-                              onChange={() => toggleProduct(product.id)}
-                              type="checkbox"
-                            />
-                            <span>{product.label}</span>
-                          </label>
-                        ))}
+                      <div className="space-y-3">
+                        <BoundedProductPicker
+                          actionLabel="Ajouter"
+                          collapseOnSelect={false}
+                          disabled={selectedProductIds.length >= 50}
+                          id="promotion-product"
+                          label="Ajouter un produit concerné"
+                          onSelect={addProduct}
+                          products={availableProducts}
+                          selectedProductId=""
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {selectedProductIds.length} / 50 produit(s) sélectionné(s)
+                        </p>
+                        {selectedProductIds.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedProductIds.map((productId) => {
+                              const productLabel =
+                                productById.get(productId) ??
+                                "Produit indisponible";
+                              return (
+                                <Badge key={productId} variant="secondary">
+                                  {productLabel}
+                                  <button
+                                    aria-label={`Retirer ${productLabel}`}
+                                    onClick={() => removeProduct(productId)}
+                                    type="button"
+                                  >
+                                    <X aria-hidden="true" className="size-3" />
+                                  </button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </fieldset>
@@ -655,9 +689,14 @@ export function BusinessContextManager({
       </section>
 
       <section aria-label="Provenance des observations" className="grid gap-6 xl:grid-cols-2">
-        <EvidenceHistory title="Preuves promotionnelles" empty="Aucune observation promotionnelle sur cette plage.">
-          {promotions.map((observation) => (
-            <li className="py-3 first:pt-0 last:pb-0" key={observation.id}>
+        <EvidenceHistory
+          empty="Aucune observation promotionnelle sur cette plage."
+          entries={promotions.map((observation) => (
+            <li
+              className="py-3 first:pt-0 last:pb-0"
+              data-context-history-item
+              key={observation.id}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium">
                   {observation.state === "none" ? "Aucune promotion" : observation.label}
@@ -674,10 +713,17 @@ export function BusinessContextManager({
               </p>
             </li>
           ))}
-        </EvidenceHistory>
-        <EvidenceHistory title="Preuves météo" empty="Aucune observation météo sur cette plage.">
-          {weather.map((observation) => (
-            <li className="py-3 first:pt-0 last:pb-0" key={observation.id}>
+          testId="promotion"
+          title="Preuves promotionnelles"
+        />
+        <EvidenceHistory
+          empty="Aucune observation météo sur cette plage."
+          entries={weather.map((observation) => (
+            <li
+              className="py-3 first:pt-0 last:pb-0"
+              data-context-history-item
+              key={observation.id}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium">{weatherConditionLabels[observation.condition]}</p>
                 <Badge variant="outline">{formattedDate(observation.businessDate)}</Badge>
@@ -692,7 +738,9 @@ export function BusinessContextManager({
               </p>
             </li>
           ))}
-        </EvidenceHistory>
+          testId="weather"
+          title="Preuves météo"
+        />
       </section>
     </div>
   );
@@ -708,25 +756,57 @@ function EvidenceMetric({ label, value }: { label: string; value: string }) {
 }
 
 function EvidenceHistory({
-  children,
   empty,
+  entries,
+  testId,
   title,
 }: {
-  children: ReactNode;
   empty: string;
+  entries: ReactNode[];
+  testId: "promotion" | "weather";
   title: string;
 }) {
-  const entries = Array.isArray(children) ? children : [children];
-  const hasEntries = entries.some(Boolean);
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(entries.length / contextHistoryPageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleEntries = entries.slice(
+    (safePage - 1) * contextHistoryPageSize,
+    safePage * contextHistoryPageSize,
+  );
   return (
-    <Card>
+    <Card data-context-history={testId}>
       <CardHeader className="border-b">
         <CardTitle>{title}</CardTitle>
         <CardDescription>Historique immuable avec provenance explicite.</CardDescription>
       </CardHeader>
-      <CardContent>
-        {hasEntries ? (
-          <ul className="divide-y">{children}</ul>
+      <CardContent className="space-y-4">
+        {entries.length > 0 ? (
+          <>
+            <BoundedListPagination
+              ariaLabel={`Pagination — ${title}`}
+              currentPage={safePage}
+              itemLabel="preuve(s)"
+              onPageChange={setPage}
+              pageSize={contextHistoryPageSize}
+              totalItems={entries.length}
+            />
+            <ul
+              className="divide-y"
+              data-context-history-page-size={contextHistoryPageSize}
+            >
+              {visibleEntries}
+            </ul>
+            <div className="border-t pt-4">
+              <BoundedListPagination
+                ariaLabel={`Pagination en bas — ${title}`}
+                currentPage={safePage}
+                itemLabel="preuve(s)"
+                onPageChange={setPage}
+                pageSize={contextHistoryPageSize}
+                totalItems={entries.length}
+              />
+            </div>
+          </>
         ) : (
           <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed px-6 text-center text-sm text-muted-foreground">
             {empty}

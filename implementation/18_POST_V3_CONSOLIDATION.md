@@ -91,7 +91,14 @@ experiment wizard, then search and paginate each lifecycle category by 25.
 Keep the complete experiment workflow and evidence model unchanged. The
 implementation contract is `implementation/27_EXPERIMENT_LIST_UX.md`.
 
-### 10. PILOT-01 — instrumented single-store pilot
+### 10. UX-LIST-08 — scalable context selection and evidence histories
+
+Replace the complete promotion-product checklist with direct additions from
+searchable pages of 10, then paginate promotion and weather evidence separately
+by 25. Preserve the V3-05 observed-fact and missing-context model. The
+implementation contract is `implementation/28_CONTEXT_LIST_UX.md`.
+
+### 11. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
@@ -111,6 +118,8 @@ The bridge to V4 is complete only when:
 - the product matrix remains navigable with hundreds of filtered products;
 - order review remains actionable with hundreds of calculated and unavailable
   lines;
+- context capture remains usable with hundreds of product records and
+  accumulated observations;
 - allocation and product-constraint selection remains usable with hundreds of
   catalog products;
 - markdown capture and history remain usable as products and observed facts
