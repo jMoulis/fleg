@@ -67,6 +67,13 @@ Les observations de promotion et de météo sont conservées comme contexte et
 preuves. Dans la version actuelle, elles n'alimentent pas encore le calcul des
 prévisions ou des recommandations.
 
+Dans **Contexte**, une promotion active peut concerner jusqu’à 50 articles.
+Rechercher chaque article par son nom et l’ajouter depuis les résultats ; les
+articles retenus restent visibles et retirables avant l’enregistrement. Les
+historiques promotionnel et météo sont paginés séparément par 25 preuves. Un
+jour non renseigné reste inconnu ; choisir explicitement **Aucune promotion**
+est un constat différent.
+
 ## Décider une recommandation
 
 Les recommandations peuvent notamment proposer de pousser, réduire, maintenir,

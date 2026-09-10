@@ -49,7 +49,9 @@ Before extending the learning network, complete the bridge defined in
    operations;
 9. `UX-LIST-07` — searchable, bounded experiment inputs and paginated lifecycle
    histories;
-10. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
+10. `UX-LIST-08` — searchable promotion composition and paginated contextual
+    evidence histories;
+11. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
    access and real daily exports.
 
 No unavailable operational observation may be replaced with synthetic pilot

@@ -57,7 +57,8 @@
 | UX-LIST-05 | UX | Scalable markdown capture and history | P0 | UX-LIST-04, MD-01 |
 | UX-LIST-06 | UX | Scalable TG product selection and cancelled history | P0 | UX-LIST-05, TG-01 |
 | UX-LIST-07 | UX | Scalable experiment selectors and history | P0 | UX-LIST-06, EXP-02 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-07, Mercalys access |
+| UX-LIST-08 | UX | Scalable context product selection and evidence histories | P0 | UX-LIST-07, V3-05 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-08, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -242,6 +243,18 @@
   unchanged;
 - responsive browser acceptance covers product selection, lifecycle completion
   and list search.
+
+### UX-LIST-08
+
+- promotion product search runs before pages of 10 available candidates;
+- selecting a product adds it directly, removes it from candidates and keeps it
+  individually removable;
+- promotion and weather histories are independently paginated by 25 while the
+  daily coverage remains date-range bounded;
+- observed-fact, missing-context, provenance, authorization, audit and data
+  revision semantics remain unchanged;
+- responsive browser acceptance covers product selection, contextual joins and
+  bounded evidence histories.
 
 ### PILOT-01
 

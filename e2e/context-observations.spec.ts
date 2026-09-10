@@ -124,6 +124,21 @@ test("V3-05 joint des preuves promotionnelles et météo sans combler les absenc
   await expect(
     page.getByRole("heading", { name: "Météo observée" }),
   ).toBeVisible();
+  expect(
+    await page.locator("[data-product-picker-option]").count(),
+  ).toBeLessThanOrEqual(10);
+  await page
+    .getByRole("textbox", { name: "Ajouter un produit concerné" })
+    .fill(product.label);
+  await page
+    .getByRole("button", { name: `Ajouter ${product.label}`, exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: `Retirer ${product.label}`,
+      exact: true,
+    }),
+  ).toBeVisible();
   await page.getByLabel("Date métier").first().fill(businessDate);
   await page.getByRole("combobox", { name: "Constat" }).click();
   await page.getByRole("option", { name: "Aucune promotion" }).click();
@@ -241,4 +256,14 @@ test("V3-05 joint des preuves promotionnelles et météo sans combler les absenc
   await expect(
     page.getByText(`Mise en avant V3-05 ${projectName}`).first(),
   ).toBeVisible();
+  expect(
+    await page
+      .locator('[data-context-history="promotion"] [data-context-history-item]')
+      .count(),
+  ).toBeLessThanOrEqual(25);
+  expect(
+    await page
+      .locator('[data-context-history="weather"] [data-context-history-item]')
+      .count(),
+  ).toBeLessThanOrEqual(25);
 });

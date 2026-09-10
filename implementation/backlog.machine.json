@@ -1,5 +1,5 @@
 {
-  "version": "1.8",
+  "version": "1.9",
   "tickets": [
     {
       "id": "FND-01",
@@ -462,6 +462,20 @@
         "linked operation remains explicit replaceable and removable",
         "unchanged lifecycle evaluation authorization and audit semantics",
         "responsive selection lifecycle and history-search acceptance"
+      ]
+    },
+    {
+      "id": "UX-LIST-08",
+      "epic": "ux",
+      "title": "Scalable context product selection and evidence histories",
+      "priority": "P0",
+      "acceptance": [
+        "promotion product search before pages of ten candidates",
+        "direct addition removes selected products and keeps them removable",
+        "promotion and weather histories independently paginated by 25",
+        "daily coverage remains bounded by its selected date range",
+        "unchanged observed facts missing context provenance authorization audit and revisions",
+        "responsive selection contextual-join and history-bound acceptance"
       ]
     },
     {
