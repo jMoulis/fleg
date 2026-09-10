@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { productMatrixQuerySchema } from "@/domain/products/schemas";
 import { formatMoney, formatQuantity, formatRatio } from "@/lib/formatting";
 import { requireStoreContext } from "@/server/auth/store-context";
@@ -26,8 +27,11 @@ interface ProductsPageProps {
     abc?: string;
     xyz?: string;
     sort?: string;
+    page?: string;
   }>;
 }
+
+const productPageSize = 25;
 
 const recommendationLabels = {
   PUSH: "Pousser",
@@ -59,10 +63,11 @@ export default async function ProductsPage({
       </main>
     );
   }
+  const periodKey = dashboard.periodKey;
 
   const [metrics, recommendations, xyzAnalysis] = await Promise.all([
-    getProductMetrics(context, dashboard.periodKey),
-    getRecommendations(context, dashboard.periodKey),
+    getProductMetrics(context, periodKey),
+    getRecommendations(context, periodKey),
     getTrueXyzAnalysis(context, {}),
   ]);
   const recommendationByProduct = new Map(
@@ -72,7 +77,7 @@ export default async function ProductsPage({
     xyzAnalysis.products.map((result) => [result.productId, result]),
   );
   const normalizedSearch = query.q.toLocaleLowerCase("fr-FR");
-  const products = metrics.products
+  const filteredProducts = metrics.products
     .filter(
       (product) =>
         (!normalizedSearch ||
@@ -95,6 +100,31 @@ export default async function ProductsPage({
           return b.revenueCents - a.revenueCents;
       }
     });
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / productPageSize),
+  );
+  const currentPage = Math.min(query.page, totalPages);
+  const products = filteredProducts.slice(
+    (currentPage - 1) * productPageSize,
+    currentPage * productPageSize,
+  );
+  const matrixPath = `/${organizationSlug}/stores/${storeId}/products`;
+
+  function pageHref(page: number): string {
+    const nextQuery = new URLSearchParams({
+      period: periodKey,
+      sort: query.sort,
+    });
+    if (query.q) nextQuery.set("q", query.q);
+    if (query.abc) nextQuery.set("abc", query.abc);
+    if (query.xyz) nextQuery.set("xyz", query.xyz);
+    if (page > 1) nextQuery.set("page", String(page));
+    return `${matrixPath}?${nextQuery.toString()}`;
+  }
+
+  const previousHref = currentPage > 1 ? pageHref(currentPage - 1) : null;
+  const nextHref = currentPage < totalPages ? pageHref(currentPage + 1) : null;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -102,7 +132,7 @@ export default async function ProductsPage({
         <p className="text-sm font-semibold text-primary">Matrice de décision</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em]">Produits</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {products.length} produit(s) · période {dashboard.periodKey}
+          {filteredProducts.length} produit(s) · période {periodKey}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           XYZ réel sur {xyzAnalysis.config.windowWeeks} semaines candidates · au moins {xyzAnalysis.config.minimumCompleteWeeks} semaines complètes · données au {xyzAnalysis.asOf}
@@ -110,7 +140,7 @@ export default async function ProductsPage({
       </div>
 
       <form className="mt-6 grid gap-3 rounded-2xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]" method="get">
-        <input type="hidden" name="period" value={dashboard.periodKey} />
+        <input type="hidden" name="period" value={periodKey} />
         <label className="grid gap-1 text-xs font-medium text-muted-foreground">
           Recherche
           <input
@@ -153,7 +183,7 @@ export default async function ProductsPage({
         </button>
       </form>
 
-      {products.length === 0 ? (
+      {filteredProducts.length === 0 ? (
         <Card className="mt-6">
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
             Aucun produit ne correspond à ces filtres.
@@ -161,14 +191,30 @@ export default async function ProductsPage({
         </Card>
       ) : (
         <>
-          <div className="mt-6 space-y-3 md:hidden">
+          <div className="mt-6">
+            <ListPagination
+              ariaLabel="Pagination des produits avant la liste"
+              currentPage={currentPage}
+              itemLabel="produits"
+              nextHref={nextHref}
+              pageSize={productPageSize}
+              previousHref={previousHref}
+              totalItems={filteredProducts.length}
+              totalPages={totalPages}
+            />
+          </div>
+
+          <div
+            className="mt-4 space-y-3 md:hidden"
+            data-product-page-size={productPageSize}
+          >
             {products.map((product) => {
               const recommendation = recommendationByProduct.get(product.productId);
               const xyz = xyzByProduct.get(product.productId);
               return (
                 <Link
                   key={product.productId}
-                  href={`/${organizationSlug}/stores/${storeId}/products/${product.productId}?period=${dashboard.periodKey}`}
+                  href={`/${organizationSlug}/stores/${storeId}/products/${product.productId}?period=${periodKey}`}
                   className="block rounded-2xl border bg-card p-4 shadow-xs"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -195,9 +241,12 @@ export default async function ProductsPage({
             })}
           </div>
 
-          <div className="mt-6 hidden overflow-x-auto rounded-2xl border bg-card md:block">
+          <div
+            className="mt-4 hidden overflow-x-auto rounded-2xl border bg-card md:block"
+            data-product-page-size={productPageSize}
+          >
             <table className="w-full min-w-[62rem] border-collapse text-sm">
-              <caption className="sr-only">Matrice des produits pour {dashboard.periodKey}</caption>
+              <caption className="sr-only">Matrice des produits pour {periodKey}</caption>
               <thead className="bg-muted/60 text-left text-xs text-muted-foreground">
                 <tr>
                   <th className="sticky left-0 z-10 bg-muted px-4 py-3 font-medium">Produit</th>
@@ -219,7 +268,7 @@ export default async function ProductsPage({
                   return (
                     <tr key={product.productId} className="border-t hover:bg-muted/35">
                       <th className="sticky left-0 z-10 bg-card px-4 py-3 text-left font-medium">
-                        <Link className="hover:text-primary hover:underline" href={`/${organizationSlug}/stores/${storeId}/products/${product.productId}?period=${dashboard.periodKey}`}>
+                        <Link className="hover:text-primary hover:underline" href={`/${organizationSlug}/stores/${storeId}/products/${product.productId}?period=${periodKey}`}>
                           {product.label}
                         </Link>
                       </th>
@@ -244,6 +293,19 @@ export default async function ProductsPage({
                 })}
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-4">
+            <ListPagination
+              ariaLabel="Pagination des produits après la liste"
+              currentPage={currentPage}
+              itemLabel="produits"
+              nextHref={nextHref}
+              pageSize={productPageSize}
+              previousHref={previousHref}
+              totalItems={filteredProducts.length}
+              totalPages={totalPages}
+            />
           </div>
         </>
       )}

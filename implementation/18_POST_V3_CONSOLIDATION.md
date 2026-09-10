@@ -48,7 +48,15 @@ and configuration views, bounding visible product cards and keeping draft
 actions reachable. The implementation contract is
 `implementation/21_INVENTORY_LIST_UX.md`.
 
-### 4. PILOT-01 — instrumented single-store pilot
+### 4. UX-LIST-02 — scalable product matrix
+
+Bound the next already observed high-cardinality view before the pilot. Apply
+the existing product search, filters and sort before URL-backed pages of 25,
+while preserving the separate mobile-card and desktop-table representations.
+The implementation contract is
+`implementation/22_PRODUCT_MATRIX_LIST_UX.md`.
+
+### 5. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
@@ -65,6 +73,7 @@ The bridge to V4 is complete only when:
 - the repository cleanup is merged with no regression;
 - the user guide matches the production interface;
 - the inventory workflow remains usable with hundreds of product records;
+- the product matrix remains navigable with hundreds of filtered products;
 - the pilot has enough observed data to identify real friction and evaluate the
   ordering assumptions;
 - the next roadmap is chosen from evidence rather than feature availability.

@@ -27,4 +27,5 @@ export const productMatrixQuerySchema = z.object({
   sort: z
     .enum(["revenue_desc", "margin_desc", "forecast_desc", "label_asc"])
     .default("revenue_desc"),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
 });

@@ -15,6 +15,11 @@ tri. La matrice présente selon les données disponibles :
 - prévision mensuelle et niveau de confiance ;
 - recommandation actuelle.
 
+La matrice affiche 25 articles par page. Les commandes placées au-dessus et en
+dessous de la liste permettent de changer de page sans perdre la période, la
+recherche, les filtres ou le tri. Modifier puis appliquer un filtre ramène
+automatiquement à la première page des nouveaux résultats.
+
 Lorsqu'aucun article n'apparaît, vérifier d'abord qu'un import a été validé pour
 le magasin et la période. Une valeur absente ne doit pas être interprétée comme
 une vente nulle.
