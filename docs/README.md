@@ -20,6 +20,7 @@ le parcours correspondant au travail à réaliser :
 5. [Tracer les décisions et utiliser le Copilote](./user/05_DECISIONS_AND_COPILOT.md)
 6. [Administrer l'organisation et les magasins](./user/06_ADMINISTRATION.md)
 7. [Consulter le glossaire et résoudre un problème](./user/07_GLOSSARY_AND_TROUBLESHOOTING.md)
+8. [Suivre la checklist terrain du pilote bêta](./user/08_PILOT_BETA_CHECKLIST.md)
 
 Cette première édition est volontairement textuelle. Les captures d'écran
 seront ajoutées avec les données du pilote réel afin de ne pas documenter des

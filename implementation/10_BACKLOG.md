@@ -275,4 +275,7 @@
 - available historical daily exports are backfilled, targeting 8 complete weeks for true XYZ and 12 for weekday forecasting;
 - daily coverage, import time, count time, suggestion availability, manager overrides, markdown and availability evidence are measured;
 - order assumptions, especially morning residual stock and exclusion of the current-day arrival, are tested against observed practice;
+- the beta operator follows a repeatable daily checklist and supplies a weekly
+  report that separates data defects, business-model assumptions, UX friction
+  and missing capabilities;
 - only observed pilot friction can reprioritize the V4 learning roadmap; supplier execution remains out of scope.
