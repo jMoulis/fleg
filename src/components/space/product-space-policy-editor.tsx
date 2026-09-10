@@ -2,17 +2,22 @@
 
 import { useMemo, useState } from "react";
 import {
+  Check,
   CircleAlert,
   LoaderCircle,
   PackageCheck,
   Save,
+  Search,
   Trash2,
 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { BoundedListPagination } from "@/components/ui/bounded-list-pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -56,6 +61,8 @@ function normalizePolicies(policies: ProductSpacePolicy[]) {
     .sort((first, second) => first.productId.localeCompare(second.productId));
 }
 
+const productPickerPageSize = 10;
+
 export function ProductSpacePolicyEditor({
   storeId,
   products,
@@ -69,6 +76,8 @@ export function ProductSpacePolicyEditor({
   const [selectedProductId, setSelectedProductId] = useState(
     products[0]?.id ?? "",
   );
+  const [productSearch, setProductSearch] = useState("");
+  const [productPage, setProductPage] = useState(1);
   const [idempotencyKey, setIdempotencyKey] = useState(() =>
     crypto.randomUUID(),
   );
@@ -82,6 +91,27 @@ export function ProductSpacePolicyEditor({
   const selectedPolicy =
     policies.find((policy) => policy.productId === selectedProductId) ??
     defaultPolicy(selectedProductId);
+  const normalizedProductSearch = productSearch
+    .trim()
+    .toLocaleLowerCase("fr-FR");
+  const filteredProducts = products
+    .filter(
+      (product) =>
+        !normalizedProductSearch ||
+        product.label
+          .toLocaleLowerCase("fr-FR")
+          .includes(normalizedProductSearch),
+    )
+    .sort((first, second) => first.label.localeCompare(second.label, "fr"));
+  const productPageCount = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / productPickerPageSize),
+  );
+  const safeProductPage = Math.min(productPage, productPageCount);
+  const visibleProducts = filteredProducts.slice(
+    (safeProductPage - 1) * productPickerPageSize,
+    safeProductPage * productPickerPageSize,
+  );
   const normalizedPolicies = normalizePolicies(policies);
   const dirty =
     JSON.stringify(normalizedPolicies) !==
@@ -213,38 +243,89 @@ export function ProductSpacePolicyEditor({
         ) : null}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_1fr]">
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Produit à configurer</p>
-            <Select
-              disabled={!canWrite || products.length === 0}
-              onValueChange={(value) => {
-                setSelectedProductId(value ?? "");
-                setError(null);
-                setNotice(null);
-              }}
-              value={selectedProductId}
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="policy-product-search">
+                Produit à configurer
+              </Label>
+              <div className="relative">
+                <Search
+                  aria-hidden="true"
+                  className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  disabled={!canWrite || products.length === 0}
+                  id="policy-product-search"
+                  onChange={(event) => {
+                    setProductSearch(event.target.value);
+                    setProductPage(1);
+                  }}
+                  placeholder="Nom du produit…"
+                  className="pl-9"
+                  value={productSearch}
+                />
+              </div>
+            </div>
+            <BoundedListPagination
+              ariaLabel="Pagination des produits à configurer"
+              currentPage={safeProductPage}
+              itemLabel="produit(s)"
+              onPageChange={setProductPage}
+              pageSize={productPickerPageSize}
+              totalItems={filteredProducts.length}
+            />
+            <div
+              className="max-h-80 divide-y overflow-y-auto rounded-lg border"
+              data-policy-product-page-size={productPickerPageSize}
             >
-              <SelectTrigger
-                aria-label="Produit à configurer"
-                className="w-full"
-              >
-                <SelectValue placeholder="Choisir un produit">
-                  {productById.get(selectedProductId)?.label ??
-                    "Choisir un produit"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {visibleProducts.map((product) => {
+                const selected = product.id === selectedProductId;
+                const configured = policies.some(
+                  (policy) => policy.productId === product.id,
+                );
+                return (
+                  <button
+                    aria-label={`Configurer ${product.label}`}
+                    aria-pressed={selected}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
+                      selected && "bg-primary/10 text-primary",
+                    )}
+                    data-policy-product-option
+                    disabled={!canWrite}
+                    key={product.id}
+                    onClick={() => {
+                      setSelectedProductId(product.id);
+                      setError(null);
+                      setNotice(null);
+                    }}
+                    type="button"
+                  >
+                    <span className="min-w-0 truncate font-medium">
+                      {product.label}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1">
+                      {configured ? (
+                        <Badge variant="secondary">Configuré</Badge>
+                      ) : null}
+                      {selected ? <Check aria-hidden="true" /> : null}
+                    </span>
+                  </button>
+                );
+              })}
+              {visibleProducts.length === 0 ? (
+                <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  Aucun produit ne correspond à cette recherche.
+                </p>
+              ) : null}
+            </div>
           </div>
 
           {selectedProductId ? (
             <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
+              <p className="font-semibold">
+                {productById.get(selectedProductId)?.label}
+              </p>
               <label className="flex cursor-pointer items-start gap-3 text-sm">
                 <input
                   checked={selectedPolicy.mustStock}

@@ -28,6 +28,14 @@ Le plan d'allocation permet d'associer des articles aux modules ou tablettes,
 de renseigner le facing, de verrouiller une position et de poser des contraintes
 de capacité, de présence obligatoire, de compatibilité ou de facing minimal.
 
+Pour configurer une contrainte, rechercher l'article puis le sélectionner dans
+les résultats paginés. Pour une allocation manuelle, choisir d'abord le niveau,
+rechercher l'article dans **Ajouter un produit**, puis utiliser le bouton
+**Ajouter** de sa ligne. La liste ne propose que les articles compatibles qui ne
+sont pas déjà présents sur ce niveau. Les indicateurs de CA, marge après
+démarque, classe ABC et présence obligatoire aident à contrôler le choix ; une
+donnée absente reste affichée comme telle.
+
 **Préparer une proposition** lance une heuristique déterministe, pas le
 Copilote. La proposition affiche ses preuves et ses limites, puis reste un
 brouillon versionné à contrôler avant toute modification physique du rayon.
