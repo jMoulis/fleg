@@ -65,8 +65,3 @@ export async function getAppDb(): Promise<Db> {
   await globalThis.flFoundationIndexesPromise;
   return db;
 }
-
-export async function pingMongo(): Promise<void> {
-  const client = await getMongoClient();
-  await client.db("admin").command({ ping: 1 });
-}

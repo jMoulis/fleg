@@ -67,8 +67,6 @@ export const storeCopilotRequestSchema = z
       });
     }
   });
-export type StoreCopilotRequest = z.infer<typeof storeCopilotRequestSchema>;
-
 export const networkCopilotRequestSchema = z
   .object({
     storeIds: z
@@ -91,10 +89,6 @@ export const networkCopilotRequestSchema = z
       });
     }
   });
-export type NetworkCopilotRequest = z.infer<
-  typeof networkCopilotRequestSchema
->;
-
 export const copilotToolTraceSchema = z
   .object({
     tool: storeCopilotToolNameSchema,
@@ -131,10 +125,6 @@ export type StoreCopilotResult = z.infer<typeof storeCopilotResultSchema>;
 export const storeCopilotResponseSchema = storeCopilotResultSchema.extend({
   requestId: z.uuid(),
 });
-export type StoreCopilotResponse = z.infer<
-  typeof storeCopilotResponseSchema
->;
-
 export const networkCopilotResultSchema = z
   .object({
     answer: z.string().trim().min(1).max(20_000),
@@ -148,10 +138,6 @@ export type NetworkCopilotResult = z.infer<typeof networkCopilotResultSchema>;
 export const networkCopilotResponseSchema = networkCopilotResultSchema.extend({
   requestId: z.uuid(),
 });
-export type NetworkCopilotResponse = z.infer<
-  typeof networkCopilotResponseSchema
->;
-
 export const copilotModelFunctionCallSchema = z
   .object({
     type: z.literal("function_call"),

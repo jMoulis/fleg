@@ -8,14 +8,6 @@ import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 import { getAppDb, getMongoClient } from "@/server/db/mongo-client";
 import { RecommendationFollowUpRepository } from "@/server/repositories/recommendation-follow-up-repository";
 
-export async function listRecommendationFollowUps(
-  context: AuthorizedStoreContext,
-) {
-  return new RecommendationFollowUpRepository(
-    await getAppDb(),
-  ).listForStore(context);
-}
-
 export async function scheduleRecommendationFollowUp(input: {
   context: AuthorizedStoreContext;
   decisionId: string;

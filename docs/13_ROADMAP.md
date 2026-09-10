@@ -31,6 +31,20 @@ capabilities already delivered.
 The additive data and delivery contract is documented in
 `docs/22_GRANULAR_OPERATIONS_V3.md`.
 
+## Post-V3 consolidation and pilot gate
+
+Before extending the learning network, complete the bridge defined in
+`implementation/18_POST_V3_CONSOLIDATION.md`:
+
+1. `HARD-02` — behavior-preserving dead-code and repository-hygiene audit;
+2. `DOC-01` — documentation hub and French user guide;
+3. `PILOT-01` — instrumented single-store pilot, waiting for restored Mercalys
+   access and real daily exports.
+
+No unavailable operational observation may be replaced with synthetic pilot
+evidence. V4 priorities are adjusted only from observed pilot friction and
+outcomes.
+
 ## V4 Learning network
 Calibrated location coefficients, comparable-store benchmarks, control-store/difference-in-differences experiment evaluation, experiment-derived location/family response learning, recommendation outcome learning.
 

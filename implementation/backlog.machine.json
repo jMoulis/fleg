@@ -339,6 +339,46 @@
         "explicit authorized approval with reasons for case-count overrides",
         "no automatic supplier order"
       ]
+    },
+    {
+      "id": "HARD-02",
+      "epic": "hardening",
+      "title": "Dead-code audit and repository hygiene",
+      "priority": "P1",
+      "acceptance": [
+        "TypeScript unused-local and unused-parameter gates",
+        "Next.js-aware unused file export and dependency audit",
+        "only reviewed unreachable code removed",
+        "no intentional API schema or business behavior change",
+        "full quality build and browser acceptance suites"
+      ]
+    },
+    {
+      "id": "DOC-01",
+      "epic": "documentation",
+      "title": "Documentation hub and French user guide",
+      "priority": "P1",
+      "acceptance": [
+        "audience-oriented documentation index",
+        "French guides for core store and administration workflows",
+        "permissions evidence confidence and missing-data states explained",
+        "delivered stack commands navigation and feature status reconciled",
+        "representative screenshots deferred until pilot data exists"
+      ]
+    },
+    {
+      "id": "PILOT-01",
+      "epic": "product_validation",
+      "title": "Instrumented single-store operational pilot",
+      "priority": "P0",
+      "acceptance": [
+        "execution waits for restored Mercalys access",
+        "named store owner dates and frozen baseline",
+        "historical daily backfill targets eight to twelve complete weeks",
+        "workflow time data coverage suggestions overrides markdown and availability measured",
+        "morning stock and current-day arrival assumptions tested against observed practice",
+        "pilot evidence informs V4 without automatic supplier execution"
+      ]
     }
   ]
 }

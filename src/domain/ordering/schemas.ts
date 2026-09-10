@@ -30,10 +30,6 @@ export const orderSuggestionConfigSchema = z
     configurationVersion: z.string().min(1),
   })
   .strict();
-export type OrderSuggestionConfig = z.infer<
-  typeof orderSuggestionConfigSchema
->;
-
 export const defaultOrderSuggestionConfig = orderSuggestionConfigSchema.parse({
   targetClosingStockRatio: 0,
   cutoffLocalTime: "09:30",
@@ -123,10 +119,6 @@ export const orderSuggestionDecisionLineSchema = z
     overrideReason: z.string().trim().min(3).max(500).nullable(),
   })
   .strict();
-export type OrderSuggestionDecisionLine = z.infer<
-  typeof orderSuggestionDecisionLineSchema
->;
-
 export const orderSuggestionDecisionSchema = z
   .object({
     approvedBy: z.string().min(1),

@@ -6,5 +6,3 @@ export const apiErrorSchema = z.object({
   fieldErrors: z.record(z.string(), z.array(z.string())).optional(),
   requestId: z.uuid(),
 });
-
-export type ApiError = z.infer<typeof apiErrorSchema>;

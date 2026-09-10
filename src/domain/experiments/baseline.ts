@@ -90,10 +90,6 @@ export const baselineWarningCodeSchema = z.enum([
   "CONTROL_PERIOD_DATA_INCOMPLETE",
   "NO_ELIGIBLE_CONTROL_STORE",
 ]);
-export type BaselineWarningCode = z.infer<
-  typeof baselineWarningCodeSchema
->;
-
 export const baselineWarningSchema = z.object({
   code: baselineWarningCodeSchema,
   severity: z.enum(["info", "warning", "blocking"]),
@@ -117,10 +113,6 @@ export const comparableBaselineWindowSchema = z.object({
   product: baselineAggregateSchema,
   trendControlRevenueCents: z.number().int().safe(),
 });
-export type ComparableBaselineWindow = z.infer<
-  typeof comparableBaselineWindowSchema
->;
-
 export const controlStoreBaselineEvidenceSchema = z.object({
   storeId: z.string().regex(/^[a-f\d]{24}$/i),
   storeName: z.string().min(1),
@@ -135,10 +127,6 @@ export const controlStoreBaselineEvidenceSchema = z.object({
   change: baselineAggregateSchema.nullable(),
   evidencePeriodKeys: z.array(periodKeySchema),
 });
-export type ControlStoreBaselineEvidence = z.infer<
-  typeof controlStoreBaselineEvidenceSchema
->;
-
 export const controlComparisonSchema = z.object({
   method: z.enum(["control_store", "difference_in_differences"]),
   requestedStoreIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).min(1),
@@ -152,8 +140,6 @@ export const controlComparisonSchema = z.object({
   effectEstimate: baselineAggregateSchema.nullable(),
   stores: z.array(controlStoreBaselineEvidenceSchema).min(1),
 });
-export type ControlComparison = z.infer<typeof controlComparisonSchema>;
-
 export const experimentBaselineSchema = z.object({
   method: baselineMethodSchema,
   grain: z.literal("month"),

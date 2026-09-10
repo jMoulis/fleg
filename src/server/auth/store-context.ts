@@ -32,19 +32,6 @@ async function getOrganizationRole(
   );
 }
 
-export async function requireOrganizationMembership(
-  organizationId: string,
-  requestHeaders: Headers,
-) {
-  const role = await getOrganizationRole(organizationId, requestHeaders);
-
-  if (!role) {
-    throw new Error("Organisation introuvable ou accès refusé");
-  }
-
-  return { organizationId, role };
-}
-
 export async function requireStoreContext(
   storeIdInput: string,
   requiredPermissions: StorePermission[] = [],

@@ -8,8 +8,6 @@ export const signInInputSchema = z.object({
     .max(128),
 });
 
-export type SignInInput = z.infer<typeof signInInputSchema>;
-
 export const authenticationCallbackPathSchema = z
   .string()
   .max(500)

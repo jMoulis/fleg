@@ -122,13 +122,6 @@ export type CreateDraftActionPlanResult = z.infer<
   typeof createDraftActionPlanResultSchema
 >;
 
-export const aiActionPlansResponseSchema = z
-  .object({
-    actionPlans: z.array(aiActionPlanSchema),
-    requestId: z.uuid(),
-  })
-  .strict();
-
 export const aiActionPlanDecisionResponseSchema = z
   .object({
     actionPlan: aiActionPlanSchema,

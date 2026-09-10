@@ -46,8 +46,6 @@ export const sellingModuleSchema = z
       }
     }
   });
-export type SellingModule = z.infer<typeof sellingModuleSchema>;
-
 const sellingFaceV2Schema = z
   .object({
     id: z.string().trim().min(1).max(100),

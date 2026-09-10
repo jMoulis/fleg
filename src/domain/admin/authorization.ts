@@ -1,7 +1,6 @@
 import * as z from "zod";
 
 export const organizationRoleSchema = z.enum(["owner", "admin", "member"]);
-export type OrganizationRole = z.infer<typeof organizationRoleSchema>;
 
 export const organizationAdminContextSchema = z.object({
   userId: z.string().min(1),

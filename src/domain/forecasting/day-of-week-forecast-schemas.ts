@@ -163,9 +163,5 @@ export const dayOfWeekForecastAnalysisSchema = z
     modelVersion: z.literal(dayOfWeekForecastModelVersion),
   })
   .strict();
-export type DayOfWeekForecastAnalysis = z.infer<
-  typeof dayOfWeekForecastAnalysisSchema
->;
-
 export const dayOfWeekForecastAnalysisResponseSchema =
   dayOfWeekForecastAnalysisSchema.extend({ requestId: z.uuid() });

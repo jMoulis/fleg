@@ -178,20 +178,12 @@ export const storeAiReadToolRequestSchema = z.discriminatedUnion("tool", [
     input: explainRecommendationInputSchema,
   }).strict(),
 ]);
-export type StoreAiReadToolRequest = z.infer<
-  typeof storeAiReadToolRequestSchema
->;
-
 export const networkAiReadToolRequestSchema = z
   .object({
     tool: z.literal("compareAuthorizedStores"),
     input: compareAuthorizedStoresInputSchema,
   })
   .strict();
-export type NetworkAiReadToolRequest = z.infer<
-  typeof networkAiReadToolRequestSchema
->;
-
 export const getStoreKpisResultSchema = z.object({
   ...resultBaseShape,
   tool: z.literal("getStoreKpis"),

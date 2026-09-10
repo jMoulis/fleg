@@ -3,7 +3,6 @@ import "server-only";
 import {
   deliverOrganizationInvitationEmail,
   invitationEmailIdempotencyKey,
-  InvitationEmailDeliveryError,
   type EmailFetcher,
   type InvitationEmailDeliveryResult,
   type InvitationEmailInput,
@@ -13,7 +12,7 @@ import {
   type InvitationEmailEnv,
 } from "@/server/env";
 
-export { invitationEmailIdempotencyKey, InvitationEmailDeliveryError };
+export { invitationEmailIdempotencyKey };
 export type { InvitationEmailDeliveryResult };
 
 export function sendOrganizationInvitationEmail(
