@@ -48,6 +48,9 @@
 | V3-04 | Forecasting | Day-of-week forecast + confidence evidence | P1 | V3-01, V3-03 |
 | V3-05 | Context | Promotion and weather observations/features | P2 | V3-04 |
 | V3-06 | Ordering | Evidence-backed order suggestion drafts | P1 | V3-02, V3-04 |
+| HARD-02 | Hardening | Dead-code audit and repository hygiene | P1 | V3-06 |
+| DOC-01 | Documentation | Documentation hub and French user guide | P1 | HARD-02 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | DOC-01, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -135,3 +138,30 @@
   Saturday orders Monday delivery and Sunday has no order run;
 - the exact morning snapshot supplies on-hand and pack evidence, while the
   current-day arrival remains an explicit excluded assumption.
+
+## Post-V3 consolidation and pilot gate
+
+### HARD-02
+
+- TypeScript rejects unused locals and parameters in application code;
+- files, exports and dependencies are checked with a Next.js-aware reachability audit;
+- only code proven unreachable is removed, with no intentional API, schema or business-behavior change;
+- the complete lint, strict typecheck, unit/integration, production-build and browser suites remain green;
+- cleanup findings and intentionally retained framework entry points are recorded for review.
+
+### DOC-01
+
+- `docs/README.md` routes readers to user, product, engineering and operations documentation;
+- a French `docs/user/` guide covers onboarding, imports, product evidence, the morning stock/order ritual, space, TG, markdown, experiments, decisions, Copilot and administration;
+- user terminology, permissions, confidence, missing-data states and non-automatic actions are explained consistently;
+- stack, commands, navigation and feature status match the delivered application rather than the initial recommendations;
+- screenshots are added only when representative pilot data is available and are not required for the first textual guide.
+
+### PILOT-01
+
+- execution waits for restored Mercalys access and does not fabricate production evidence;
+- the pilot names one store, one accountable manager, dates and a frozen baseline;
+- available historical daily exports are backfilled, targeting 8 complete weeks for true XYZ and 12 for weekday forecasting;
+- daily coverage, import time, count time, suggestion availability, manager overrides, markdown and availability evidence are measured;
+- order assumptions, especially morning residual stock and exclusion of the current-day arrival, are tested against observed practice;
+- only observed pilot friction can reprioritize the V4 learning roadmap; supplier execution remains out of scope.
