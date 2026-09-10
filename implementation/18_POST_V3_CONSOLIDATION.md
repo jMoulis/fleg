@@ -63,7 +63,14 @@ unavailable evidence, search, status/family filters and bounded pages. Preserve
 all overrides across navigation and keep manager approval reachable. The
 implementation contract is `implementation/23_ORDER_LIST_UX.md`.
 
-### 6. PILOT-01 — instrumented single-store pilot
+### 6. UX-LIST-04 — searchable allocation product selectors
+
+Replace the two full-catalog selectboxes on Espace → Allocations with searchable
+lists of at most 10 products per page. The shelf picker exposes only compatible,
+not-yet-allocated products and adds directly from the result row. The
+implementation contract is `implementation/24_ALLOCATION_PRODUCT_PICKER_UX.md`.
+
+### 7. PILOT-01 — instrumented single-store pilot
 
 Status: waiting for restored Mercalys access.
 
@@ -83,6 +90,8 @@ The bridge to V4 is complete only when:
 - the product matrix remains navigable with hundreds of filtered products;
 - order review remains actionable with hundreds of calculated and unavailable
   lines;
+- allocation and product-constraint selection remains usable with hundreds of
+  catalog products;
 - the pilot has enough observed data to identify real friction and evaluate the
   ordering assumptions;
 - the next roadmap is chosen from evidence rather than feature availability.

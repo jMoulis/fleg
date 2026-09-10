@@ -1,5 +1,5 @@
 {
-  "version": "1.4",
+  "version": "1.5",
   "tickets": [
     {
       "id": "FND-01",
@@ -406,6 +406,20 @@
         "persistent approval action reports incomplete entries",
         "unchanged A-for-B store authorization audit and non-execution semantics",
         "mobile and desktop pagination and retained-edit acceptance"
+      ]
+    },
+    {
+      "id": "UX-LIST-04",
+      "epic": "ux",
+      "title": "Searchable bounded allocation product selectors",
+      "priority": "P0",
+      "acceptance": [
+        "search before local pagination for allocation and policy selectors",
+        "at most ten product candidates rendered per selector",
+        "allocation results exclude incompatible and already allocated products",
+        "direct product addition from a result row",
+        "unchanged constraints capacity economics authorization and persistence",
+        "responsive policy and allocation browser acceptance"
       ]
     },
     {

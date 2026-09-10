@@ -17,6 +17,7 @@ import {
 import { ProductSpacePolicyEditor } from "@/components/space/product-space-policy-editor";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { BoundedListPagination } from "@/components/ui/bounded-list-pagination";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,13 +27,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import {
@@ -93,6 +87,7 @@ const heuristicEvidence = [
   "Les lignes verrouillées et les lignes de produits obligatoires déjà placées sont conservées.",
   "Les nouveaux produits obligatoires sont placés en priorité sur un mobilier compatible.",
 ];
+const productPickerPageSize = 10;
 
 export function AllocationPlanner({
   storeId,
@@ -123,10 +118,8 @@ export function AllocationPlanner({
   const [selectedShelfId, setSelectedShelfId] = useState(
     capacities[0]?.shelfId ?? "",
   );
-  const [selectedProductId, setSelectedProductId] = useState(
-    products[0]?.id ?? "",
-  );
-  const [search, setSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [productPage, setProductPage] = useState(1);
   const [planName, setPlanName] = useState(
     initialPlan?.name ?? `Allocation du plan ${layoutVersion}`,
   );
@@ -192,13 +185,8 @@ export function AllocationPlanner({
           policyByProductId,
         )),
   );
-  const productToAddId = availableProducts.some(
-    (product) => product.id === selectedProductId,
-  )
-    ? selectedProductId
-    : (availableProducts[0]?.id ?? "");
-  const normalizedSearch = search.trim().toLocaleLowerCase("fr-FR");
-  const filteredProducts = products
+  const normalizedSearch = productSearch.trim().toLocaleLowerCase("fr-FR");
+  const filteredAvailableProducts = availableProducts
     .filter(
       (product) =>
         !normalizedSearch ||
@@ -210,6 +198,15 @@ export function AllocationPlanner({
           (first.forecastRevenueCents ?? first.revenueCents ?? -1) ||
         first.label.localeCompare(second.label, "fr"),
     );
+  const productPageCount = Math.max(
+    1,
+    Math.ceil(filteredAvailableProducts.length / productPickerPageSize),
+  );
+  const safeProductPage = Math.min(productPage, productPageCount);
+  const visibleAvailableProducts = filteredAvailableProducts.slice(
+    (safeProductPage - 1) * productPickerPageSize,
+    safeProductPage * productPickerPageSize,
+  );
   const groupedCapacities = groupCapacities(capacities);
   const economics = useMemo(
     () =>
@@ -242,8 +239,11 @@ export function AllocationPlanner({
     setError(null);
   }
 
-  function addProduct() {
-    if (!selectedCapacity || !productToAddId) {
+  function addProduct(productId: string) {
+    if (
+      !selectedCapacity ||
+      !availableProducts.some((product) => product.id === productId)
+    ) {
       return;
     }
 
@@ -259,16 +259,12 @@ export function AllocationPlanner({
     setAllocations((current) => [
       ...current,
       {
-        productId: productToAddId,
+        productId,
         shelfId: selectedCapacity.shelfId,
         facingWidthM,
         locked: false,
       },
     ]);
-    const nextProduct = availableProducts.find(
-      (product) => product.id !== productToAddId,
-    );
-    setSelectedProductId(nextProduct?.id ?? "");
     markManagerEdit();
   }
 
@@ -528,6 +524,7 @@ export function AllocationPlanner({
                               key={capacity.shelfId}
                               onClick={() => {
                                 setSelectedShelfId(capacity.shelfId);
+                                setProductPage(1);
                                 setError(null);
                               }}
                               type="button"
@@ -683,34 +680,108 @@ export function AllocationPlanner({
             )}
 
             {canWrite ? (
-              <div className="grid gap-2 rounded-xl border bg-muted/25 p-3 sm:grid-cols-[1fr_auto]">
-                <Select
-                  onValueChange={(value) => setSelectedProductId(value ?? "")}
-                  value={productToAddId}
+              <section
+                aria-labelledby="allocation-product-picker-title"
+                className="space-y-3 rounded-xl border bg-muted/25 p-3"
+              >
+                <div>
+                  <h3
+                    className="text-sm font-semibold"
+                    id="allocation-product-picker-title"
+                  >
+                    Ajouter un produit
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Seuls les produits compatibles et absents de ce niveau sont
+                    proposés.
+                  </p>
+                </div>
+                <div className="relative">
+                  <Search
+                    aria-hidden="true"
+                    className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    aria-label="Rechercher un produit à ajouter"
+                    className="bg-background pl-9"
+                    onChange={(event) => {
+                      setProductSearch(event.target.value);
+                      setProductPage(1);
+                    }}
+                    placeholder="Nom du produit…"
+                    value={productSearch}
+                  />
+                </div>
+                <BoundedListPagination
+                  ariaLabel="Pagination des produits à ajouter"
+                  currentPage={safeProductPage}
+                  itemLabel="produit(s) disponible(s)"
+                  onPageChange={setProductPage}
+                  pageSize={productPickerPageSize}
+                  totalItems={filteredAvailableProducts.length}
+                />
+                <div
+                  className="divide-y overflow-hidden rounded-lg border bg-background"
+                  data-allocation-product-page-size={productPickerPageSize}
                 >
-                  <SelectTrigger className="h-10 w-full">
-                    <SelectValue placeholder="Choisir un produit">
-                      {productById.get(productToAddId)?.label ??
-                        "Choisir un produit"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableProducts.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  disabled={!productToAddId || availableProducts.length === 0}
-                  onClick={addProduct}
-                  type="button"
-                >
-                  <Plus aria-hidden="true" />
-                  Ajouter
-                </Button>
-              </div>
+                  {visibleAvailableProducts.map((product) => {
+                    const productEconomics =
+                      calculateAllocationProductEconomics(product, config);
+                    const policy = policyByProductId.get(product.id);
+                    return (
+                      <div
+                        className="flex items-center justify-between gap-3 p-3"
+                        data-allocation-product-option
+                        key={product.id}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">
+                            {product.label}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            CA {formatMoney(product.revenueCents)} · marge après
+                            démarque {formatMoney(productEconomics.expectedPostMarkdownMarginCents)}
+                          </span>
+                          <span className="mt-1 flex flex-wrap gap-1">
+                            {policy?.mustStock ? (
+                              <Badge variant="secondary">Obligatoire</Badge>
+                            ) : null}
+                            {product.abcClass ? (
+                              <Badge variant="outline">{product.abcClass}</Badge>
+                            ) : null}
+                          </span>
+                        </span>
+                        <Button
+                          aria-label={`Ajouter ${product.label}`}
+                          disabled={
+                            selectedRemainingWidthM + 0.000_1 <
+                            config.minimumFacingWidthM
+                          }
+                          onClick={() => addProduct(product.id)}
+                          size="sm"
+                          type="button"
+                        >
+                          <Plus aria-hidden="true" />
+                          Ajouter
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {visibleAvailableProducts.length === 0 ? (
+                    <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                      {availableProducts.length === 0
+                        ? "Tous les produits compatibles sont déjà placés sur ce niveau."
+                        : "Aucun produit ne correspond à cette recherche."}
+                    </p>
+                  ) : null}
+                </div>
+                {selectedRemainingWidthM + 0.000_1 <
+                config.minimumFacingWidthM ? (
+                  <p className="text-xs text-destructive" role="status">
+                    La capacité restante est inférieure au facing minimum.
+                  </p>
+                ) : null}
+              </section>
             ) : null}
           </CardContent>
         </Card>
@@ -778,68 +849,6 @@ export function AllocationPlanner({
                 Calcul déterministe, sans IA. La proposition reste un brouillon
                 et conserve les lignes verrouillées.
               </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Catalogue produits</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {basis.periodKey ? `Signaux ${basis.periodKey}` : "Sans métriques importées"}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="relative">
-                <Search
-                  aria-hidden="true"
-                  className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                  aria-label="Rechercher un produit"
-                  className="pl-9"
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Rechercher…"
-                  value={search}
-                />
-              </div>
-              <div className="mt-3 max-h-72 space-y-1 overflow-y-auto">
-                {filteredProducts.slice(0, 100).map((product) => {
-                  const productEconomics =
-                    calculateAllocationProductEconomics(product, config);
-                  const policy = policyByProductId.get(product.id);
-                  return (
-                    <button
-                      className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-muted"
-                      key={product.id}
-                      onClick={() => setSelectedProductId(product.id)}
-                      type="button"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">
-                          {product.label}
-                        </span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          CA {formatMoney(product.revenueCents)} · marge après
-                          démarque {formatMoney(productEconomics.expectedPostMarkdownMarginCents)}
-                        </span>
-                      </span>
-                      <span className="flex shrink-0 gap-1">
-                        {policy?.mustStock ? (
-                          <Badge variant="secondary">Obligatoire</Badge>
-                        ) : null}
-                        {product.abcClass ? (
-                          <Badge variant="outline">{product.abcClass}</Badge>
-                        ) : null}
-                      </span>
-                    </button>
-                  );
-                })}
-                {filteredProducts.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
-                    Aucun produit trouvé.
-                  </p>
-                ) : null}
-              </div>
             </CardContent>
           </Card>
 

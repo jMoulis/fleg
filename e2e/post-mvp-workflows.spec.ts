@@ -215,9 +215,17 @@ test("REL-01 versionne le plan et enregistre une allocation", async ({
     .locator('[data-slot="card"]')
     .filter({ hasText: "Contraintes produits" })
     .first();
-  await policyCard.getByRole("combobox", { name: "Produit à configurer" }).click();
-  await page
-    .getByRole("option", { name: policyProduct.label, exact: true })
+  expect(
+    await policyCard.locator("[data-policy-product-option]").count(),
+  ).toBeLessThanOrEqual(10);
+  await policyCard
+    .getByLabel("Produit à configurer")
+    .fill(policyProduct.label);
+  await policyCard
+    .getByRole("button", {
+      name: `Configurer ${policyProduct.label}`,
+      exact: true,
+    })
     .click();
   await policyCard.getByRole("checkbox", { name: "Stock obligatoire" }).check();
   await policyCard
@@ -259,6 +267,27 @@ test("REL-01 versionne le plan et enregistre une allocation", async ({
   expect(isolatedPolicyResponse.status()).toBe(404);
   await expect(policyCard.getByText(/révision \d+/i).first()).toBeVisible();
   await expect(page.getByText(/Démarque observée pour/).first()).toBeVisible();
+  const allocationPicker = page.getByRole("region", {
+    name: "Ajouter un produit",
+  });
+  expect(
+    await allocationPicker.locator("[data-allocation-product-option]").count(),
+  ).toBeLessThanOrEqual(10);
+  await allocationPicker
+    .getByLabel("Rechercher un produit à ajouter")
+    .fill(policyProduct.label);
+  await allocationPicker
+    .getByRole("button", {
+      name: `Ajouter ${policyProduct.label}`,
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: `Retirer ${policyProduct.label}`,
+      exact: true,
+    }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Calculer une proposition" })
     .click();

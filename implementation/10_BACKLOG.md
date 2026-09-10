@@ -53,7 +53,8 @@
 | UX-LIST-01 | UX | Scalable reserve/shelf inventory workflow | P0 | DOC-01, V3-02 |
 | UX-LIST-02 | UX | Scalable paginated product matrix | P0 | UX-LIST-01, UX-03, UX-04 |
 | UX-LIST-03 | UX | Scalable filtered order-review workflow | P0 | UX-LIST-02, V3-06 |
-| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-03, Mercalys access |
+| UX-LIST-04 | UX | Searchable bounded allocation product selectors | P0 | UX-LIST-03, PREV3-03 |
+| PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-04, Mercalys access |
 
 ## Pre-V3 gate acceptance
 
@@ -192,6 +193,18 @@
   remain unchanged;
 - mobile and desktop acceptance cover pagination and retained edits on a
   suggestion with more than 25 lines.
+
+### UX-LIST-04
+
+- allocation and product-constraint selectors search before pagination;
+- neither selector renders more than 10 candidate products at once;
+- allocation candidates are limited to products compatible with and absent
+  from the selected shelf;
+- a product can be added directly from its result row and the result disappears
+  once allocated;
+- configured-product, capacity, economics, authorization and persistence
+  semantics remain unchanged;
+- responsive browser acceptance covers policy selection and direct allocation.
 
 ### PILOT-01
 
