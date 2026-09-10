@@ -81,7 +81,10 @@ test("V3-02 saisit, reprend et versionne un comptage manuel", async ({
   await expect(saveButton).toBeVisible();
   await expect(saveButton).toBeInViewport();
 
-  await page.getByRole("button", { name: /^Configurer/ }).click();
+  await page
+    .getByRole("navigation", { name: "Étapes du comptage" })
+    .getByRole("button", { name: /Configurer/ })
+    .click();
   await expect(page.locator("[data-inventory-product]")).toHaveCount(
     Math.min(products.length, 25),
   );
