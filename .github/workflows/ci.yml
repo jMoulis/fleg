@@ -47,6 +47,7 @@ jobs:
     env:
       CI: true
       MONGODB_URI: "mongodb://127.0.0.1:27017/?directConnection=true&replicaSet=rs0"
+      E2E_MONGODB_URI: "mongodb://127.0.0.1:27017/?directConnection=true&replicaSet=rs0"
       MONGODB_AUTH_DB: fleg_ci_auth
       MONGODB_APP_DB: fleg_ci_app
       MONGODB_MAX_POOL_SIZE: 10
@@ -111,8 +112,10 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Seed the disposable test databases
-        run: npm run seed:demo
+      - name: Verify storage persistence against real MongoDB
+        env:
+          STORAGE_TEST_MONGODB_URI: "mongodb://127.0.0.1:27017/?directConnection=true&replicaSet=rs0"
+        run: npm run test -- src/test/integration/storage-persistence.test.ts
 
       - name: Run browser acceptance tests
         run: npm run test:e2e

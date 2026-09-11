@@ -16,6 +16,14 @@ export async function getRecommendations(
     getProductMetrics(context, periodKey),
     repository.getConfig(context),
   ]);
+  const cached = await repository.findRun({
+    context,
+    periodKey: metrics.periodKey,
+    inputRevision: metrics.dataRevision,
+    calculationVersion: metrics.calculationVersion,
+    modelVersion: config.modelVersion,
+  });
+  if (cached) return cached;
   const generatedAt = new Date().toISOString();
   const drafts = metrics.products.map((metric) =>
     buildRecommendation({

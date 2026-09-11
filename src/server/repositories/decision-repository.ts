@@ -20,6 +20,7 @@ import {
   type RecommendationDraft,
 } from "@/domain/recommendations/schemas";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
+import { retainRecommendationEvidence } from "@/server/db/recommendation-retention";
 
 interface RecommendationDocument
   extends Omit<RecommendationDraft, "id" | "storeId"> {
@@ -133,7 +134,7 @@ export class DecisionRepository {
   private readonly auditLogs;
 
   constructor(
-    db: Db,
+    private readonly db: Db,
     private readonly client: MongoClient,
   ) {
     this.recommendations =
@@ -185,6 +186,8 @@ export class DecisionRepository {
         if (!recommendation) {
           throw new Error("Recommandation introuvable ou accès refusé");
         }
+
+        await retainRecommendationEvidence({ db: this.db, context, recommendationId: recommendationObjectId, session });
 
         const decidedAt = new Date();
         const recommendationSnapshot = toRecommendationSnapshot(recommendation);
