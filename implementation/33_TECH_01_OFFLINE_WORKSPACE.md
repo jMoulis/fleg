@@ -89,12 +89,20 @@ resource change is required. Vercel Blob and vector search remain later tickets.
 
 ## Acceptance evidence and device matrix
 
-Local results: `npm run check` passed (79 files, 294 unit/integration tests);
-production build passed; full E2E run passed 46 scenarios with 4 live-OpenAI tests
-intentionally skipped. After the final shell-readiness and quick-navigation
-adjustments, the focused TECH-01 suite passed all 16 mobile/desktop scenarios.
-`npm audit --omit=dev` reports zero vulnerabilities. These are local results,
-not a claim that GitHub CI or a physical-device pilot has already run.
+Revalidated on 2026-09-11 after integrating master and storage fix PR #29:
+`npm run check` passed (81 files, 298 tests; 2 real-Mongo tests run separately).
+The real-Mongo storage suite passed all 3 tests, including its pure evidence test.
+The production webpack build passed; the full E2E run passed 48 scenarios,
+including all 16 TECH-01 mobile/desktop scenarios, with 4 live-OpenAI tests
+intentionally skipped. `npm audit --omit=dev` reports zero vulnerabilities.
+These are local results for the integrated branch, not a claim that its new
+GitHub CI run or a physical-device pilot has already completed.
+
+The isolated E2E runner from PR #29 is preserved, including the `build:e2e`
+webpack/Serwist contract and refusal of Atlas connections. Local validation used
+a fresh native MongoDB 6.0.1 replica set because Docker was unavailable; GitHub
+CI uses MongoDB 8.0. Temporary application/auth and storage-test databases were
+removed after the run. No production data or existing backup was touched.
 
 Automated production-build recipe: `npm run test:e2e -- e2e/offline-workspace.spec.ts`.
 The two Chromium projects cover 390px touch/mobile emulation and 1440px desktop.

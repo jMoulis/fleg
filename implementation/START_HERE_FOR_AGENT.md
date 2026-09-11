@@ -3,15 +3,20 @@
 ## Current continuation — 2026-09-11
 
 The original vertical slice, V1/V2/V3 and post-V3 UX sequence are delivered.
-`PILOT-01` remains open for real operational evidence. The next planned
-implementation is `TECH-01` after the documentation PR is merged; continue with
-`TECH-02/03` to make cold-room inventory capture reliable.
+`PILOT-01` remains open for real operational evidence. `HARD-STORAGE-01` was
+merged and deployed via PR #29; preserve its isolated E2E runner and retention
+rules when continuing another branch.
+`TECH-01` is implemented in PR #28 as a prepared, read-only offline workspace;
+see `33_TECH_01_OFFLINE_WORKSPACE.md` for its validation and device limitations.
+After its review/merge, continue with `TECH-02/03` to make cold-room inventory
+capture reliable. Do not treat the read-only catalogue as offline stock entry.
 
 Read the current state in `implementation/10_BACKLOG.md`, then the relevant
 `31_OFFLINE_AND_DOCUMENT_FOUNDATION.md` or `32_OPERATIONAL_COACH_ROADMAP.md`.
 `V4-01` keeps its existing `30_WEEKLY_COMMERCIAL_BRIEF_IMPORT.md` contract.
-These are planned scopes, not a claim that offline/document/coach capabilities
-exist. Preserve the pilot, source-data and authorization gates.
+Except for the delivered boundaries documented above, these remain planned
+scopes, not available document/coach capabilities. Preserve the pilot,
+source-data and authorization gates.
 
 ## Original bootstrap order
 

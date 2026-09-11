@@ -21,6 +21,7 @@ import { resolveExperimentStatus } from "@/domain/experiments/lifecycle";
 import { buildExperimentScope } from "@/domain/experiments/store-scope";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
+import { retainRecommendationEvidence } from "@/server/db/recommendation-retention";
 
 interface ExperimentDocument
   extends Omit<
@@ -198,7 +199,7 @@ export class ExperimentRepository {
   private readonly auditLogs;
 
   constructor(
-    db: Db,
+    private readonly db: Db,
     private readonly client?: MongoClient,
   ) {
     this.experiments = db.collection<ExperimentDocument>("experiments");
@@ -826,6 +827,9 @@ export class ExperimentRepository {
         "La recommandation ne concerne aucun produit testé",
       );
     }
+    await retainRecommendationEvidence({
+      db: this.db, context: input.context, recommendationId: linked._id, session: input.session,
+    });
   }
 
   private async replaceCurrent(

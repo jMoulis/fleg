@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { chromium, expect, type FullConfig } from "@playwright/test";
+import { requireE2eEnvironment } from "../src/domain/testing/e2e-environment";
 
 const credentials = {
   email: process.env.E2E_EMAIL ?? "admin@fleg.local",
@@ -11,6 +12,7 @@ const credentials = {
 export const authenticationStatePath = "test-results/.auth/admin.json";
 
 export default async function globalSetup(config: FullConfig) {
+  requireE2eEnvironment(process.env);
   const baseURL = config.projects[0]?.use.baseURL;
   if (typeof baseURL !== "string") {
     throw new Error("PLAYWRIGHT_BASE_URL doit être une URL valide.");

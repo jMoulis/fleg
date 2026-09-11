@@ -33,6 +33,12 @@ Better Auth session, organization membership, store authorization, import previe
 Explicit adversarial tests for guessed store IDs and cross-org access.
 
 ## E2E
+
+Toutes les recettes passent par `npm run test:e2e`, qui initialise des bases
+MongoDB locales jetables et les supprime en fin d’exécution. Ne jamais utiliser
+la base Atlas de démonstration ou de production. Voir le
+[contrat d’isolation et de conservation](./23_STORAGE_RETENTION.md).
+
 1. Sign in.
 2. Select store.
 3. Import Mercalys.

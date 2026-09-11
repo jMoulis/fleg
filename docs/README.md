@@ -57,6 +57,7 @@ seront ajoutées avec les données du pilote réel afin de ne pas documenter des
 - [Exploitation](./18_OPERATIONS.md)
 - [Déploiement Vercel](./19_VERCEL_DEPLOYMENT.md)
 - [Socle DevOps](./20_DEVOPS_BASELINE.md)
+- [Conservation MongoDB et isolation des tests](./23_STORAGE_RETENTION.md)
 
 ## Roadmap et statut
 
