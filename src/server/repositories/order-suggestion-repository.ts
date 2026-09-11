@@ -14,6 +14,7 @@ import {
   type OrderSuggestionDraft,
 } from "@/domain/ordering/schemas";
 import { buildOrderSuggestionScope } from "@/domain/ordering/store-scope";
+import { orderEvidenceReference, verifyOrderEvidence } from "@/domain/ordering/evidence";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
 
 type StoredDecision = Omit<
@@ -37,7 +38,8 @@ interface OrderSuggestionCommandDocument {
   idempotencyKey: string;
   operation: "create" | "approve";
   suggestionId: ObjectId;
-  snapshot: OrderSuggestionDraft;
+  snapshot?: OrderSuggestionDraft;
+  evidence?: ReturnType<typeof orderEvidenceReference>;
   createdAt: Date;
 }
 
@@ -203,7 +205,7 @@ export class OrderSuggestionRepository {
             ...commandFilter,
             operation: "create",
             suggestionId,
-            snapshot: suggestion,
+            evidence: orderEvidenceReference(suggestion, "create"),
             createdAt: now,
           },
           { session },
@@ -217,7 +219,7 @@ export class OrderSuggestionRepository {
             entityType: "orderSuggestion",
             entityId: suggestionId,
             before: null,
-            after: suggestion,
+            after: { status: suggestion.status, evidence: orderEvidenceReference(suggestion, "create") },
             requestId: input.requestId,
             timestamp: now,
             createdAt: now,
@@ -361,7 +363,7 @@ export class OrderSuggestionRepository {
             ...commandFilter,
             operation: "approve",
             suggestionId,
-            snapshot: after,
+            evidence: orderEvidenceReference(after, "approve"),
             createdAt: now,
           },
           { session },
@@ -374,8 +376,8 @@ export class OrderSuggestionRepository {
             action: "order_suggestion.approved",
             entityType: "orderSuggestion",
             entityId: suggestionId,
-            before,
-            after,
+            before: { status: before.status, evidence: orderEvidenceReference(before, "create") },
+            after: { status: after.status, decision: after.decision, evidence: orderEvidenceReference(after, "approve") },
             requestId: input.requestId,
             timestamp: now,
             createdAt: now,
@@ -398,21 +400,21 @@ export class OrderSuggestionRepository {
     }
   }
 
-  private createFromCommand(
+  private async createFromCommand(
     command: WithId<OrderSuggestionCommandDocument>,
-  ): OrderSuggestionDraft {
+  ): Promise<OrderSuggestionDraft> {
     if (command.operation !== "create") {
       throw new OrderSuggestionConflictError(
         "Cette clé d’idempotence est déjà utilisée pour une autre opération",
       );
     }
-    return orderSuggestionDraftSchema.parse(command.snapshot);
+    return this.readCommandEvidence(command);
   }
 
-  private approvalFromCommand(
+  private async approvalFromCommand(
     command: WithId<OrderSuggestionCommandDocument>,
     expectedSuggestionId: ObjectId,
-  ): OrderSuggestionDraft {
+  ): Promise<OrderSuggestionDraft> {
     if (
       command.operation !== "approve" ||
       !command.suggestionId.equals(expectedSuggestionId)
@@ -421,6 +423,22 @@ export class OrderSuggestionRepository {
         "Cette clé d’idempotence est déjà utilisée pour une autre opération",
       );
     }
-    return orderSuggestionDraftSchema.parse(command.snapshot);
+    return this.readCommandEvidence(command);
+  }
+
+  private async readCommandEvidence(command: WithId<OrderSuggestionCommandDocument>) {
+    // Legacy commands remain readable during rolling deployment; no in-place
+    // conversion is needed to enable compact writes for new suggestions.
+    if (command.snapshot) return orderSuggestionDraftSchema.parse(command.snapshot);
+    if (!command.evidence || command.evidence.view !== command.operation) {
+      throw new OrderSuggestionConflictError("Preuve de commande invalide");
+    }
+    const canonical = await this.suggestions.findOne({
+      _id: command.suggestionId,
+      organizationId: command.organizationId,
+      storeId: command.storeId,
+    });
+    if (!canonical) throw new OrderSuggestionNotFoundError();
+    return verifyOrderEvidence(toOrderSuggestion(canonical), command.evidence);
   }
 }

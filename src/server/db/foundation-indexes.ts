@@ -271,6 +271,14 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { name: "notification_deliveries_invitation_latest" },
     ),
     db.collection("recommendations").createIndex(
+      { expiresAt: 1 },
+      { name: "recommendations_cache_expiry", expireAfterSeconds: 0 },
+    ),
+    db.collection("recommendationRuns").createIndex(
+      { expiresAt: 1 },
+      { name: "recommendation_runs_cache_expiry", expireAfterSeconds: 0 },
+    ),
+    db.collection("recommendations").createIndex(
       {
         storeId: 1,
         periodKey: 1,

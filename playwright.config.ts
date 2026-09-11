@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 import { authenticationStatePath } from "./e2e/global-setup";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
+const baseURL = "http://localhost:3100";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -29,7 +29,7 @@ export default defineConfig({
   webServer: {
     command: "npm run start:e2e",
     url: `${baseURL}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [

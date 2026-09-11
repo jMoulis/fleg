@@ -1,5 +1,14 @@
 # Build backlog — recommended order
 
+## Correctif prioritaire stockage — 2026-09-11
+
+`HARD-STORAGE-01` : isolation des E2E locaux, preuves de commande compactes,
+cache de recommandations borné et nettoyage sauvegardé des fixtures.
+Contrat et procédure : [conservation MongoDB](../docs/23_STORAGE_RETENTION.md).
+Ce correctif ne change pas les gates PILOT/TECH/V4 ; TECH-01 reste dans sa PR
+indépendante. La migration des anciennes recommandations attend le retrait
+des anciens writers et un inventaire des références historiques.
+
 ## Current planning baseline — 2026-09-11
 
 V1/V2/V3 and the post-V3 list/documentation sequence are delivered;

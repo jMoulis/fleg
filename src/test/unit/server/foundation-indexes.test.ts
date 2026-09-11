@@ -45,6 +45,8 @@ describe("foundation indexes", () => {
         "weather_context_scope_date_recorded",
         "context_observation_commands_scope_key_unique",
         "recommendations_network_period_status",
+        "recommendations_cache_expiry",
+        "recommendation_runs_cache_expiry",
         "recommendation_follow_ups_decision_unique",
         "recommendation_follow_ups_scope_due",
         "recommendation_follow_up_commands_scope_key_unique",
