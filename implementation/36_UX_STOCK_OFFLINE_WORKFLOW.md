@@ -2,7 +2,12 @@
 
 Approved on 2026-09-11 after the user tested TECH-03 / merged PR #31.
 The user explicitly chooses focused inventory UX over making every screen offline.
-Review and physical-device acceptance remain required; PILOT-01 is not closed.
+Physical-device acceptance remains required; PILOT-01 is not closed.
+
+Merged via PR #32. Subsequent manager feedback confirmed that presentation alone
+does not unify the two stock workflows. The planned
+[UX-STOCK-02 contract](./37_UNIFIED_MORNING_INVENTORY.md) addresses that product
+gap; this delivery record does not claim its implementation or device acceptance.
 
 ## Scope and invariants
 

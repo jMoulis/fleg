@@ -12,10 +12,16 @@ rules when continuing another branch.
 remains open. Close that gate before claiming offline rollout readiness or
 advancing TECH-04. A synchronized draft is not a server-validated stock observation.
 
-The approved `UX-STOCK-01` follow-up harmonizes the offline stock interface,
-reduces explanatory noise and keeps save/sync/commit states distinct. It does
-not broaden offline access to other screens or change the sync protocol.
+`UX-STOCK-01` is merged via PR #32. It harmonizes the offline stock interface
+without changing the separate connected/offline workflows or sync protocol.
 See `36_UX_STOCK_OFFLINE_WORKFLOW.md`; device acceptance still remains open.
+
+The manager then confirmed the product correction: one business count regardless
+of connectivity. **Next implementation ticket: `UX-STOCK-02`**, framed in
+`37_UNIFIED_MORNING_INVENTORY.md`, not implemented yet. Unify start/resume,
+reserve/shelf, review and explicit online commitment; do not add a third editor.
+Preserve existing local work and versioned counts. This refocus precedes new
+document/coach features without waiving TECH-03 device or PILOT-01 evidence gates.
 
 Read the current state in `implementation/10_BACKLOG.md`, then the relevant
 `31_OFFLINE_AND_DOCUMENT_FOUNDATION.md` or `32_OPERATIONAL_COACH_ROADMAP.md`.
