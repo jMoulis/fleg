@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { signInInputSchema } from "@/domain/auth/schemas";
 import { authClient } from "@/lib/auth-client";
+import { forgetPreparedWorkspace } from "@/lib/offline/database";
 
 export function SignInForm({
   callbackUrl = "/stores",
@@ -49,6 +50,14 @@ export function SignInForm({
     }
 
     setPending(true);
+    // Also covers an initial/uncontrolled tab before the service worker claims it.
+    try {
+      await forgetPreparedWorkspace();
+    } catch {
+      setError("Impossible de sécuriser la copie locale. Fermez les autres onglets ou effacez les données du site avant de changer de compte.");
+      setPending(false);
+      return;
+    }
     const result = await authClient.signIn.email({
       ...input.data,
       rememberMe: true,

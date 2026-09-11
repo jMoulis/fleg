@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/public/sw.js
+/public/sw.js.map
 /.pnp
 .pnp.*
 .yarn/*

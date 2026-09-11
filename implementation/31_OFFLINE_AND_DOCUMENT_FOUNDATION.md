@@ -2,7 +2,10 @@
 
 ## Decision and status
 
-Framed on 2026-09-11; all six `TECH-*` tickets below are planned, not delivered.
+Framed on 2026-09-11. `TECH-01` now has a read-only implementation and automated
+production-build acceptance; physical device acceptance remains open. See
+[the delivery record](./33_TECH_01_OFFLINE_WORKSPACE.md).
+`TECH-02` through `TECH-06` remain planned, not delivered.
 The manager reports unreliable connectivity, particularly in the cold room.
 This is sufficient field evidence to prioritize resilient stock capture before
 new coaching features. No Mercalys data is needed to test technical recovery

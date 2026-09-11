@@ -4,6 +4,7 @@
 
 `HARD-STORAGE-01` : isolation des E2E locaux, preuves de commande compactes,
 cache de recommandations borné et nettoyage sauvegardé des fixtures.
+PR #29 mergée et déployée ; ses protections sont intégrées à la branche TECH-01.
 Contrat et procédure : [conservation MongoDB](../docs/23_STORAGE_RETENTION.md).
 Ce correctif ne change pas les gates PILOT/TECH/V4 ; TECH-01 reste dans sa PR
 indépendante. La migration des anciennes recommandations attend le retrait
@@ -13,8 +14,10 @@ des anciens writers et un inventaire des références historiques.
 
 V1/V2/V3 and the post-V3 list/documentation sequence are delivered;
 `PILOT-01` still awaits real field evidence. The reported cold-room connectivity
-problem makes `TECH-01` the next implementation ticket after this documentation
-is merged. New `TECH-*`, `V4-*` and `V5-*` entries below are planned, not shipped.
+problem prioritized `TECH-01`, now implemented as read-only preparation/consultation
+with production-build tests; physical device validation is still pending.
+`TECH-02` is next after review/merge. Other `TECH-*`, `V4-*` and `V5-*` entries
+below remain planned, not shipped. See [TECH-01 evidence](./33_TECH_01_OFFLINE_WORKSPACE.md).
 
 Follow [the technical sequence](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md) and
 [the coach delivery gates](./32_OPERATIONAL_COACH_ROADMAP.md). Preserve existing
