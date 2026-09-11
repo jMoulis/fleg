@@ -204,3 +204,27 @@ Acceptance criteria for V3-05:
 - the latest weather evidence is selected deterministically while prior evidence remains immutable;
 - joins are bounded by authorized store, business date and optional product;
 - no contextual observation changes another business fact or feeds a forecast/recommendation in V3-05.
+
+## F19 Weekly commercial brief
+
+Import the central weekly commercial document from its original PDF or, with a
+visible quality limitation, from image pages. Extract promotions, advance-order
+offers, TG and mass-display recommendations, communication campaigns,
+commercial-policy notes and market alerts into a reviewable store-scoped brief.
+
+Acceptance criteria for `V4-01`:
+
+- a fingerprinted upload is validated, versioned and idempotent inside the
+  server-authorized store context;
+- sale dates, delivery dates, order deadlines, publication coverage and target
+  weeks remain separate nullable semantics;
+- product labels, PLU/EAN/Gencod, origin, calibre, unit, PC, PVC, margin and
+  promotional mechanics retain page-level source evidence and confidence;
+- uncertain or unmatched values remain reviewable and cannot silently create a
+  canonical product or business fact;
+- confirming extraction does not mean adopting the recommendation or observing
+  its execution in the store;
+- preparing any TG, promotion, space or order draft is a separate authorized
+  and audited action, and no supplier order is created or transmitted;
+- confidential source pages are excluded from Git and logs, with explicit
+  retention and external-provider processing rules.

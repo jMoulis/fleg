@@ -115,6 +115,16 @@ real morning workflow before changing the order model. The pilot must establish
 a baseline for markdown/waste, freshness or availability proxy, task duration,
 forecast confidence, draft availability and override frequency.
 
+### Additional field requirement — 2026-09-11
+
+The manager reports unreliable connectivity in the store/cold room. The planned
+`TECH-01..03` sequence in
+[31 — Offline and document foundation](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md)
+addresses this before claiming offline readiness. It can be tested with
+sanitized data while Mercalys is unavailable. Connected pilot observations can
+resume independently; record their application version and network conditions.
+Document storage and AI features do not block the start of those observations.
+
 ## Exit condition
 
 The bridge to V4 is complete only when:
@@ -136,4 +146,5 @@ The bridge to V4 is complete only when:
 - photo targets remain searchable as TG and fixture histories grow;
 - the pilot has enough observed data to identify real friction and evaluate the
   ordering assumptions;
+- any claimed offline workflow has passed `TECH-03` on the actual field devices;
 - the next roadmap is chosen from evidence rather than feature availability.

@@ -20,6 +20,7 @@ Définir une fois le cadre du pilote :
 - □ jours particuliers qui devront obligatoirement être observés, notamment un
   vendredi et un samedi ;
 - □ version déployée ou date du dernier déploiement ;
+- □ appareil, navigateur et zones où le réseau est faible ou absent ;
 - □ endroit où seront conservées les notes et captures sans donnée client.
 
 Fixer les critères avant de voir les résultats :
@@ -89,6 +90,12 @@ l'heure, la rubrique et la référence de requête affichée.
 
 Pour tout article difficile à compter, noter la cause : présentation en vrac,
 colis entamé, mélange réserve/rayon, unité inadaptée, produit abîmé ou autre.
+
+Noter aussi toute coupure réseau : endroit, durée, état affiché, saisies
+retrouvées ou perdues et temps de reprise. Le fonctionnement hors ligne est
+prévu dans `TECH-01` à `TECH-03` ; cette checklist ne le présente pas comme déjà
+disponible. La recette volontaire en mode avion sera ajoutée à sa livraison
+et commencera sur un comptage de test.
 
 ## 3. Préparer et contrôler la proposition
 
@@ -207,6 +214,9 @@ Temps habituel avant pilote :
 Temps observé avec F&L Cockpit :
 Étape la plus coûteuse :
 Nombre de jours terminés avant 9 h 30 :
+Appareil / navigateur / version déployée :
+Coupures réseau, saisies concernées et récupération :
+Temps perdu lors des interruptions :
 
 PROPOSITIONS DE COMMANDE
 Jours avec proposition disponible :
