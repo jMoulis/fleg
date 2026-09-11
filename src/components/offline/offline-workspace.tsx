@@ -2,7 +2,7 @@
 
 import { liveQuery } from "dexie";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   CircleHelp,
@@ -94,6 +94,10 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
   const [accessAllowed, setAccessAllowed] = useState(false);
   const [accessCheck, setAccessCheck] = useState(0);
   const [preparationOpen, setPreparationOpen] = useState(false);
+  const [autoPrepare, setAutoPrepare] = useState(false);
+  const [openingComplete, setOpeningComplete] = useState(false);
+  const [organizationSlug, setOrganizationSlug] = useState("");
+  const attemptedPreparation = useRef(false);
 
   useEffect(() => {
     let disposed = false;
@@ -123,11 +127,14 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
       // not silently discarded by a focus/reconnect event. Its UI is locked.
       setAccessAllowed(false);
       setConnected(navigator.onLine);
+      if (!navigator.onLine) setOpeningComplete(true);
       setNow(Date.now());
       setTarget(initialTarget);
       try {
         const copy = await readPreparedWorkspace();
         if (disposed || current !== sequence) return;
+        setAutoPrepare(query.get("open") === "1");
+        setOrganizationSlug(query.get("organizationSlug") ?? "");
         if (!copy) setWorkspace(null);
         if (copy && offlineFreshness(copy, Date.now()) === "purged") {
           setWorkspace(null);
@@ -146,8 +153,10 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
               );
             return;
           }
-          if (access === null && !disposed && current === sequence)
+          if (access === null && !disposed && current === sequence) {
             setConnected(false);
+            setOpeningComplete(true);
+          }
         }
         if (disposed || current !== sequence) return;
         if (!initialTarget.storeId && copy)
@@ -180,10 +189,10 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
 
     async function initialize() {
       if (!enabled) {
-        setError(
-          "La préparation hors connexion nécessite une version de production (npm run build, puis npm start).",
+        setReady(Boolean(window.indexedDB));
+        setStorageWarning(
+          "Version de développement : la réouverture hors connexion exige un build de production.",
         );
-        setLoading(false);
         return;
       }
       try {
@@ -246,6 +255,32 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
   }, [enabled, accessCheck]);
 
   useEffect(() => {
+    if (
+      autoPrepare &&
+      ready &&
+      !loading &&
+      connected &&
+      !localBusy &&
+      target.storeId &&
+      target.businessDate &&
+      !attemptedPreparation.current
+    ) {
+      attemptedPreparation.current = true;
+      void prepare().finally(() => setOpeningComplete(true));
+    }
+    // Once per explicit opening; a failed attempt has an actionable retry, not a fetch loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    autoPrepare,
+    ready,
+    loading,
+    connected,
+    localBusy,
+    target.storeId,
+    target.businessDate,
+  ]);
+
+  useEffect(() => {
     if (workspace && offlineFreshness(workspace, now) === "purged") {
       void forgetPreparedWorkspace().catch(() =>
         setError(
@@ -269,10 +304,11 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
         throw new Error(
           "Ouvrez d’abord Stocks du matin avec du réseau et choisissez une date.",
         );
-      await verifyFieldShell().catch((cause: unknown) => {
-        setReady(false);
-        throw cause;
-      });
+      if (enabled)
+        await verifyFieldShell().catch((cause: unknown) => {
+          setReady(false);
+          throw cause;
+        });
       const epoch = await preparationEpoch();
       const response = await fetch(
         `/api/stores/${target.storeId}/offline?businessDate=${target.businessDate}`,
@@ -317,10 +353,11 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
         throw new Error(
           "Accès non confirmé. Reconnectez-vous avant de préparer.",
         );
-      await verifyFieldShell().catch((cause: unknown) => {
-        setReady(false);
-        throw cause;
-      });
+      if (enabled)
+        await verifyFieldShell().catch((cause: unknown) => {
+          setReady(false);
+          throw cause;
+        });
       await savePreparedWorkspace(copy, epoch);
       setPage(1);
       setNotice(
@@ -394,7 +431,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
       </header>
       <main
         id="main-content"
-        className={`mx-auto w-full max-w-5xl px-4 pt-5 sm:px-6 sm:pt-8 ${hasLocalDraft ? "pb-48" : "pb-8"}`}
+        className={`mx-auto w-full max-w-5xl px-4 pt-3 sm:px-6 sm:pt-8 ${hasLocalDraft ? "pb-48" : "pb-8"}`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Private RSC/HTML is never cached; do not leave while local writes failed or are pending. */}
@@ -442,6 +479,42 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
             ? `Relevé du ${workspace.businessDate} · Réserve, puis rayon.`
             : "Préparez le catalogue avant de commencer votre comptage."}
         </p>
+        {target.storeId && (
+          <details className="mt-2 text-xs">
+            <summary className="cursor-pointer text-muted-foreground">
+              Changer de date
+            </summary>
+            <form
+              action="/offline"
+              className="mt-2 flex flex-wrap items-end gap-2"
+              onSubmit={(event) => {
+                if (localBusy || !connected) event.preventDefault();
+              }}
+            >
+              <input type="hidden" name="storeId" value={target.storeId} />
+              <input
+                type="hidden"
+                name="organizationSlug"
+                value={organizationSlug}
+              />
+              <input type="hidden" name="open" value="1" />
+              <label>
+                Date du comptage
+                <Input
+                  type="date"
+                  name="businessDate"
+                  key={target.businessDate}
+                  defaultValue={target.businessDate}
+                  required
+                  disabled={localBusy || !connected}
+                />
+              </label>
+              <Button type="submit" disabled={localBusy || !connected}>
+                Ouvrir ce relevé
+              </Button>
+            </form>
+          </details>
+        )}
         {updateAvailable && (
           <p role="status" className="mt-4 rounded-xl border p-4 text-sm">
             Mise à jour disponible. Aucun rechargement automatique : fermez tous
@@ -571,15 +644,22 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
             </a>
           </p>
         )}
-        {workspace && (
-          <LocalInventoryEditor
-            key={`${workspace.identity.sessionBinding}:${draftScope(workspace)}`}
-            workspace={workspace}
-            accessible={usable}
-            now={now}
-            onBusyChange={setLocalBusy}
-            onActiveChange={setHasLocalDraft}
-          />
+        {autoPrepare && connected && !openingComplete ? (
+          <p role="status" className="mt-3 text-sm">
+            Ouverture du relevé…
+          </p>
+        ) : (
+          workspace && (
+            <LocalInventoryEditor
+              key={`${workspace.identity.sessionBinding}:${draftScope(workspace)}`}
+              workspace={workspace}
+              accessible={usable}
+              now={now}
+              onBusyChange={setLocalBusy}
+              onActiveChange={setHasLocalDraft}
+              connected={connected}
+            />
+          )
         )}
         {usable && workspace && !hasLocalDraft && (
           <a
@@ -602,10 +682,11 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
             confirmer un stock nul.
           </p>
           <p className="mt-2">
-            L’enregistrement sur cet appareil, la synchronisation du brouillon
-            et la validation du stock sont distincts. Activez explicitement la
-            synchronisation, puis relisez et validez le comptage en ligne.
-            Aucune commande n’est passée.
+            Vos saisies sont conservées sur cet appareil. En commençant un
+            comptage, vous activez leur envoi au retour du réseau. Les anciens
+            brouillons locaux demandent votre accord de reprise. Passez à
+            Vérifier puis validez ce même relevé avec du réseau. Aucune commande
+            n’est passée.
           </p>
           {storageWarning && (
             <p className="mt-2 text-amber-800">{storageWarning}</p>
@@ -641,6 +722,18 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
             pour résoudre un problème de cache sans avoir repris votre travail.
           </p>
         </details>
+        {organizationSlug && workspace && (
+          <a
+            href={`/${encodeURIComponent(organizationSlug)}/stores/${workspace.identity.storeId}/orders`}
+            aria-disabled={!connected || localBusy}
+            onClick={(event) => {
+              if (!connected || localBusy) event.preventDefault();
+            }}
+            className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-primary underline aria-disabled:opacity-50"
+          >
+            Préparer une préconisation de commande
+          </a>
+        )}
         {usable && workspace && !hasLocalDraft && (
           <section className="mt-8" aria-labelledby="catalogue-title">
             <h2

@@ -20,9 +20,16 @@ validation remains the next gate before rollout/TECH-04. Other `TECH-*`, `V4-*` 
 entries below remain planned, not shipped. See [TECH-01 evidence](./33_TECH_01_OFFLINE_WORKSPACE.md)
 and [TECH-03 boundaries and evidence](./35_TECH_03_INVENTORY_SYNCHRONIZATION.md).
 
-Approved follow-up `UX-STOCK-01`: coherent connected/offline stock presentation,
+Merged via PR #32, `UX-STOCK-01`: coherent connected/offline stock presentation,
 compact field counting and progressive disclosure, without generalized offline
 navigation or new synchronization semantics. See [the UX contract](./36_UX_STOCK_OFFLINE_WORKFLOW.md).
+
+**Current delivery: `UX-STOCK-02` — one morning count regardless of
+connectivity**, implemented on `codex/unified-morning-inventory`, pending PR review
+and target-device acceptance. The [contract and delivery record](./37_UNIFIED_MORNING_INVENTORY.md)
+describe the single editor and its lifecycle. Preserve all existing
+drafts and versioned stock. TECH-03 physical acceptance and PILOT-01 remain open;
+new document/coach features wait while this product path is corrected.
 
 Follow [the technical sequence](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md) and
 [the coach delivery gates](./32_OPERATIONAL_COACH_ROADMAP.md). Preserve existing
@@ -337,6 +344,18 @@ for this complete historical table. New planned entries include `dependsOn`,
 - only observed pilot friction can reprioritize the V4 learning roadmap; supplier execution remains out of scope.
 
 ## Technical foundation acceptance
+
+### UX-STOCK-02 — unified morning count (implemented, review/device acceptance pending)
+
+- one operational editor for start/resume, reserve, shelf, review and validation;
+- network transitions change save/sync status, not the counting workflow;
+- date, draft identity, previous references and committed corrections are unambiguous;
+- preparation and consent-aware synchronization are integrated into the journey;
+- offline editing never implies online stock commitment or supplier ordering;
+- existing local data survives transition, uncertain writes and legacy clients;
+- full regression and target-device acceptance precede rollout.
+
+Detailed rules and delivery sequence: [37 — unified morning inventory](./37_UNIFIED_MORNING_INVENTORY.md).
 
 Detailed scope, shared security rules, recovery cases and release evidence live
 in [31 — Offline and document foundation](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md).

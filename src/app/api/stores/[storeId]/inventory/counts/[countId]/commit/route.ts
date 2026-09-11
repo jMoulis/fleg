@@ -7,6 +7,7 @@ import {
 import { requireStoreContext } from "@/server/auth/store-context";
 import { inventoryErrorResponse } from "@/server/http/inventory-error-response";
 import { commitInventoryCount } from "@/server/services/inventory-service";
+import { assertInventorySessionBinding } from "@/server/http/inventory-session-binding";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export async function POST(request: Request, routeContext: RouteContext) {
       ["inventory.write"],
       request.headers,
     );
+    await assertInventorySessionBinding(request.headers);
     const commitInput = inventoryCountCommitInputSchema.parse(
       await request.json(),
     );

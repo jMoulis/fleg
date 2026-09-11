@@ -96,8 +96,9 @@ retrouvées ou perdues et temps de reprise. Le catalogue préparé (`TECH-01`) e
 le brouillon local (`TECH-02`) sont décrits dans le guide du stock du matin.
 Testez la fermeture/réouverture sur un relevé d’essai, puis comparez toutes les
 valeurs et les zéros/vides. Notez appareil, navigateur, mode installé ou onglet,
-message de conservation et résultat de reprise. La synchronisation est maintenant
-activable par brouillon, mais ne remplace jamais la validation connectée du stock.
+message de conservation et résultat de reprise. L’envoi est intégré au démarrage
+du comptage (accord explicite pour les anciens brouillons locaux), mais ne
+remplace jamais la validation du stock avec du réseau.
 
 ## Recette hors connexion TECH-03
 
@@ -105,8 +106,9 @@ activable par brouillon, mais ne remplace jamais la validation connectée du sto
 Un essai sur ordinateur ne valide pas le téléphone ou la tablette du magasin.
 
 - □ noter version déployée, appareil, OS, navigateur/version et mode installé ou onglet ;
-- □ avec du réseau, vérifier compte, magasin, date, taille du catalogue et préparer ;
-- □ démarrer le brouillon et activer sa synchronisation ;
+- □ ouvrir Stocks avec du réseau ; vérifier compte, magasin, date et catalogue préparé ;
+- □ commencer/reprendre le comptage ; pour un ancien brouillon local seul,
+  utiliser **Reprendre et synchroniser** ;
 - □ vérifier que les articles et la barre de sauvegarde restent accessibles sur
   le téléphone, y compris avec le clavier ouvert ; distinguer réseau, sauvegarde
   locale et réception serveur ;
@@ -117,10 +119,15 @@ Un essai sur ordinateur ne valide pas le téléphone ou la tablette du magasin.
 - □ attendre l’enregistrement local, fermer complètement l’app puis rouvrir sans réseau ;
 - □ comparer les quantités, colisages, filtres et date avec le relevé témoin ;
 - □ retrouver du réseau, garder l’écran ouvert et attendre **Brouillon synchronisé** ;
-- □ vérifier dans Stocks du matin, après rechargement, que chaque quantité est exacte
+- □ dans le même écran, passer à **Vérifier** ; contrôler que chaque quantité est exacte
   et qu’il s’agit encore d’un brouillon, sans stock validé ni commande automatique ;
 - □ provoquer plusieurs coupures/reconnexions pendant des envois et confirmer
   qu’aucune ligne ne disparaît et qu’aucune quantité n’est doublée ;
+- □ interrompre le réseau pendant la validation ; rouvrir, puis **Vérifier la
+  validation** et confirmer qu’une seule version a été validée ;
+- □ utiliser **Corriger ce relevé** ; vérifier la nouvelle version et la conservation
+  de l’ancien stock ; changer de date et vérifier que le nouveau jour ne reprend
+  pas implicitement les quantités précédentes ;
 - □ sur deux appareils de test, modifier le même relevé ; vérifier le conflit,
   comparer les deux valeurs, choisir explicitement et vérifier la valeur finale ;
 - □ laisser expirer l’accès ou se déconnecter avec du travail en attente : il doit

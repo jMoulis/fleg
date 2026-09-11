@@ -1,5 +1,6 @@
 import { offlineDb as db } from "./storage";
 import { syncRecordSchema } from "@/domain/offline/sync";
+import { countIsEditable } from "@/domain/offline/count-lifecycle";
 import {
   offlineFreshness,
   preparedWorkspaceSchema,
@@ -23,8 +24,9 @@ export async function activeWorkspace(
   now: number,
 ) {
   const record = await db.copies.get("current");
-  const copy = preparedWorkspaceSchema.parse(record?.value);
+  const copy = preparedWorkspaceSchema.safeParse(record?.value).data;
   if (
+    !copy ||
     !sameOfflineIdentity(copy.identity, expected.identity) ||
     copy.businessDate !== expected.businessDate ||
     !copy.canWriteInventory ||
@@ -134,6 +136,10 @@ async function mutate(
         throw new Error(
           "Horloge incohérente : rétablissez la date et l’heure automatiques avant de réessayer.",
         );
+      if (input.line && !countIsEditable(draft.lifecycle))
+        throw new Error(
+          "Ce relevé est verrouillé. Vérifiez sa validation ou ouvrez une correction.",
+        );
       const savedAt = new Date(now).toISOString();
       const updated: LocalInventoryDraft = {
         ...draft,
@@ -236,7 +242,7 @@ export async function discardLocalDraft(
     db.operations,
     db.sync,
     async () => {
-      await activeWorkspace(workspace, Date.now());
+      const copy = await activeWorkspace(workspace, Date.now());
       const key = draftScope(workspace);
       const draft = scopedDraft((await db.drafts.get(key))?.value, workspace);
       const sync = await db.sync.get(key);
@@ -247,6 +253,22 @@ export async function discardLocalDraft(
       if (draft.id !== draftId || draft.revision !== expectedRevision)
         throw new Error(
           "Le brouillon a changé. Rechargez-le avant de confirmer sa suppression.",
+        );
+      if (
+        draft.lifecycle?.phase === "committing" ||
+        draft.lifecycle?.phase === "correcting"
+      )
+        throw new Error(
+          "Vérifiez la réponse de validation ou de correction avant de supprimer ce relevé.",
+        );
+      if (
+        (draft.lifecycle?.phase === "committed" ||
+          draft.lifecycle?.phase === "server_committed") &&
+        (copy.countReference?.status !== "committed" ||
+          copy.countReference.id !== draft.lifecycle.count.id)
+      )
+        throw new Error(
+          "Renouvelez le catalogue avant de supprimer cette copie validée : son état doit rester connu après la suppression.",
         );
       await db.operations.where("draftId").equals(draft.id).delete();
       await db.drafts.delete(key);

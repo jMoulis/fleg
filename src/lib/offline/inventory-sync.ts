@@ -2,6 +2,10 @@ import { z } from "zod";
 import { offlineDb as db } from "./storage";
 import { activeWorkspace, readLocalDraft } from "./inventory-drafts";
 import {
+  countIsEditable,
+  countReferenceSchema,
+} from "@/domain/offline/count-lifecycle";
+import {
   draftScope,
   localInventoryDraftSchema,
   localOperationSchema,
@@ -78,7 +82,11 @@ export async function enableInventorySync(
     // Old TECH-02 readers reject v2 instead of editing/deleting in-flight work.
     await db.drafts.put({
       key,
-      value: { ...draft, schemaVersion: 2, revision: draft.revision + 1 },
+      value: {
+        ...draft,
+        schemaVersion: draft.schemaVersion === 3 ? 3 : 2,
+        revision: draft.revision + 1,
+      },
     });
     await writeRecord(key, {
       schemaVersion: 1,
@@ -112,7 +120,12 @@ export async function prepareSyncOperation(
     db.sync,
     async () => {
       const state = await recordFor(workspace);
-      if (!state || state.sync.phase === "conflict") return null;
+      if (
+        !state ||
+        state.sync.phase === "conflict" ||
+        !countIsEditable(state.draft.lifecycle)
+      )
+        return null;
       const { draft } = state;
       let { sync } = state;
       const now = Date.now();
@@ -536,6 +549,16 @@ export async function resolveSyncConflict(
           ...state.draft,
           lines: [...lines.values()],
           revision: revision + 1,
+          ...(state.draft.schemaVersion === 3
+            ? {
+                lifecycle: {
+                  phase: "editing",
+                  ...(current
+                    ? { count: countReferenceSchema.parse(current) }
+                    : {}),
+                },
+              }
+            : {}),
         }),
       });
       const remaining = operations.some(

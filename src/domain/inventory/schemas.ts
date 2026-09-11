@@ -9,18 +9,8 @@ const packSizeSchema = z.number().finite().positive().max(100_000);
 export const inventoryFamilyCodeSchema = z.enum(["3400", "3402"]);
 export type InventoryFamilyCode = z.infer<typeof inventoryFamilyCodeSchema>;
 
-export const inventoryFamilyLabels = {
-  "3400": "Fruits",
-  "3402": "Légumes",
-} satisfies Record<InventoryFamilyCode, string>;
-
 export const stockUnitSchema = z.enum(["kg", "piece"]);
 export type StockUnit = z.infer<typeof stockUnitSchema>;
-
-export const stockUnitLabels = {
-  kg: "Kilo",
-  piece: "Pièce",
-} satisfies Record<StockUnit, string>;
 
 export const inventoryProductProfileSchema = z.object({
   productId: mongoIdSchema,
@@ -155,10 +145,6 @@ export const inventoryWorkspaceProductSchema = z.object({
   daySnapshot: stockSnapshotSchema.nullable(),
   latestAvailability: stockAvailabilityEvidenceSchema.nullable(),
 });
-export type InventoryWorkspaceProduct = z.infer<
-  typeof inventoryWorkspaceProductSchema
->;
-
 export const inventoryWorkspaceSchema = z.object({
   businessDate: z.iso.date(),
   count: inventoryCountSchema.nullable(),

@@ -5,6 +5,7 @@ import {
   stockUnitSchema,
 } from "@/domain/inventory/schemas";
 import { prepareStockObservations } from "@/domain/inventory/calculations";
+import { countLifecycleSchema } from "./count-lifecycle";
 import {
   businessTimeZoneSchema,
   offlineIdentitySchema,
@@ -30,9 +31,9 @@ export type LocalCountLine = z.infer<typeof localCountLineSchema>;
 export const localViewSchema = z
   .object({
     search: z.string().max(200),
-    family: z.enum(["", "3400", "3402"]),
-    progress: z.enum(["all", "remaining", "complete"]),
-    area: z.enum(["reserve", "shelf"]),
+    family: z.enum(["", "3400", "3402", "unconfigured"]),
+    progress: z.enum(["all", "remaining", "complete", "stockout"]),
+    area: z.enum(["reserve", "shelf", "review", "configuration"]),
     page: z.number().int().min(1).max(2_000),
   })
   .strict();
@@ -47,7 +48,8 @@ export const initialLocalView: LocalView = {
 
 export const localInventoryDraftSchema = z
   .object({
-    schemaVersion: z.union([z.literal(1), z.literal(2)]),
+    schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    lifecycle: countLifecycleSchema.optional(),
     id: z.uuid(),
     owner: offlineIdentitySchema.omit({ sessionBinding: true }),
     businessDate: z.iso.date(),
@@ -67,6 +69,10 @@ export const localInventoryDraftSchema = z
     status: z.literal("local_only"),
   })
   .strict()
+  .refine(
+    (value) => value.schemaVersion !== 3 || Boolean(value.lifecycle),
+    "Cycle de vie manquant",
+  )
   .refine(
     (value) =>
       new Set(value.lines.map((line) => line.productId)).size ===
@@ -160,12 +166,21 @@ function parseRaw(value: string): number | null {
 
 export function toSyncLine(line: LocalCountLine) {
   const parsed = inventoryCountLineSchema.parse({
-    productId: line.productId, familyCode: line.familyCode, stockUnit: line.stockUnit,
-    packSize: parseRaw(line.packSize), reserveCaseCount: parseRaw(line.reserveCaseCount),
-    shelfQuantity: parseRaw(line.shelfQuantity), observedAt: line.observedAt,
+    productId: line.productId,
+    familyCode: line.familyCode,
+    stockUnit: line.stockUnit,
+    packSize: parseRaw(line.packSize),
+    reserveCaseCount: parseRaw(line.reserveCaseCount),
+    shelfQuantity: parseRaw(line.shelfQuantity),
+    observedAt: line.observedAt,
   });
-  if ((parsed.reserveCaseCount !== null || parsed.shelfQuantity !== null) && !parsed.observedAt)
-    throw new Error("Confirmez les quantités de référence avant de les envoyer comme observation");
+  if (
+    (parsed.reserveCaseCount !== null || parsed.shelfQuantity !== null) &&
+    !parsed.observedAt
+  )
+    throw new Error(
+      "Confirmez les quantités de référence avant de les envoyer comme observation",
+    );
   return parsed;
 }
 

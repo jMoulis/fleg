@@ -1,7 +1,7 @@
 {
   "version": "2.1",
   "planningUpdatedAt": "2026-09-11",
-  "nextTicket": "TECH-03",
+  "nextTicket": "UX-STOCK-02",
   "tickets": [
     {
       "id": "FND-01",
@@ -822,7 +822,7 @@
       "dependsOn": [
         "TECH-03"
       ],
-      "status": "implemented_pending_review_and_device_validation",
+      "status": "merged_pending_device_validation",
       "externalGates": [
         "Physical-device cold-room acceptance remains open"
       ],
@@ -832,6 +832,28 @@
         "Counting before documentation with local help",
         "Accurate local-save and sync status, online commitment preserved",
         "Mobile reachability and existing offline recovery tests"
+      ]
+    },
+    {
+      "id": "UX-STOCK-02",
+      "epic": "ux",
+      "title": "One morning count regardless of connectivity",
+      "priority": "P0",
+      "status": "implemented_pending_review_and_device_validation",
+      "dependsOn": ["V3-02", "TECH-03", "UX-STOCK-01"],
+      "externalGates": [
+        "Preserve existing local drafts and versioned stock through transition",
+        "Real target-device unified counting acceptance before rollout"
+      ],
+      "spec": "implementation/37_UNIFIED_MORNING_INVENTORY.md",
+      "acceptance": [
+        "One editor for start/resume, reserve, shelf, review and explicit validation",
+        "Network changes save/sync states without creating a second workflow",
+        "Clear date and count identity; prior quantities never become today's observations implicitly",
+        "Integrated preparation and consent-aware synchronization",
+        "Online authorized commitment and immutable corrections preserved",
+        "Legacy draft recovery, lost acknowledgements, conflicts and isolation tested",
+        "No generalized offline app, supplier execution or new coach feature"
       ]
     }
   ]
