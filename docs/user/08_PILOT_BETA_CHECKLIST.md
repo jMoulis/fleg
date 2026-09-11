@@ -92,11 +92,13 @@ Pour tout article difficile à compter, noter la cause : présentation en vrac,
 colis entamé, mélange réserve/rayon, unité inadaptée, produit abîmé ou autre.
 
 Noter aussi toute coupure réseau : endroit, durée, état affiché, saisies
-retrouvées ou perdues et temps de reprise. `TECH-01` permet seulement la
-consultation d’un catalogue préparé, décrite dans le guide du stock du matin.
-Ne réalisez pas encore le comptage en mode avion : la saisie persistante et
-sa synchronisation restent prévues dans `TECH-02/03`. Leur recette terrain
-commencera sur un comptage de test, après livraison.
+retrouvées ou perdues et temps de reprise. Le catalogue préparé (`TECH-01`) et
+le brouillon local (`TECH-02`) sont décrits dans le guide du stock du matin.
+Testez la fermeture/réouverture sur un relevé d’essai, puis comparez toutes les
+valeurs et les zéros/vides. Notez appareil, navigateur, mode installé ou onglet,
+message de conservation et résultat de reprise. Le brouillon reste **local,
+non synchronisé** : ne remplacez pas le comptage connecté validé par ce test.
+La recette complète de synchronisation chambre froide reste dans `TECH-03`.
 
 ## 3. Préparer et contrôler la proposition
 

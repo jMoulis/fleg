@@ -6,7 +6,7 @@ import {
 } from "@/domain/inventory/schemas";
 import { storeIdSchema } from "@/domain/stores/schemas";
 
-// This version contains read-only copies, never editable drafts or an outbox.
+// Prepared references are disposable; durable edits use inventory-draft.ts.
 export const offlineIdentitySchema = z.object({
   userId: z.string().min(1),
   sessionBinding: z.string().regex(/^[a-f0-9]{64}$/),
@@ -14,10 +14,26 @@ export const offlineIdentitySchema = z.object({
   storeId: storeIdSchema,
 });
 export type OfflineIdentity = z.infer<typeof offlineIdentitySchema>;
+export const offlineAccessSchema = offlineIdentitySchema.extend({
+  canWriteInventory: z.boolean().default(false),
+});
+
+export const businessTimeZoneSchema = z.string().refine((value) => {
+  try {
+    new Intl.DateTimeFormat("fr-FR", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}, "Fuseau horaire invalide");
 
 export const preparedWorkspaceSchema = z
   .object({
     schemaVersion: z.literal(1),
+    // Legacy TECH-01 copies remain readable, but must be prepared again to edit.
+    canWriteInventory: z.boolean().default(false),
+    timeZone: businessTimeZoneSchema.default("Europe/Paris"),
+    maxLocalDrafts: z.number().int().min(1).max(30).default(14),
     identity: offlineIdentitySchema,
     storeName: z.string().min(1),
     businessDate: z.iso.date(),

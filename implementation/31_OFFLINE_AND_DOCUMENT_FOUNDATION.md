@@ -5,7 +5,9 @@
 Framed on 2026-09-11. `TECH-01` now has a read-only implementation and automated
 production-build acceptance; physical device acceptance remains open. See
 [the delivery record](./33_TECH_01_OFFLINE_WORKSPACE.md).
-`TECH-02` through `TECH-06` remain planned, not delivered.
+`TECH-02` now implements local-only durable drafts, pending review/merge and
+physical-device acceptance; see [its delivery record](./34_TECH_02_LOCAL_INVENTORY_DRAFTS.md).
+`TECH-03` through `TECH-06` remain planned, not delivered.
 The manager reports unreliable connectivity, particularly in the cold room.
 This is sufficient field evidence to prioritize resilient stock capture before
 new coaching features. No Mercalys data is needed to test technical recovery

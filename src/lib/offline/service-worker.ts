@@ -67,7 +67,7 @@ export async function verifyFieldShell() {
       else
         reject(
           new Error(
-            "Application locale incomplète. Effacez les données du site, puis préparez-la à nouveau avec du réseau.",
+            "Application locale incomplète. Fermez les onglets puis rouvrez avec du réseau. Ne supprimez pas les données du site si des brouillons locaux sont à conserver.",
           ),
         );
     };

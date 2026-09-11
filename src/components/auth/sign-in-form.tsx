@@ -54,7 +54,7 @@ export function SignInForm({
     try {
       await forgetPreparedWorkspace();
     } catch {
-      setError("Impossible de sécuriser la copie locale. Fermez les autres onglets ou effacez les données du site avant de changer de compte.");
+      setError("Impossible de sécuriser la copie locale. Fermez les autres onglets et réessayez. Ne supprimez pas les données du site si vous avez des brouillons locaux à conserver.");
       setPending(false);
       return;
     }

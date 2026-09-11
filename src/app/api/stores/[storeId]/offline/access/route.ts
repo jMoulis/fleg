@@ -18,8 +18,8 @@ export async function GET(
       ["inventory.read"],
       request.headers,
     );
-    const { identity } = await getOfflineAccess(context, request.headers);
-    return NextResponse.json(identity);
+    const { identity, canWriteInventory } = await getOfflineAccess(context, request.headers);
+    return NextResponse.json({ ...identity, canWriteInventory });
   } catch (error) {
     return inventoryErrorResponse({
       error,

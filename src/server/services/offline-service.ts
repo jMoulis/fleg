@@ -22,6 +22,12 @@ export const offlinePolicySchema = z
   .object({
     OFFLINE_MAX_AGE_HOURS: z.coerce.number().int().min(1).max(24).default(12),
     OFFLINE_RETENTION_HOURS: z.coerce.number().int().min(1).max(48).default(24),
+    OFFLINE_MAX_LOCAL_DRAFTS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(30)
+      .default(14),
     OFFLINE_MAX_PRODUCTS: z.coerce
       .number()
       .int()
@@ -50,6 +56,7 @@ export async function getOfflineAccess(
         .digest("hex"),
     }),
     sessionExpiresAt: session.session.expiresAt,
+    canWriteInventory: context.permissions.includes("inventory.write"),
   };
 }
 
@@ -94,6 +101,9 @@ export async function prepareOfflineWorkspace(input: {
   );
   return preparedWorkspaceSchema.parse({
     schemaVersion: 1,
+    canWriteInventory: context.permissions.includes("inventory.write"),
+    timeZone: before.timeZone,
+    maxLocalDrafts: policy.OFFLINE_MAX_LOCAL_DRAFTS,
     identity,
     storeName: before.name,
     businessDate: workspace.businessDate,

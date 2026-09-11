@@ -14,10 +14,11 @@ des anciens writers et un inventaire des références historiques.
 
 V1/V2/V3 and the post-V3 list/documentation sequence are delivered;
 `PILOT-01` still awaits real field evidence. The reported cold-room connectivity
-problem prioritized `TECH-01`, now implemented as read-only preparation/consultation
-with production-build tests; physical device validation is still pending.
-`TECH-02` is next after review/merge. Other `TECH-*`, `V4-*` and `V5-*` entries
-below remain planned, not shipped. See [TECH-01 evidence](./33_TECH_01_OFFLINE_WORKSPACE.md).
+problem prioritized `TECH-01` (merged/deployed) and `TECH-02` (local-only drafts,
+implemented for review). Physical device validation is still pending.
+`TECH-03` is next after TECH-02 review/merge. Other `TECH-*`, `V4-*` and `V5-*`
+entries below remain planned, not shipped. See [TECH-01 evidence](./33_TECH_01_OFFLINE_WORKSPACE.md)
+and [TECH-02 boundaries](./34_TECH_02_LOCAL_INVENTORY_DRAFTS.md).
 
 Follow [the technical sequence](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md) and
 [the coach delivery gates](./32_OPERATIONAL_COACH_ROADMAP.md). Preserve existing
