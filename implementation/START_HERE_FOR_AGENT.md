@@ -6,10 +6,10 @@ The original vertical slice, V1/V2/V3 and post-V3 UX sequence are delivered.
 `PILOT-01` remains open for real operational evidence. `HARD-STORAGE-01` was
 merged and deployed via PR #29; preserve its isolated E2E runner and retention
 rules when continuing another branch.
-`TECH-01` is implemented in PR #28 as a prepared, read-only offline workspace;
-see `33_TECH_01_OFFLINE_WORKSPACE.md` for its validation and device limitations.
-After its review/merge, continue with `TECH-02/03` to make cold-room inventory
-capture reliable. Do not treat the read-only catalogue as offline stock entry.
+`TECH-01` is merged/deployed via PR #28. `TECH-02` now adds local-only durable
+stock drafts; see `34_TECH_02_LOCAL_INVENTORY_DRAFTS.md` and its validation limits.
+After TECH-02 review/merge, continue with `TECH-03` for reliable synchronization.
+Do not treat a local saved draft as a server-validated stock observation.
 
 Read the current state in `implementation/10_BACKLOG.md`, then the relevant
 `31_OFFLINE_AND_DOCUMENT_FOUNDATION.md` or `32_OPERATIONAL_COACH_ROADMAP.md`.

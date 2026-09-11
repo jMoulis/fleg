@@ -64,6 +64,7 @@ describe("offline preparation completeness and policy", () => {
       OFFLINE_MAX_AGE_HOURS: 12,
       OFFLINE_RETENTION_HOURS: 24,
       OFFLINE_MAX_PRODUCTS: 2_000,
+      OFFLINE_MAX_LOCAL_DRAFTS: 14,
     });
     expect(
       offlinePolicySchema.safeParse({ OFFLINE_MAX_AGE_HOURS: 25 }).success,
@@ -78,6 +79,9 @@ describe("offline preparation completeness and policy", () => {
     expect(mocks.products).toHaveBeenCalledWith(context, 2_001);
     expect(mocks.metadata).toHaveBeenCalledWith(context);
     expect(result.identity.sessionBinding).not.toContain("session-id");
+    expect(result.canWriteInventory).toBe(false);
+    const writable = await prepareOfflineWorkspace({ ...input, context: { ...context, permissions: ["inventory.read", "inventory.write"] } });
+    expect(writable.canWriteInventory).toBe(true);
   });
   it("rejects a sentinel over the catalogue budget rather than dropping articles", async () => {
     mocks.products.mockResolvedValue(

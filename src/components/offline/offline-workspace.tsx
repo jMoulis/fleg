@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   offlineFreshness,
-  offlineIdentitySchema,
+  offlineAccessSchema,
   preparedWorkspaceSchema,
   sameOfflineIdentity,
   type PreparedWorkspace,
 } from "@/domain/offline/schemas";
 import { inventoryWorkspaceQuerySchema } from "@/domain/inventory/schemas";
 import { storeIdSchema } from "@/domain/stores/schemas";
+import { draftScope } from "@/domain/offline/inventory-draft";
+import { LocalInventoryEditor } from "./local-inventory-editor";
 import {
   forgetPreparedWorkspace,
   preparationEpoch,
@@ -51,9 +53,10 @@ async function checkAccess(workspace: PreparedWorkspace) {
     throw new Error(
       "Vérification des accès indisponible. Réessayez avec du réseau.",
     );
-  return sameOfflineIdentity(
-    workspace.identity,
-    offlineIdentitySchema.parse(await response.json()),
+  const access = offlineAccessSchema.parse(await response.json());
+  return (
+    sameOfflineIdentity(workspace.identity, access) &&
+    (!workspace.canWriteInventory || access.canWriteInventory)
   );
 }
 
@@ -72,6 +75,10 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
   const [search, setSearch] = useState("");
   const [family, setFamily] = useState("");
   const [page, setPage] = useState(1);
+  const [localBusy, setLocalBusy] = useState(false);
+  const [hasLocalDraft, setHasLocalDraft] = useState(false);
+  const [accessAllowed, setAccessAllowed] = useState(false);
+  const [accessCheck, setAccessCheck] = useState(0);
 
   useEffect(() => {
     let disposed = false;
@@ -97,14 +104,18 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
     async function restore() {
       const current = ++sequence;
       setLoading(true);
-      setWorkspace(null);
+      // Keep the editor mounted during rechecks so a failed/pending write is
+      // not silently discarded by a focus/reconnect event. Its UI is locked.
+      setAccessAllowed(false);
       setConnected(navigator.onLine);
       setNow(Date.now());
       setTarget(initialTarget);
       try {
         const copy = await readPreparedWorkspace();
         if (disposed || current !== sequence) return;
+        if (!copy) setWorkspace(null);
         if (copy && offlineFreshness(copy, Date.now()) === "purged") {
+          setWorkspace(null);
           await forgetPreparedWorkspace();
           return;
         }
@@ -112,6 +123,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
           const access = await checkAccess(copy);
           if (disposed || current !== sequence) return;
           if (access === false) {
+            setWorkspace(null);
             await forgetPreparedWorkspace();
             if (!disposed)
               setError(
@@ -134,8 +146,10 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
             copy.identity.storeId === initialTarget.storeId) &&
           (!initialTarget.businessDate ||
             copy.businessDate === initialTarget.businessDate)
-        )
+        ) {
           setWorkspace(copy);
+          setAccessAllowed(true);
+        }
       } catch (cause) {
         if (!disposed && current === sequence) {
           setError(
@@ -214,13 +228,13 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
       window.removeEventListener("offline", reconnect);
       window.removeEventListener("focus", reconnect);
     };
-  }, [enabled]);
+  }, [enabled, accessCheck]);
 
   useEffect(() => {
     if (workspace && offlineFreshness(workspace, now) === "purged") {
       void forgetPreparedWorkspace().catch(() =>
         setError(
-          "Copie expirée : effacez les données du site dans les réglages du navigateur.",
+          "Copie expirée : reconnectez-vous puis réessayez. Ne supprimez pas les données du site : elles peuvent contenir vos brouillons.",
         ),
       );
     }
@@ -319,7 +333,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
       );
     } catch {
       setError(
-        "Impossible d’effacer la copie. Utilisez les réglages de stockage du navigateur.",
+        "Impossible d’effacer la copie. Réessayez après réouverture ; ne supprimez pas les données du site si des brouillons sont à conserver.",
       );
     } finally {
       setPending(false);
@@ -327,7 +341,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
   }
 
   const freshness = workspace ? offlineFreshness(workspace, now) : null;
-  const usable = !loading && ready && freshness === "ready";
+  const usable = !loading && ready && accessAllowed && freshness === "ready";
   const matches = usable
     ? workspace!.products.filter(
         (product) =>
@@ -349,9 +363,17 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
         <p className="flex items-center gap-2 font-semibold text-primary">
           <Leaf aria-hidden="true" className="size-5" /> F&amp;L Cockpit
         </p>
-        {/* Full navigation: authenticated RSC/HTML must never be served by the offline cache. */}
+        {/* Private RSC/HTML is never cached; do not leave while local writes failed or are pending. */}
         <Link
           prefetch={false}
+          onClick={(event) => {
+            if (localBusy) {
+              event.preventDefault();
+              setError(
+                "Attendez l’enregistrement local ou résolvez son erreur avant de quitter la saisie.",
+              );
+            }
+          }}
           className="text-sm font-medium underline"
           href="/stores"
         >
@@ -363,8 +385,8 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
       </h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
         Votre catalogue et votre relevé de référence, à consulter en réserve.
-        Cette première version est en lecture seule : la saisie et la validation
-        des stocks restent connectées.
+        Vous pouvez conserver un brouillon de stock sur cet appareil. Il reste
+        local : aucune synchronisation ni validation serveur dans cette version.
       </p>
       <p className="mt-4 flex items-center gap-2 text-sm font-semibold">
         <WifiOff aria-hidden="true" className="size-4" />
@@ -372,17 +394,19 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
       </p>
       {usable && workspace && (
         <a
-          href="#catalogue-title"
+          href={hasLocalDraft ? "#local-count-title" : "#catalogue-title"}
           className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-primary px-4 font-medium text-primary-foreground"
         >
-          Consulter les {workspace.productCount} articles
+          {hasLocalDraft
+            ? "Reprendre la saisie locale"
+            : `Consulter les ${workspace.productCount} articles`}
         </a>
       )}
       {updateAvailable && (
         <p role="status" className="mt-4 rounded-xl border p-4 text-sm">
           Mise à jour disponible. Aucun rechargement automatique : fermez tous
-          les onglets de l’app après avoir enregistré votre travail connecté,
-          puis rouvrez-la.
+          les onglets de l’app après l’affichage « Enregistré sur cet appareil
+          », puis rouvrez-la.
         </p>
       )}
       <section
@@ -393,9 +417,9 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
           Préparer avant de couper le réseau
         </h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Un seul magasin et une seule date sont conservés sur cet appareil. Une
-          nouvelle préparation remplace la copie précédente. Utilisez uniquement
-          un appareil de confiance, protégé par un code.
+          Un seul catalogue de référence est préparé à la fois. Une nouvelle
+          préparation remplace cette référence, jamais vos brouillons locaux.
+          Utilisez uniquement un appareil de confiance, protégé par un code.
         </p>
         <div aria-live="polite" className="mt-4 space-y-2 text-sm">
           {loading ? (
@@ -457,6 +481,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
               !ready ||
               !connected ||
               pending ||
+              (localBusy && freshness === "ready") ||
               !target.storeId ||
               !target.businessDate
             }
@@ -468,7 +493,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
           <Button
             variant="outline"
             size="lg"
-            disabled={pending}
+            disabled={pending || localBusy}
             onClick={() => void forget()}
           >
             Effacer la copie locale
@@ -478,7 +503,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
               variant="outline"
               size="lg"
               disabled={pending}
-              onClick={() => window.location.reload()}
+              onClick={() => setAccessCheck((value) => value + 1)}
             >
               Vérifier le retour du réseau
             </Button>
@@ -506,9 +531,27 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
             immédiatement sans réseau. Ni première connexion, ni Copilote IA, ni
             autre écran non préparé ne sont disponibles hors ligne.
           </p>
+          <p className="mt-2">
+            Les brouillons de stock restent sur l’appareil et sont verrouillés
+            après expiration ou changement de compte. Reconnectez-vous avec leur
+            compte propriétaire et préparez le même magasin et la même date pour
+            les retrouver. Ils ne sont pas sauvegardés sur le serveur : ne
+            supprimez pas les données du site pour résoudre un problème de cache
+            sans avoir repris votre travail.
+          </p>
         </details>
       </section>
-      {usable && workspace && (
+      {workspace && (
+        <LocalInventoryEditor
+          key={`${workspace.identity.sessionBinding}:${draftScope(workspace)}`}
+          workspace={workspace}
+          accessible={usable}
+          now={now}
+          onBusyChange={setLocalBusy}
+          onActiveChange={setHasLocalDraft}
+        />
+      )}
+      {usable && workspace && !hasLocalDraft && (
         <section className="mt-8" aria-labelledby="catalogue-title">
           <h2
             id="catalogue-title"

@@ -68,9 +68,10 @@ traçable au lieu d'écraser la précédente.
 ## Consulter le catalogue sans réseau
 
 Depuis **Stocks du matin**, le lien **Préparer la consultation hors connexion**
-ouvre un espace dédié. Cette première étape est **en lecture seule** : ne faites
-pas encore votre saisie de stock en mode avion. La saisie persistante et la
-synchronisation seront ajoutées dans TECH-02/03.
+ouvre un espace dédié. Le catalogue y reste consultable et un **brouillon local**
+peut maintenant être saisi. Attention : il n’est **ni synchronisé ni validé sur
+le serveur**. Pour la commande réelle, continuez à saisir et valider les stocks
+dans l’écran connecté ; ne faites pas du brouillon local votre unique relevé terrain.
 
 1. Sur l’appareil que vous utiliserez en réserve, connectez-vous avec du réseau,
    choisissez le magasin et la date dans Stocks du matin, puis suivez le lien.
@@ -78,12 +79,12 @@ synchronisation seront ajoutées dans TECH-02/03.
    hors connexion** et vérifiez le nom du magasin, la date et le nombre d’articles.
    Le téléchargement comprend toutes les pages, pas seulement les articles déjà vus.
 3. Coupez le réseau, fermez puis rouvrez **Espace hors connexion** (`/offline`).
-   Recherchez un article jamais affiché auparavant. Aucune quantité n’est modifiable.
+   Recherchez un article jamais affiché auparavant.
 4. Au retour du réseau, ouvrez l’application connectée pour saisir et valider
    le comptage. La copie consultée n’a créé ni comptage ni commande.
 
 Une seule copie magasin/date est conservée : en préparer une autre remplace la
-précédente. La consultation expire par défaut après 12 heures, ou plus tôt si
+précédente, **pas les brouillons locaux**. La consultation expire par défaut après 12 heures, ou plus tôt si
 la session expire. L’administrateur peut régler cette durée. La date limite et
 l’âge sont affichés ; les derniers stocks observés ont leur propre horodatage.
 Préparez de nouveau chaque matin. La copie expirée est effacée au prochain accès
@@ -104,10 +105,52 @@ ne supprime aucune donnée serveur. Une déconnexion ou un changement de compte
 efface également cette copie de lecture. Une révocation distante ne peut pas être
 détectée immédiatement hors connexion : la durée maximale limite cet accès différé.
 
-Si une mise à jour est disponible, terminez et enregistrez votre travail connecté,
+Si une mise à jour est disponible, attendez la confirmation d’enregistrement local,
 puis fermez tous les onglets de l’app et rouvrez-la. Aucun rechargement n’est forcé.
 La première connexion, les autres écrans et les nouvelles réponses du Copilote
 restent indisponibles sans réseau.
+
+## Essayer le brouillon local sans réseau
+
+Cette étape sert à tester la résistance aux coupures, pas encore le parcours
+complet chambre froide → commande. La synchronisation viendra avec TECH-03.
+
+1. Préparez de nouveau le catalogue avec un compte autorisé à saisir les stocks.
+   Une ancienne copie ou un compte en lecture seule n’autorise pas la saisie locale.
+2. Appuyez sur **Commencer un brouillon local**. Vérifiez le magasin et la date.
+3. Renseignez famille, unité et colisage du relevé, puis **Réserve** et **Rayon**.
+   Le colisage reste propre à ce brouillon : un téléchargement ultérieur ne le
+   remplace pas. Les valeurs du comptage de référence ne sont pas de nouvelles observations.
+4. Attendez **Enregistré sur cet appareil · non synchronisé** après chaque saisie.
+   `0` reste un zéro observé ; vide reste non compté ; `1,` reste une saisie
+   incomplète, conservée jusqu’à correction. Aucun total n’est inventé.
+5. Fermez puis rouvrez l’app sans réseau. Vérifiez les valeurs, la recherche,
+   la famille, la zone réserve/rayon, le filtre de progression et la page.
+6. Si le stockage échoue, vos valeurs non enregistrées restent affichées, mais
+   **ne fermez pas l’app**. Libérez de l’espace sans effacer ses données puis
+   choisissez **Réessayer l’enregistrement local**. Un conflit avec un autre
+   onglet impose une relecture explicite ; aucune saisie concurrente n’est fusionnée.
+
+La date du relevé reste fixe, même après minuit. Une différence avec la date
+actuelle est signalée. Une horloge incohérente doit être corrigée dans les
+réglages de l’appareil ; la date d’envoi future ne remplacera pas l’observation.
+
+Après expiration, déconnexion ou changement de compte, les brouillons sont
+**verrouillés, pas supprimés**. Reconnectez-vous avec le compte propriétaire,
+choisissez le même magasin et la même date, puis préparez à nouveau. Les autres
+dates conservées pour votre compte/magasin sont indiquées dans l’espace local.
+Une nouvelle préparation n’écrase jamais les anciennes valeurs du brouillon.
+
+Par défaut, l’appareil conserve au maximum 14 brouillons (limite réglable par
+l’administrateur). Au-delà, la création est refusée sans effacer les anciens.
+**Supprimer ce brouillon local** exige confirmation et est irréversible : ce
+travail n’a pas de copie serveur. **Effacer la copie locale** efface seulement
+le catalogue téléchargé et verrouille les brouillons jusqu’à nouvelle préparation.
+
+Ne supprimez pas les données du site pour résoudre un problème de cache : cela
+effacerait aussi les brouillons. L’installation ne garantit ni la persistance
+du navigateur ni une sauvegarde ; perte de l’appareil ou éviction du stockage
+peuvent entraîner leur perte.
 
 ## Préparer la proposition
 

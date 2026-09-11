@@ -1,7 +1,7 @@
 {
   "version": "2.1",
   "planningUpdatedAt": "2026-09-11",
-  "nextTicket": "TECH-02",
+  "nextTicket": "TECH-03",
   "tickets": [
     {
       "id": "FND-01",
@@ -533,7 +533,8 @@
       "epic": "offline",
       "title": "Persistent local inventory drafts",
       "priority": "P0",
-      "status": "planned",
+      "status": "implemented_pending_device_validation",
+      "deliveryRecord": "implementation/34_TECH_02_LOCAL_INVENTORY_DRAFTS.md",
       "dependsOn": ["TECH-01", "V3-02"],
       "externalGates": [],
       "spec": "implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md",

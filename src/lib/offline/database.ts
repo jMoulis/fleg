@@ -1,15 +1,10 @@
-import Dexie, { type Table } from "dexie";
+import { offlineDb as db } from "./storage";
 import {
   preparedWorkspaceSchema,
   type PreparedWorkspace,
 } from "@/domain/offline/schemas";
 
 // Never reuse these tables for pending drafts. They can safely be discarded.
-const db = new Dexie("fleg-offline-reference-v1") as Dexie & {
-  copies: Table<{ key: string; value: unknown }, string>;
-  meta: Table<{ key: string; epoch: number }, string>;
-};
-db.version(1).stores({ copies: "key", meta: "key" });
 
 export async function preparationEpoch() {
   return (await db.meta.get("session"))?.epoch ?? 0;
