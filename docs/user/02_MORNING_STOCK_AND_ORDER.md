@@ -69,9 +69,10 @@ traçable au lieu d'écraser la précédente.
 
 Depuis **Stocks du matin**, le lien **Préparer la consultation hors connexion**
 ouvre un espace dédié. Le catalogue y reste consultable et un **brouillon local**
-peut maintenant être saisi. Attention : il n’est **ni synchronisé ni validé sur
-le serveur**. Pour la commande réelle, continuez à saisir et valider les stocks
-dans l’écran connecté ; ne faites pas du brouillon local votre unique relevé terrain.
+peut être saisi. Vous pouvez activer sa synchronisation, mais un brouillon
+synchronisé n’est **pas un stock validé**. La validation finale reste dans
+l’écran connecté. Avant d’utiliser ce parcours comme unique relevé, faites la
+recette sur votre appareil réel avec un relevé témoin.
 
 1. Sur l’appareil que vous utiliserez en réserve, connectez-vous avec du réseau,
    choisissez le magasin et la date dans Stocks du matin, puis suivez le lien.
@@ -80,8 +81,8 @@ dans l’écran connecté ; ne faites pas du brouillon local votre unique relev�
    Le téléchargement comprend toutes les pages, pas seulement les articles déjà vus.
 3. Coupez le réseau, fermez puis rouvrez **Espace hors connexion** (`/offline`).
    Recherchez un article jamais affiché auparavant.
-4. Au retour du réseau, ouvrez l’application connectée pour saisir et valider
-   le comptage. La copie consultée n’a créé ni comptage ni commande.
+4. La simple consultation ne crée ni comptage ni commande. Pour envoyer vos
+   saisies locales, suivez le parcours de synchronisation ci-dessous.
 
 Une seule copie magasin/date est conservée : en préparer une autre remplace la
 précédente, **pas les brouillons locaux**. La consultation expire par défaut après 12 heures, ou plus tôt si
@@ -112,8 +113,9 @@ restent indisponibles sans réseau.
 
 ## Essayer le brouillon local sans réseau
 
-Cette étape sert à tester la résistance aux coupures, pas encore le parcours
-complet chambre froide → commande. La synchronisation viendra avec TECH-03.
+Commencez sur un relevé d’essai pour vérifier la résistance aux coupures de
+votre appareil. La synchronisation doit être activée pour chaque brouillon ;
+les anciens brouillons restent locaux tant que vous ne l’activez pas.
 
 1. Préparez de nouveau le catalogue avec un compte autorisé à saisir les stocks.
    Une ancienne copie ou un compte en lecture seule n’autorise pas la saisie locale.
@@ -133,7 +135,7 @@ complet chambre froide → commande. La synchronisation viendra avec TECH-03.
 
 La date du relevé reste fixe, même après minuit. Une différence avec la date
 actuelle est signalée. Une horloge incohérente doit être corrigée dans les
-réglages de l’appareil ; la date d’envoi future ne remplacera pas l’observation.
+réglages de l’appareil ; la date d’envoi ne remplace pas celle de l’observation.
 
 Après expiration, déconnexion ou changement de compte, les brouillons sont
 **verrouillés, pas supprimés**. Reconnectez-vous avec le compte propriétaire,
@@ -143,14 +145,60 @@ Une nouvelle préparation n’écrase jamais les anciennes valeurs du brouillon.
 
 Par défaut, l’appareil conserve au maximum 14 brouillons (limite réglable par
 l’administrateur). Au-delà, la création est refusée sans effacer les anciens.
-**Supprimer ce brouillon local** exige confirmation et est irréversible : ce
-travail n’a pas de copie serveur. **Effacer la copie locale** efface seulement
+**Supprimer ce brouillon local** exige confirmation et est irréversible : les
+saisies non synchronisées seront perdues, sans supprimer un éventuel brouillon
+serveur. Une réponse d’envoi incertaine bloque cette suppression : réessayez ou
+résolvez d’abord le conflit pour savoir ce qui a été reçu.
+**Effacer la copie locale** efface seulement
 le catalogue téléchargé et verrouille les brouillons jusqu’à nouvelle préparation.
 
 Ne supprimez pas les données du site pour résoudre un problème de cache : cela
 effacerait aussi les brouillons. L’installation ne garantit ni la persistance
 du navigateur ni une sauvegarde ; perte de l’appareil ou éviction du stockage
 peuvent entraîner leur perte.
+
+## Synchroniser puis valider le stock
+
+1. Dans le brouillon, choisissez **Activer la synchronisation de ce brouillon**.
+   Vos saisies restent enregistrées immédiatement sur l’appareil. Les envois
+   reprennent au retour du réseau, tant que cet écran reste ouvert et votre accès
+   valide. Sans cet accord, rien n’est envoyé.
+2. Au retour du réseau, rouvrez **Espace hors connexion**. Si nécessaire,
+   choisissez **Vérifier le retour du réseau**, puis **Réessayer la synchronisation**.
+   Gardez l’écran ouvert jusqu’au résultat ; l’app ne promet pas d’envoyer en arrière-plan.
+3. Vérifiez **Brouillon synchronisé**, la révision serveur et le nombre d’articles
+   encore en attente. Une valeur incomplète comme `1,` doit être corrigée ; une
+   quantité de référence doit être confirmée en la saisissant. Aucun zéro n’est inventé.
+4. Ouvrez l’application connectée, choisissez le même magasin et la même date
+   dans **Stocks du matin**, puis relisez toutes les lignes. N’utilisez pas un
+   ancien écran connecté resté ouvert : rechargez-le pour obtenir la nouvelle révision.
+5. Complétez les lignes partielles, puis **validez le comptage**. C’est seulement
+   alors que le stock peut servir à la proposition de commande. La synchronisation
+   ne valide pas le stock, ne calcule pas de commande et n’envoie rien au fournisseur.
+
+**En attente** ou **en cours** ne signifie pas reçu. Après cinq tentatives
+automatiques non confirmées, l’envoi s’arrête et reste récupérable avec le bouton
+de réessai. Si la réponse s’est perdue, la même opération est renvoyée sans doubler
+le stock. Les saisies faites pendant un envoi sont conservées pour l’envoi suivant.
+
+En cas de **conflit**, la saisie des quantités est suspendue : comparez les valeurs
+« appareil » et « serveur », puis choisissez **Garder ma saisie** ou **Garder la
+version serveur** pour chaque article, y compris sur les pages suivantes. Confirmez
+vos choix. Les quantités ne sont jamais additionnées. **Actualiser la version
+serveur** renouvelle la comparaison et demande de refaire les choix. Si le stock
+a déjà été validé, créez d’abord une correction dans l’écran connecté, puis actualisez
+le conflit. Ne contournez pas ce contrôle en recréant le même relevé ailleurs.
+
+Un **accès verrouillé** demande une reconnexion avec le compte propriétaire,
+puis une nouvelle préparation du même magasin et de la même date. Les droits
+sont revérifiés à chaque envoi. Un **envoi refusé** pour une valeur invalide peut
+être révisé avec le bouton dédié : les saisies restent locales, corrigez-les puis
+réessayez. Un navigateur incompatible conserve les saisies locales mais ne permet
+pas la synchronisation : mettez-le à jour et refaites la recette avant usage réel.
+
+La [checklist terrain TECH-03](./08_PILOT_BETA_CHECKLIST.md#recette-hors-connexion-tech-03)
+reste obligatoire sur les téléphones/tablettes utilisés en magasin. Les tests
+automatiques ne prouvent pas la fiabilité de votre appareil en chambre froide.
 
 ## Préparer la proposition
 

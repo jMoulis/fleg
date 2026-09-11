@@ -50,7 +50,7 @@ interface InventoryCountLineDocument
   productId: ObjectId;
 }
 
-interface InventoryCountDocument {
+export interface InventoryCountDocument {
   organizationId: string;
   storeId: ObjectId;
   businessDate: string;
@@ -138,7 +138,7 @@ function toInventoryProfile(
   });
 }
 
-function toInventoryCount(
+export function toInventoryCount(
   document: WithId<InventoryCountDocument>,
 ): InventoryCount {
   return inventoryCountSchema.parse({
@@ -165,8 +165,7 @@ function toStockSnapshot(
     storeId: document.storeId.toHexString(),
     productId: document.productId.toHexString(),
     countId: document.countId.toHexString(),
-    supersedesSnapshotId:
-      document.supersedesSnapshotId?.toHexString() ?? null,
+    supersedesSnapshotId: document.supersedesSnapshotId?.toHexString() ?? null,
     observedAt: document.observedAt.toISOString(),
     createdAt: document.createdAt.toISOString(),
   });
@@ -195,6 +194,7 @@ function lineFromSnapshot(
     packSize: snapshot.packSize,
     reserveCaseCount: snapshot.reserveCaseCount,
     shelfQuantity: snapshot.shelfQuantity,
+    observedAt: snapshot.observedAt.toISOString(),
   };
 }
 
@@ -361,7 +361,9 @@ export class InventoryRepository {
     const session = this.client.startSession();
     try {
       const result = await session.withTransaction(async () => {
-        const repeated = await this.commands.findOne(commandFilter, { session });
+        const repeated = await this.commands.findOne(commandFilter, {
+          session,
+        });
         if (repeated?.countSnapshot) {
           return inventoryCountSchema.parse(repeated.countSnapshot);
         }
@@ -482,8 +484,14 @@ export class InventoryRepository {
             action: "inventory.count.started",
             entityType: "inventoryCount",
             entityId: countId,
-            before: latest ? { countId: latest._id, version: latest.version } : null,
-            after: { countId, businessDate: count.businessDate, version: count.version },
+            before: latest
+              ? { countId: latest._id, version: latest.version }
+              : null,
+            after: {
+              countId,
+              businessDate: count.businessDate,
+              version: count.version,
+            },
             requestId,
             timestamp: now,
             createdAt: now,
@@ -552,7 +560,9 @@ export class InventoryRepository {
     const session = this.client.startSession();
     try {
       const result = await session.withTransaction(async () => {
-        const repeated = await this.commands.findOne(commandFilter, { session });
+        const repeated = await this.commands.findOne(commandFilter, {
+          session,
+        });
         if (repeated?.countSnapshot) {
           return inventoryCountSchema.parse(repeated.countSnapshot);
         }
@@ -596,10 +606,33 @@ export class InventoryRepository {
         }
 
         const now = new Date();
-        const lines = updateInput.lines.map((line) => ({
-          ...line,
-          productId: new ObjectId(line.productId),
-        }));
+        const lines = updateInput.lines.map((line) => {
+          const previous = current.lines.find(
+            (value) => value.productId.toHexString() === line.productId,
+          );
+          const unchanged =
+            previous &&
+            (
+              [
+                "familyCode",
+                "stockUnit",
+                "packSize",
+                "reserveCaseCount",
+                "shelfQuantity",
+              ] as const
+            ).every((key) => previous[key] === line[key]);
+          // Never trust an observation timestamp supplied through the connected editor.
+          // Preserve an offline timestamp only while its values are unchanged.
+          return {
+            ...line,
+            productId: new ObjectId(line.productId),
+            observedAt: unchanged
+              ? (previous.observedAt ?? null)
+              : line.reserveCaseCount !== null || line.shelfQuantity !== null
+                ? now.toISOString()
+                : null,
+          };
+        });
         const revision = current.revision + 1;
         await this.counts.updateOne(
           {
@@ -634,7 +667,10 @@ export class InventoryRepository {
             action: "inventory.count.draft_saved",
             entityType: "inventoryCount",
             entityId: countId,
-            before: { revision: current.revision, lineCount: current.lines.length },
+            before: {
+              revision: current.revision,
+              lineCount: current.lines.length,
+            },
             after: { revision, lineCount: lines.length },
             requestId,
             timestamp: now,
@@ -698,7 +734,9 @@ export class InventoryRepository {
     const session = this.client.startSession();
     try {
       const result = await session.withTransaction(async () => {
-        const repeated = await this.commands.findOne(commandFilter, { session });
+        const repeated = await this.commands.findOne(commandFilter, {
+          session,
+        });
         if (repeated?.commitResult) {
           return inventoryCommitResultSchema.parse(repeated.commitResult);
         }
@@ -797,7 +835,11 @@ export class InventoryRepository {
             storeId,
             productId: new ObjectId(planned.observation.productId),
             businessDate: current.businessDate,
-            observedAt: now,
+            observedAt: new Date(
+              publicLines.find(
+                (line) => line.productId === planned.observation.productId,
+              )?.observedAt ?? now,
+            ),
             familyCode: planned.observation.familyCode,
             stockUnit: planned.observation.stockUnit,
             reserveCaseCount: planned.observation.reserveCaseCount,

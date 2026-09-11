@@ -96,9 +96,49 @@ retrouvées ou perdues et temps de reprise. Le catalogue préparé (`TECH-01`) e
 le brouillon local (`TECH-02`) sont décrits dans le guide du stock du matin.
 Testez la fermeture/réouverture sur un relevé d’essai, puis comparez toutes les
 valeurs et les zéros/vides. Notez appareil, navigateur, mode installé ou onglet,
-message de conservation et résultat de reprise. Le brouillon reste **local,
-non synchronisé** : ne remplacez pas le comptage connecté validé par ce test.
-La recette complète de synchronisation chambre froide reste dans `TECH-03`.
+message de conservation et résultat de reprise. La synchronisation est maintenant
+activable par brouillon, mais ne remplace jamais la validation connectée du stock.
+
+## Recette hors connexion TECH-03
+
+À réaliser d’abord sur un relevé d’essai, avec une copie témoin des quantités.
+Un essai sur ordinateur ne valide pas le téléphone ou la tablette du magasin.
+
+- □ noter version déployée, appareil, OS, navigateur/version et mode installé ou onglet ;
+- □ avec du réseau, vérifier compte, magasin, date, taille du catalogue et préparer ;
+- □ démarrer le brouillon et activer sa synchronisation ;
+- □ en mode avion, compter une série représentative (réserve, rayon, kg/pièces,
+  colisage changé, zéro et vide), en recherchant aussi des articles jamais ouverts ;
+- □ attendre l’enregistrement local, fermer complètement l’app puis rouvrir sans réseau ;
+- □ comparer les quantités, colisages, filtres et date avec le relevé témoin ;
+- □ retrouver du réseau, garder l’écran ouvert et attendre **Brouillon synchronisé** ;
+- □ vérifier dans Stocks du matin, après rechargement, que chaque quantité est exacte
+  et qu’il s’agit encore d’un brouillon, sans stock validé ni commande automatique ;
+- □ provoquer plusieurs coupures/reconnexions pendant des envois et confirmer
+  qu’aucune ligne ne disparaît et qu’aucune quantité n’est doublée ;
+- □ sur deux appareils de test, modifier le même relevé ; vérifier le conflit,
+  comparer les deux valeurs, choisir explicitement et vérifier la valeur finale ;
+- □ laisser expirer l’accès ou se déconnecter avec du travail en attente : il doit
+  rester verrouillé, puis être récupéré uniquement avec le compte propriétaire ;
+- □ avec l’administrateur, révoquer l’accès d’un compte de test : au retour du réseau,
+  aucun envoi ne doit réussir. Rétablir ensuite les droits pour récupérer ses saisies ;
+- □ changer de compte ou de magasin : aucune saisie de l’autre périmètre ne doit
+  être visible ou envoyée. Revenir au propriétaire pour vérifier leur conservation ;
+- □ lors d’une vraie mise à jour, fermer les onglets après sauvegarde locale,
+  rouvrir et contrôler la reprise ; ne jamais effacer les données du site ;
+- □ relire et valider explicitement dans Stocks du matin, puis contrôler la commande
+  séparément. Ne pas valider de fausses données dans le magasin réel.
+
+Compte rendu : durée de préparation, comptage et reprise ; nombre d’articles ;
+lieu/durée des coupures ; état affiché ; valeurs attendues/retrouvées ; perte,
+doublon ou conflit ; action nécessaire pour récupérer ; captures sans données
+personnelles. Une perte inexpliquée ou un mélange de comptes/magasins bloque le
+déploiement terrain. Conserver un relevé témoin jusqu’à validation de cette recette.
+
+La réponse serveur perdue après une écriture réussie est aussi couverte par une
+recette technique automatisée ; ne pas prétendre l’avoir reproduite au terrain
+si une simple coupure n’en apporte pas la preuve. Cette recette valide la
+récupération technique, pas les gains commerciaux de `PILOT-01`.
 
 ## 3. Préparer et contrôler la proposition
 

@@ -385,8 +385,9 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
       </h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
         Votre catalogue et votre relevé de référence, à consulter en réserve.
-        Vous pouvez conserver un brouillon de stock sur cet appareil. Il reste
-        local : aucune synchronisation ni validation serveur dans cette version.
+        Vous pouvez conserver un brouillon de stock sur cet appareil et activer
+        sa synchronisation au retour du réseau. La validation finale du stock
+        reste une action explicite dans l’application connectée.
       </p>
       <p className="mt-4 flex items-center gap-2 text-sm font-semibold">
         <WifiOff aria-hidden="true" className="size-4" />

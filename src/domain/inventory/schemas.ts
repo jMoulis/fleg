@@ -43,6 +43,8 @@ export const inventoryCountLineSchema = z
     packSize: packSizeSchema.nullable(),
     reserveCaseCount: z.number().int().nonnegative().max(100_000).nullable(),
     shelfQuantity: quantitySchema.nullable(),
+    // Offline observation time, distinct from upload and final commitment.
+    observedAt: z.iso.datetime().nullable().optional(),
   })
   .strict()
   .superRefine((line, context) => {

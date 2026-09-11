@@ -47,7 +47,7 @@ export const initialLocalView: LocalView = {
 
 export const localInventoryDraftSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     id: z.uuid(),
     owner: offlineIdentitySchema.omit({ sessionBinding: true }),
     businessDate: z.iso.date(),
@@ -156,6 +156,17 @@ function parseRaw(value: string): number | null {
   if (!/^-?\d+(?:[.,]\d+)?$/.test(value.trim()))
     throw new Error("Saisie numérique incomplète ou invalide");
   return Number(value.trim().replace(",", "."));
+}
+
+export function toSyncLine(line: LocalCountLine) {
+  const parsed = inventoryCountLineSchema.parse({
+    productId: line.productId, familyCode: line.familyCode, stockUnit: line.stockUnit,
+    packSize: parseRaw(line.packSize), reserveCaseCount: parseRaw(line.reserveCaseCount),
+    shelfQuantity: parseRaw(line.shelfQuantity), observedAt: line.observedAt,
+  });
+  if ((parsed.reserveCaseCount !== null || parsed.shelfQuantity !== null) && !parsed.observedAt)
+    throw new Error("Confirmez les quantités de référence avant de les envoyer comme observation");
+  return parsed;
 }
 
 export function inspectLocalLine(line: LocalCountLine) {
