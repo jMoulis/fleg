@@ -1,3 +1,4 @@
+import { prepareCatalogue } from "./offline-ui";
 import {
   chromium,
   expect,
@@ -43,10 +44,8 @@ async function prepareFixture(page: Page, context: BrowserContext) {
   await expect(
     page.getByRole("button", { name: "Préparer ce catalogue" }),
   ).toBeEnabled({ timeout: 45_000 });
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
-  await expect(
-    page.getByText("Prêt pour la consultation hors connexion", { exact: true }),
-  ).toBeVisible();
+  await prepareCatalogue(page);
+  await expect(page.getByText("Catalogue prêt", { exact: true })).toBeVisible();
   return { copy, control, endpoint };
 }
 
@@ -110,7 +109,7 @@ test("TECH-01 refuse le téléchargement partiel, expire la copie et permet son 
   await context.route(endpoint, (route) =>
     route.fulfill({ json: { ...copy, products: [] } }),
   );
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
+  await prepareCatalogue(page);
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "incomplète",
   );
@@ -122,6 +121,7 @@ test("TECH-01 refuse le téléchargement partiel, expire la copie et permet son 
     page.getByText(/Copie expirée ou horloge incohérente/),
   ).toBeVisible();
   await expect(page.locator("[data-offline-product]")).toHaveCount(0);
+  await page.getByText("Gérer la copie locale", { exact: true }).click();
   await page.getByRole("button", { name: "Effacer la copie locale" }).click();
   await expect(page.getByText(/Aucun catalogue préparé/)).toBeVisible();
 });
@@ -181,9 +181,9 @@ test("TECH-01 signale un stockage indisponible sans annoncer une préparation", 
   );
   await page.goto("/offline");
   await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
-  await expect(
-    page.getByText("Prêt pour la consultation hors connexion", { exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByText("Catalogue prêt", { exact: true })).toHaveCount(
+    0,
+  );
 });
 
 test("TECH-01 détecte le manque de place et un cache statique incomplet", async ({
@@ -194,7 +194,7 @@ test("TECH-01 détecte le manque de place et un cache statique incomplet", async
   await page.evaluate(() => {
     navigator.storage.estimate = async () => ({ usage: 100, quota: 100 });
   });
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
+  await prepareCatalogue(page);
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Espace insuffisant",
   );
@@ -207,7 +207,7 @@ test("TECH-01 détecte le manque de place et un cache statique incomplet", async
           await cache.delete(request);
     }
   });
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
+  await prepareCatalogue(page);
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Application locale incomplète",
   );
@@ -230,9 +230,9 @@ test("TECH-01 garde la référence après arrêt du navigateur et ne force pas u
     await expect(
       page.getByRole("button", { name: "Préparer ce catalogue" }),
     ).toBeEnabled({ timeout: 45_000 });
-    await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
+    await prepareCatalogue(page);
     await expect(
-      page.getByText("Prêt pour la consultation hors connexion", {
+      page.getByText("Catalogue prêt", {
         exact: true,
       }),
     ).toBeVisible();
@@ -264,7 +264,7 @@ test("TECH-01 garde la référence après arrêt du navigateur et ne force pas u
     const reopened = await persistent.newPage();
     await reopened.goto("/offline");
     await expect(
-      reopened.getByText("Prêt pour la consultation hors connexion", {
+      reopened.getByText("Catalogue prêt", {
         exact: true,
       }),
     ).toBeVisible();

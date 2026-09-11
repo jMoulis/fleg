@@ -292,18 +292,14 @@ export function LocalInventoryEditor({
   return (
     <section
       aria-labelledby="local-count-title"
-      className="mt-8 space-y-4 pb-6"
+      className="mt-5 space-y-4 pb-4"
     >
-      <h2 id="local-count-title" className="text-xl font-semibold">
-        Brouillon de stock sur cet appareil
+      <h2
+        id="local-count-title"
+        className={draft ? "sr-only" : "text-xl font-semibold"}
+      >
+        Feuille de comptage
       </h2>
-      <p className="text-sm text-amber-900">
-        {draft?.schemaVersion === 2
-          ? "Synchronisation activée pour ce brouillon."
-          : "Local uniquement tant que vous n’activez pas la synchronisation."}{" "}
-        Ce brouillon ne sert pas aux préconisations de commande avant validation
-        explicite dans Stocks du matin, en ligne.
-      </p>
       {dates.some((date) => date !== workspace.businessDate) && (
         <p className="text-sm">
           Autres dates conservées pour ce compte et ce magasin :{" "}
@@ -314,8 +310,9 @@ export function LocalInventoryEditor({
       )}
       {error && (
         <div
+          id="local-save-error"
           role="alert"
-          className="rounded-xl border border-destructive p-4 text-sm text-destructive"
+          className="scroll-mt-20 rounded-xl border border-destructive p-4 text-sm text-destructive"
         >
           <p>{error}</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -339,28 +336,10 @@ export function LocalInventoryEditor({
           disabled={saving || !workspace.products.length}
           onClick={() => void start()}
         >
-          Commencer un brouillon local
+          Commencer le comptage
         </Button>
       ) : (
         <>
-          <InventorySyncPanel
-            workspace={workspace}
-            draft={draft}
-            disabled={saving || Boolean(error)}
-            onConflictChange={setSyncConflict}
-          />
-          <p className="text-sm font-medium">
-            {draft.storeName} · date du relevé {draft.businessDate} ·{" "}
-            {draft.timeZone}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Base serveur initiale :{" "}
-            {draft.serverCountId
-              ? `comptage ${draft.serverCountId}, révision ${draft.baseRevision}`
-              : "aucun brouillon lié"}{" "}
-            · données révision {draft.dataRevision}. Un nouveau téléchargement
-            ne remplace pas ces saisies.
-          </p>
           {businessDateAt(now, draft.timeZone) !== draft.businessDate && (
             <p role="status" className="text-sm text-amber-900">
               La date locale actuelle diffère du relevé. Vous travaillez
@@ -368,10 +347,30 @@ export function LocalInventoryEditor({
               automatiquement.
             </p>
           )}
-          <div className="z-10 grid gap-3 rounded-xl border bg-background p-3 sm:sticky sm:top-0 sm:grid-cols-2">
-            <label className="text-sm">
-              Rechercher dans le brouillon
+          <div className="grid grid-cols-2 gap-3 rounded-xl border bg-background p-3">
+            <div
+              role="group"
+              aria-label="Zone de comptage"
+              className="col-span-2 flex gap-2"
+            >
+              {(["reserve", "shelf"] as const).map((area) => (
+                <Button
+                  key={area}
+                  className="min-h-11 flex-1"
+                  variant={view!.area === area ? "default" : "outline"}
+                  disabled={inactive}
+                  aria-pressed={view!.area === area}
+                  onClick={() => editView({ area })}
+                >
+                  {area === "reserve" ? "Réserve" : "Rayon"}
+                </Button>
+              ))}
+            </div>
+            <label className="col-span-2 text-sm">
+              <span className="sr-only">Rechercher dans le brouillon</span>
               <Input
+                placeholder="Rechercher un article…"
+                className="min-h-11"
                 maxLength={200}
                 value={view!.search}
                 disabled={inactive}
@@ -381,7 +380,7 @@ export function LocalInventoryEditor({
               />
             </label>
             <label className="text-sm">
-              Famille du brouillon
+              <span className="sr-only">Famille du brouillon</span>
               <select
                 className="mt-1 block min-h-11 w-full rounded-lg border px-3"
                 value={view!.family}
@@ -393,13 +392,13 @@ export function LocalInventoryEditor({
                   })
                 }
               >
-                <option value="">Toutes</option>
+                <option value="">Toutes les familles</option>
                 <option value="3400">Fruits · 3400</option>
                 <option value="3402">Légumes · 3402</option>
               </select>
             </label>
             <label className="text-sm">
-              Progression
+              <span className="sr-only">Progression</span>
               <select
                 className="mt-1 block min-h-11 w-full rounded-lg border px-3"
                 value={view!.progress}
@@ -411,38 +410,22 @@ export function LocalInventoryEditor({
                   })
                 }
               >
-                <option value="all">Tous</option>
+                <option value="all">Tous les articles</option>
                 <option value="remaining">À compléter</option>
-                <option value="complete">Complets localement</option>
+                <option value="complete">Complets</option>
               </select>
             </label>
-            <div
-              role="group"
-              aria-label="Zone de comptage"
-              className="flex items-end gap-2"
-            >
-              {(["reserve", "shelf"] as const).map((area) => (
-                <Button
-                  key={area}
-                  variant={view!.area === area ? "default" : "outline"}
-                  disabled={inactive}
-                  aria-pressed={view!.area === area}
-                  onClick={() => editView({ area })}
-                >
-                  {area === "reserve" ? "Réserve" : "Rayon"}
-                </Button>
-              ))}
-            </div>
             <nav
               aria-label="Pages du brouillon"
-              className="flex flex-wrap items-center gap-3 sm:col-span-2"
+              className="col-span-2 flex flex-wrap items-center gap-3"
             >
               <Button
                 variant="outline"
                 disabled={inactive || page === 1}
                 onClick={() => editView({ page: page - 1 })}
               >
-                Page précédente
+                <span aria-hidden="true">←</span>
+                <span className="sr-only">Page précédente</span>
               </Button>
               <span className="text-sm">
                 {matches.length} articles · page {page}/{pageCount}
@@ -452,7 +435,8 @@ export function LocalInventoryEditor({
                 disabled={inactive || page === pageCount}
                 onClick={() => editView({ page: page + 1 })}
               >
-                Page suivante
+                <span aria-hidden="true">→</span>
+                <span className="sr-only">Page suivante</span>
               </Button>
             </nav>
           </div>
@@ -479,92 +463,107 @@ export function LocalInventoryEditor({
                     <legend className="sr-only">
                       Comptage de {line.label}
                     </legend>
-                    <div className="grid grid-cols-2 gap-2">
+                    <details
+                      open={!line.familyCode || !line.stockUnit}
+                      className="text-sm"
+                    >
+                      <summary className="cursor-pointer py-1 text-muted-foreground">
+                        {line.familyCode && line.stockUnit
+                          ? `${line.familyCode === "3400" ? "Fruits" : "Légumes"} · ${line.stockUnit === "piece" ? "pièces" : "kg"} · modifier`
+                          : "Famille et unité à renseigner"}
+                      </summary>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <label className="text-sm">
+                          Famille
+                          <select
+                            className="mt-1 block min-h-11 w-full rounded-lg border px-2"
+                            value={line.familyCode ?? ""}
+                            onChange={(event) =>
+                              editLine(line, {
+                                familyCode:
+                                  event.target.value === ""
+                                    ? null
+                                    : (event.target
+                                        .value as LocalCountLine["familyCode"]),
+                              })
+                            }
+                          >
+                            <option value="">À renseigner</option>
+                            <option value="3400">3400 · Fruits</option>
+                            <option value="3402">3402 · Légumes</option>
+                          </select>
+                        </label>
+                        <label className="text-sm">
+                          Unité
+                          <select
+                            className="mt-1 block min-h-11 w-full rounded-lg border px-2"
+                            value={line.stockUnit ?? ""}
+                            onChange={(event) =>
+                              editLine(line, {
+                                stockUnit:
+                                  event.target.value === ""
+                                    ? null
+                                    : (event.target
+                                        .value as LocalCountLine["stockUnit"]),
+                              })
+                            }
+                          >
+                            <option value="">À renseigner</option>
+                            <option value="kg">kg</option>
+                            <option value="piece">Pièce</option>
+                          </select>
+                        </label>
+                      </div>
+                    </details>
+                    <div className="grid grid-cols-2 items-end gap-3">
                       <label className="text-sm">
-                        Famille
-                        <select
-                          className="mt-1 block min-h-11 w-full rounded-lg border px-2"
-                          value={line.familyCode ?? ""}
-                          onChange={(event) =>
-                            editLine(line, {
-                              familyCode:
-                                event.target.value === ""
-                                  ? null
-                                  : (event.target
-                                      .value as LocalCountLine["familyCode"]),
-                            })
-                          }
-                        >
-                          <option value="">À renseigner</option>
-                          <option value="3400">3400 · Fruits</option>
-                          <option value="3402">3402 · Légumes</option>
-                        </select>
-                      </label>
-                      <label className="text-sm">
-                        Unité
-                        <select
-                          className="mt-1 block min-h-11 w-full rounded-lg border px-2"
-                          value={line.stockUnit ?? ""}
-                          onChange={(event) =>
-                            editLine(line, {
-                              stockUnit:
-                                event.target.value === ""
-                                  ? null
-                                  : (event.target
-                                      .value as LocalCountLine["stockUnit"]),
-                            })
-                          }
-                        >
-                          <option value="">À renseigner</option>
-                          <option value="kg">kg</option>
-                          <option value="piece">Pièce</option>
-                        </select>
-                      </label>
-                    </div>
-                    <label className="text-sm">
-                      Colisage du relevé
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        maxLength={40}
-                        value={line.packSize}
-                        onChange={(event) =>
-                          editLine(line, { packSize: event.target.value })
-                        }
-                      />
-                    </label>
-                    {view!.area === "reserve" ? (
-                      <label className="text-sm">
-                        Colis en réserve
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={40}
-                          value={line.reserveCaseCount}
-                          onChange={(event) =>
-                            editLine(line, {
-                              reserveCaseCount: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                    ) : (
-                      <label className="text-sm">
-                        Quantité en rayon (
-                        {line.stockUnit ?? "unité à renseigner"})
+                        Colisage du relevé
                         <Input
                           type="text"
                           inputMode="decimal"
                           maxLength={40}
-                          value={line.shelfQuantity}
+                          className="mt-1 min-h-11"
+                          value={line.packSize}
                           onChange={(event) =>
-                            editLine(line, {
-                              shelfQuantity: event.target.value,
-                            })
+                            editLine(line, { packSize: event.target.value })
                           }
                         />
                       </label>
-                    )}
+                      {view!.area === "reserve" ? (
+                        <label className="text-sm">
+                          Colis en réserve
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={40}
+                            className="mt-1 min-h-11"
+                            value={line.reserveCaseCount}
+                            onChange={(event) =>
+                              editLine(line, {
+                                reserveCaseCount: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      ) : (
+                        <label className="text-sm">
+                          Quantité en rayon (
+                          {line.stockUnit ?? "unité à renseigner"})
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            maxLength={40}
+                            className="mt-1 min-h-11"
+                            value={line.shelfQuantity}
+                            onChange={(event) =>
+                              editLine(line, {
+                                shelfQuantity: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+                    </div>
                   </fieldset>
                   <p className="mt-3 text-sm">
                     Réserve : {line.reserveCaseCount || "non comptée"} colis ·
@@ -577,30 +576,31 @@ export function LocalInventoryEditor({
                       ? ` · total ${result.total} ${line.stockUnit}`
                       : ""}
                   </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {line.observedAt
-                      ? `Saisi le ${new Date(line.observedAt).toLocaleString("fr-FR", { timeZone: draft.timeZone })}`
-                      : "Valeurs de référence : pas encore modifiées sur cet appareil."}
-                  </p>
+                  <details className="mt-2 text-xs text-muted-foreground">
+                    <summary className="cursor-pointer py-1">
+                      Détail du relevé
+                    </summary>
+                    <p className="mt-1">
+                      {line.observedAt
+                        ? `Saisi le ${new Date(line.observedAt).toLocaleString("fr-FR", { timeZone: draft.timeZone })}`
+                        : "Valeurs de référence : pas encore modifiées sur cet appareil."}
+                    </p>
+                  </details>
                 </li>
               ))}
           </ul>
-          <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background p-3 shadow-sm">
-            <div role="status" className="text-sm">
-              <p className="font-semibold">
-                {saving
-                  ? "Enregistrement sur cet appareil…"
-                  : error
-                    ? "Enregistrement local en échec"
-                    : draft.schemaVersion === 2
-                      ? "Enregistré sur cet appareil · état d’envoi ci-dessus"
-                      : "Enregistré sur cet appareil · non synchronisé"}
-              </p>
-              <p>
-                {complete}/{draft.lines.length} articles complets ·{" "}
-                {draft.lines.length - complete} à compléter
-              </p>
-            </div>
+          <details className="rounded-xl border bg-card p-4 text-sm">
+            <summary className="cursor-pointer font-medium">
+              Options du comptage
+            </summary>
+            <p className="my-3 text-muted-foreground">
+              {draft.storeName} · {draft.businessDate} · {draft.timeZone}. Base
+              serveur :{" "}
+              {draft.serverCountId
+                ? `comptage ${draft.serverCountId}, révision ${draft.baseRevision}`
+                : "aucun brouillon lié"}
+              . Données révision {draft.dataRevision}.
+            </p>
             <Button
               variant="outline"
               disabled={saving || Boolean(error)}
@@ -608,7 +608,16 @@ export function LocalInventoryEditor({
             >
               Supprimer ce brouillon local
             </Button>
-          </div>
+          </details>
+          <InventorySyncPanel
+            workspace={workspace}
+            draft={draft}
+            disabled={saving || Boolean(error)}
+            saving={saving}
+            saveFailed={Boolean(error)}
+            complete={complete}
+            onConflictChange={setSyncConflict}
+          />
         </>
       )}
     </section>

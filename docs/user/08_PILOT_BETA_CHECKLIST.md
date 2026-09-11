@@ -107,6 +107,11 @@ Un essai sur ordinateur ne valide pas le téléphone ou la tablette du magasin.
 - □ noter version déployée, appareil, OS, navigateur/version et mode installé ou onglet ;
 - □ avec du réseau, vérifier compte, magasin, date, taille du catalogue et préparer ;
 - □ démarrer le brouillon et activer sa synchronisation ;
+- □ vérifier que les articles et la barre de sauvegarde restent accessibles sur
+  le téléphone, y compris avec le clavier ouvert ; distinguer réseau, sauvegarde
+  locale et réception serveur ;
+- □ retrouver les réglages dans les détails de l’article, la préparation sous
+  **Catalogue prêt** et **Aide et détails** sans réseau ;
 - □ en mode avion, compter une série représentative (réserve, rayon, kg/pièces,
   colisage changé, zéro et vide), en recherchant aussi des articles jamais ouverts ;
 - □ attendre l’enregistrement local, fermer complètement l’app puis rouvrir sans réseau ;

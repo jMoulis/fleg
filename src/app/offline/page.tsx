@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { OfflineWorkspace } from "@/components/offline/offline-workspace";
 
 export const metadata: Metadata = {
-  title: "Hors connexion — F&L Cockpit",
+  title: "Stocks du matin — F&L Cockpit",
   robots: { index: false, follow: false },
 };
 // Public, static shell only. Never read cookies, headers or business data here.

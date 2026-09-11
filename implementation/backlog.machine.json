@@ -550,7 +550,7 @@
       "epic": "offline",
       "title": "Reliable synchronization and cold-room acceptance",
       "priority": "P0",
-      "status": "implemented_pending_review_and_device_validation",
+      "status": "merged_pending_device_validation",
       "deliveryRecord": "implementation/35_TECH_03_INVENTORY_SYNCHRONIZATION.md",
       "dependsOn": ["TECH-02"],
       "externalGates": ["Real target-device offline recovery and account-isolation acceptance before rollout"],
@@ -812,6 +812,26 @@
         "briefing attention budget duplicate suppression defer and dismiss controls",
         "precision response effort and field usefulness evaluated",
         "uncertain causes request evidence without autonomous intervention"
+      ]
+    },
+    {
+      "id": "UX-STOCK-01",
+      "epic": "ux",
+      "title": "Focused offline inventory user experience",
+      "priority": "P0",
+      "dependsOn": [
+        "TECH-03"
+      ],
+      "status": "implemented_pending_review_and_device_validation",
+      "externalGates": [
+        "Physical-device cold-room acceptance remains open"
+      ],
+      "spec": "implementation/36_UX_STOCK_OFFLINE_WORKFLOW.md",
+      "acceptance": [
+        "Shared stock branding and prepared store/date context",
+        "Counting before documentation with local help",
+        "Accurate local-save and sync status, online commitment preserved",
+        "Mobile reachability and existing offline recovery tests"
       ]
     }
   ]

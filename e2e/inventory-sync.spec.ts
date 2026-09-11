@@ -1,3 +1,4 @@
+import { prepareCatalogue, openProductConfiguration } from "./offline-ui";
 import { chromium, expect, test, type Page } from "@playwright/test";
 import { join } from "node:path";
 import { getDemoStorePair, importFixtureIntoStore } from "./demo-store";
@@ -36,10 +37,8 @@ async function prepare(
   await expect(
     page.getByRole("button", { name: "Préparer ce catalogue" }),
   ).toBeEnabled({ timeout: 45000 });
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
-  await page
-    .getByRole("button", { name: "Commencer un brouillon local" })
-    .click();
+  await prepareCatalogue(page);
+  await page.getByRole("button", { name: "Commencer le comptage" }).click();
   await expect(
     page.getByText("Enregistré sur cet appareil · non synchronisé", {
       exact: true,
@@ -62,6 +61,7 @@ const row = (page: Page) => page.locator("[data-local-count-product]").first();
 const panel = (page: Page) =>
   page.getByRole("region", { name: "Synchronisation du brouillon" });
 async function fill(page: Page, quantity: string) {
+  await openProductConfiguration(row(page));
   await row(page)
     .getByRole("combobox", { name: "Famille", exact: true })
     .selectOption("3400");
@@ -80,7 +80,7 @@ async function fill(page: Page, quantity: string) {
 }
 async function enable(page: Page) {
   await panel(page)
-    .getByRole("button", { name: "Activer la synchronisation de ce brouillon" })
+    .getByRole("button", { name: "Activer l’envoi de ce brouillon" })
     .click();
 }
 async function connected(page: Page) {

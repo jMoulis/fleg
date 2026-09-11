@@ -67,8 +67,9 @@ traçable au lieu d'écraser la précédente.
 
 ## Consulter le catalogue sans réseau
 
-Depuis **Stocks du matin**, le lien **Préparer la consultation hors connexion**
-ouvre un espace dédié. Le catalogue y reste consultable et un **brouillon local**
+Depuis **Stocks du matin**, le lien **Compter avec ou sans réseau**
+ouvre la saisie terrain, avec les mêmes repères de magasin et de date.
+Le catalogue y reste consultable et un **brouillon local**
 peut être saisi. Vous pouvez activer sa synchronisation, mais un brouillon
 synchronisé n’est **pas un stock validé**. La validation finale reste dans
 l’écran connecté. Avant d’utiliser ce parcours comme unique relevé, faites la
@@ -76,10 +77,10 @@ recette sur votre appareil réel avec un relevé témoin.
 
 1. Sur l’appareil que vous utiliserez en réserve, connectez-vous avec du réseau,
    choisissez le magasin et la date dans Stocks du matin, puis suivez le lien.
-2. Appuyez sur **Préparer ce catalogue**. Attendez **Prêt pour la consultation
-   hors connexion** et vérifiez le nom du magasin, la date et le nombre d’articles.
+2. Appuyez sur **Préparer ce catalogue**. Attendez **Catalogue prêt** et vérifiez
+   le nom du magasin, la date et le nombre d’articles.
    Le téléchargement comprend toutes les pages, pas seulement les articles déjà vus.
-3. Coupez le réseau, fermez puis rouvrez **Espace hors connexion** (`/offline`).
+3. Coupez le réseau, fermez puis rouvrez **Stocks du matin** (`/offline`).
    Recherchez un article jamais affiché auparavant.
 4. La simple consultation ne crée ni comptage ni commande. Pour envoyer vos
    saisies locales, suivez le parcours de synchronisation ci-dessous.
@@ -111,6 +112,12 @@ puis fermez tous les onglets de l’app et rouvrez-la. Aucun rechargement n’es
 La première connexion, les autres écrans et les nouvelles réponses du Copilote
 restent indisponibles sans réseau.
 
+Une fois le catalogue prêt, la préparation se replie. Touchez **Catalogue prêt**
+pour la rouvrir. La barre du bas affiche la progression, l’enregistrement sur
+l’appareil et l’envoi : **Réseau détecté** ne prouve pas que les saisies sont reçues.
+**Aide et détails** reste consultable hors connexion. La famille et l’unité déjà
+renseignées sont repliées dans chaque article ; le colisage reste directement modifiable.
+
 ## Essayer le brouillon local sans réseau
 
 Commencez sur un relevé d’essai pour vérifier la résistance aux coupures de
@@ -119,7 +126,7 @@ les anciens brouillons restent locaux tant que vous ne l’activez pas.
 
 1. Préparez de nouveau le catalogue avec un compte autorisé à saisir les stocks.
    Une ancienne copie ou un compte en lecture seule n’autorise pas la saisie locale.
-2. Appuyez sur **Commencer un brouillon local**. Vérifiez le magasin et la date.
+2. Appuyez sur **Commencer le comptage**. Vérifiez le magasin et la date.
 3. Renseignez famille, unité et colisage du relevé, puis **Réserve** et **Rayon**.
    Le colisage reste propre à ce brouillon : un téléchargement ultérieur ne le
    remplace pas. Les valeurs du comptage de référence ne sont pas de nouvelles observations.
@@ -145,12 +152,12 @@ Une nouvelle préparation n’écrase jamais les anciennes valeurs du brouillon.
 
 Par défaut, l’appareil conserve au maximum 14 brouillons (limite réglable par
 l’administrateur). Au-delà, la création est refusée sans effacer les anciens.
-**Supprimer ce brouillon local** exige confirmation et est irréversible : les
-saisies non synchronisées seront perdues, sans supprimer un éventuel brouillon
+Dans **Options du comptage**, **Supprimer ce brouillon local** exige confirmation
+et est irréversible : les saisies non synchronisées seront perdues, sans supprimer un éventuel brouillon
 serveur. Une réponse d’envoi incertaine bloque cette suppression : réessayez ou
 résolvez d’abord le conflit pour savoir ce qui a été reçu.
-**Effacer la copie locale** efface seulement
-le catalogue téléchargé et verrouille les brouillons jusqu’à nouvelle préparation.
+Dans **Catalogue prêt → Gérer la copie locale**, **Effacer la copie locale** efface
+seulement le catalogue téléchargé et verrouille les brouillons jusqu’à nouvelle préparation.
 
 Ne supprimez pas les données du site pour résoudre un problème de cache : cela
 effacerait aussi les brouillons. L’installation ne garantit ni la persistance
@@ -159,14 +166,15 @@ peuvent entraîner leur perte.
 
 ## Synchroniser puis valider le stock
 
-1. Dans le brouillon, choisissez **Activer la synchronisation de ce brouillon**.
+1. Dans le brouillon, choisissez **Activer l’envoi**.
    Vos saisies restent enregistrées immédiatement sur l’appareil. Les envois
    reprennent au retour du réseau, tant que cet écran reste ouvert et votre accès
    valide. Sans cet accord, rien n’est envoyé.
-2. Au retour du réseau, rouvrez **Espace hors connexion**. Si nécessaire,
-   choisissez **Vérifier le retour du réseau**, puis **Réessayer la synchronisation**.
+2. Au retour du réseau, rouvrez **Stocks du matin**. Si nécessaire,
+   touchez l’indicateur réseau pour vérifier la connexion, puis **Réessayer** si nécessaire.
    Gardez l’écran ouvert jusqu’au résultat ; l’app ne promet pas d’envoyer en arrière-plan.
-3. Vérifiez **Brouillon synchronisé**, la révision serveur et le nombre d’articles
+3. Vérifiez **Brouillon synchronisé** dans la barre de sauvegarde. Ouvrez
+   **Détails de synchronisation** pour la révision serveur et le nombre d’articles
    encore en attente. Une valeur incomplète comme `1,` doit être corrigée ; une
    quantité de référence doit être confirmée en la saisissant. Aucun zéro n’est inventé.
 4. Ouvrez l’application connectée, choisissez le même magasin et la même date
