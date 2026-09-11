@@ -1,4 +1,9 @@
 import {
+  prepareCatalogue,
+  openProductConfiguration,
+  openPreparation,
+} from "./offline-ui";
+import {
   chromium,
   expect,
   test,
@@ -37,13 +42,9 @@ async function prepare(page: Page, context: BrowserContext) {
   await expect(
     page.getByRole("button", { name: "Préparer ce catalogue" }),
   ).toBeEnabled({ timeout: 45000 });
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
-  await expect(
-    page.getByText("Prêt pour la consultation hors connexion", { exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Commencer un brouillon local" })
-    .click();
+  await prepareCatalogue(page);
+  await expect(page.getByText("Catalogue prêt", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Commencer le comptage" }).click();
   await saved(page);
   return { copy, endpoint };
 }
@@ -71,6 +72,7 @@ test("TECH-02 conserve valeurs brutes, filtres et colisage sans écriture serveu
   });
   await context.setOffline(true);
   await expect(article(page)).toBeVisible();
+  await openProductConfiguration(article(page));
   await article(page)
     .getByRole("combobox", { name: "Famille", exact: true })
     .selectOption("3400");
@@ -108,7 +110,7 @@ test("TECH-02 conserve valeurs brutes, filtres et colisage sans écriture serveu
   await context.setOffline(false);
   // Network emulation does not always dispatch a browser online event.
   const recheck = page.getByRole("button", {
-    name: "Vérifier le retour du réseau",
+    name: /vérifier le retour du réseau/i,
   });
   if (await recheck.isVisible()) await recheck.click();
   await context.unroute(endpoint);
@@ -139,16 +141,18 @@ test("TECH-02 conserve valeurs brutes, filtres et colisage sans écriture serveu
       },
     });
   });
+  await openPreparation(page);
   await expect(
     page.getByRole("button", { name: "Préparer ce catalogue" }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
+  await prepareCatalogue(page);
   await requested;
   await article(page)
     .getByLabel("Quantité en rayon", { exact: false })
     .fill("3,5");
   await saved(page);
   release();
+  await openPreparation(page);
   await expect(
     page.getByText(/52 articles · données révision 100/),
   ).toBeVisible();
@@ -198,6 +202,7 @@ test("TECH-02 n’annonce pas de sauvegarde sur quota refusé et garde la saisie
   ).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(article(page).getByLabel("Colis en réserve")).toHaveValue("7");
+  await openPreparation(page);
   await expect(
     page.getByRole("button", { name: "Préparer ce catalogue" }),
   ).toBeDisabled();
@@ -254,7 +259,7 @@ test("TECH-02 renouvelle une copie expirée sans perdre une saisie en échec", a
       },
     }),
   );
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
+  await prepareCatalogue(page);
   await expect(article(page).getByLabel("Colis en réserve")).toHaveValue("8");
   await page.evaluate(() => window.dispatchEvent(new Event("restore-idb")));
   await page
@@ -333,7 +338,7 @@ test("TECH-02 verrouille au changement de compte et récupère seulement avec le
   await expect(
     other.getByRole("button", { name: "Préparer ce catalogue" }),
   ).toBeEnabled({ timeout: 45000 });
-  await other.getByRole("button", { name: "Préparer ce catalogue" }).click();
+  await prepareCatalogue(other);
   await expect(article(other).getByLabel("Colis en réserve")).toHaveValue("4");
 });
 
@@ -360,20 +365,30 @@ test("TECH-02 compte hors ligne depuis un vrai catalogue Mercalys préparé par 
   expect(before.canWriteInventory).toBe(true);
   const product = before.products.find((value) => /banane/i.test(value.label))!;
   expect(product).toBeDefined();
-  await page.goto(`/offline?storeId=${primary.id}&businessDate=2026-09-11`);
+  await page.goto(
+    `/${primary.organizationSlug}/stores/${primary.id}/inventory?businessDate=2026-09-11`,
+  );
+  await expect(
+    page.getByRole("heading", { name: "Stocks du matin", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("link", { name: "Compter avec ou sans réseau", exact: true })
+    .click();
+  await expect(page).toHaveURL(
+    new RegExp(`/offline\\?storeId=${primary.id}&businessDate=2026-09-11`),
+  );
   await expect(
     page.getByRole("button", { name: "Préparer ce catalogue" }),
   ).toBeEnabled({ timeout: 45000 });
-  await page.getByRole("button", { name: "Préparer ce catalogue" }).click();
-  await page
-    .getByRole("button", { name: "Commencer un brouillon local" })
-    .click();
+  await prepareCatalogue(page);
+  await page.getByRole("button", { name: "Commencer le comptage" }).click();
   await saved(page);
   await context.setOffline(true);
   await page.getByLabel("Rechercher dans le brouillon").fill(product.label);
   const row = page.locator("[data-local-count-product]").filter({
     has: page.getByRole("heading", { name: product.label, exact: true }),
   });
+  await openProductConfiguration(row);
   await row
     .getByRole("combobox", { name: "Famille", exact: true })
     .selectOption("3400");
@@ -390,6 +405,10 @@ test("TECH-02 compte hors ligne depuis un vrai catalogue Mercalys préparé par 
     row.getByText("Complet localement · total 40.5 kg"),
   ).toBeVisible();
   await expect(row.getByLabel("Colisage du relevé")).toHaveValue("18,5");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath(`stock-ux-viewport-${testInfo.project.name}.png`),
+  });
   await page.screenshot({
     path: testInfo.outputPath(
       `mercalys-local-count-${testInfo.project.name}.png`,
@@ -405,4 +424,111 @@ test("TECH-02 compte hors ligne depuis un vrai catalogue Mercalys préparé par 
   expect(after.countReference).toEqual(before.countReference);
   expect(after.products).toEqual(before.products);
   expect(after.dataRevision).toBe(before.dataRevision);
+});
+
+test("UX-STOCK-01 garde le comptage au premier plan, les actions accessibles et l’aide locale", async ({
+  page,
+  context,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const { copy } = await prepare(page, context);
+  await expect(
+    page.getByRole("heading", { name: "Stocks du matin", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("header")).toContainText(copy.storeName);
+  await expect(
+    page.getByRole("button", { name: "Préparer ce catalogue" }),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Supprimer ce brouillon local" }),
+  ).toBeHidden();
+  await expect(page.locator("#offline-help")).not.toHaveAttribute("open", "");
+  const preparation = page.locator("#preparation-title");
+  await preparation.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Préparer ce catalogue" }),
+  ).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Préparer ce catalogue" }),
+  ).toBeHidden();
+  await openProductConfiguration(article(page));
+  await article(page)
+    .getByRole("combobox", { name: "Famille", exact: true })
+    .selectOption("3400");
+  await article(page)
+    .getByRole("combobox", { name: "Unité", exact: true })
+    .selectOption("kg");
+  await article(page).getByLabel("Colisage du relevé").fill("18,5");
+  await article(page).getByLabel("Colis en réserve").fill("2");
+  await saved(page);
+  await expect(
+    article(page).getByRole("combobox", { name: "Unité", exact: true }),
+  ).toBeHidden();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const input = await article(page)
+    .getByLabel("Colis en réserve")
+    .boundingBox();
+  const bar = page.locator("[data-inventory-save-bar]");
+  const bounds = await bar.boundingBox();
+  expect(input).not.toBeNull();
+  expect(bounds).not.toBeNull();
+  expect(input!.y + input!.height).toBeLessThan(bounds!.y);
+  // A pending access check must not expand the preparation panel over the count.
+  let releaseAccess!: () => void;
+  const accessGate = new Promise<void>((resolve) => {
+    releaseAccess = resolve;
+  });
+  const accessUrl = `**/api/stores/${copy.identity.storeId}/offline/access`;
+  await context.route(accessUrl, async (route) => {
+    await accessGate;
+    await route.continue();
+  });
+  try {
+    await page
+      .getByRole("button", { name: /vérifier le retour du réseau/i })
+      .click();
+    await expect(preparation).toContainText("Vérification du catalogue");
+    await expect(
+      page.locator("details[aria-labelledby='preparation-title']"),
+    ).not.toHaveAttribute("open", "");
+  } finally {
+    releaseAccess();
+  }
+  await expect(preparation).toContainText("Catalogue prêt");
+  await context.unroute(accessUrl);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(bar).toBeInViewport();
+  await expect(
+    bar.getByRole("button", {
+      name: "Activer l’envoi de ce brouillon",
+    }),
+  ).toBeInViewport();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await context.setOffline(true);
+  await expect(page.getByText("Hors connexion", { exact: true })).toBeVisible();
+  const back = page.getByRole("link", {
+    name: "Autres écrans · réseau requis",
+  });
+  await expect(back).toHaveAttribute("aria-disabled", "true");
+  // Even a programmatic click cannot navigate away through this disabled destination.
+  await back.dispatchEvent("click");
+  await expect(page).toHaveURL(/\/offline/);
+  await page
+    .getByRole("link", { name: "Aide au comptage", exact: true })
+    .click();
+  await expect(page.locator("#offline-help")).toHaveAttribute("open", "");
+  await expect(page.getByText(/Vide signifie non compté/)).toBeVisible();
+  await page.reload();
+  await expect(article(page).getByLabel("Colis en réserve")).toHaveValue("2");
+  await expect(
+    page.getByRole("button", { name: "Préparer ce catalogue" }),
+  ).toBeHidden();
+  expect(errors).toEqual([]);
 });

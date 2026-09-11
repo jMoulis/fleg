@@ -24,8 +24,7 @@ export default async function InventoryPage({
     headers(),
   ]);
   const parsedQuery = inventoryWorkspaceQuerySchema.safeParse({
-    businessDate:
-      query.businessDate ?? new Date().toISOString().slice(0, 10),
+    businessDate: query.businessDate ?? new Date().toISOString().slice(0, 10),
   });
   const businessDate = parsedQuery.success
     ? parsedQuery.data.businessDate
@@ -48,15 +47,19 @@ export default async function InventoryPage({
       </h1>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
         Comptez les colis en réserve, puis ajoutez le reste présent en rayon.
-        Le colisage utilisé est conservé avec chaque relevé, même s’il change à
-        la commande suivante.
       </p>
 
       <aside className="mt-6 rounded-xl border p-4 text-sm">
-        <a className="font-semibold text-primary underline" href={`/offline?storeId=${storeId}&businessDate=${businessDate}`}>
-          Préparer la consultation hors connexion
+        <a
+          className="font-semibold text-primary underline"
+          href={`/offline?storeId=${storeId}&businessDate=${businessDate}`}
+        >
+          Compter avec ou sans réseau
         </a>
-        <p className="mt-2 text-muted-foreground">Téléchargez le catalogue complet avant de perdre le réseau. Lecture seule pour le moment ; la saisie des stocks reste connectée.</p>
+        <p className="mt-2 text-muted-foreground">
+          Préparez votre catalogue, puis saisissez le stock sur cet appareil. La
+          validation finale reste en ligne.
+        </p>
       </aside>
       <InventoryCountManager
         canWrite={context.permissions.includes("inventory.write")}

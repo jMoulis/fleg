@@ -4,7 +4,6 @@ import {
   Bot,
   ChevronDown,
   CircleHelp,
-  Leaf,
   Network,
   Settings2,
   SlidersHorizontal,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { StoreNavigation } from "@/components/app-shell/store-navigation";
+import { AppBrand } from "@/components/app-shell/app-brand";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -41,13 +41,7 @@ export function StoreAppShell({
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href={dashboardHref} className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-              <Leaf aria-hidden="true" className="size-5" />
-            </span>
-            <div className="hidden sm:block">
-              <p className="text-sm font-semibold leading-4">F&amp;L Cockpit</p>
-              <p className="mt-1 text-xs text-muted-foreground">Tableau de bord</p>
-            </div>
+            <AppBrand subtitle="Tableau de bord" />
           </Link>
 
           <div className="flex min-w-0 items-center gap-2">

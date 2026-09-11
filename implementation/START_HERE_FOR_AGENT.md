@@ -7,10 +7,15 @@ The original vertical slice, V1/V2/V3 and post-V3 UX sequence are delivered.
 merged and deployed via PR #29; preserve its isolated E2E runner and retention
 rules when continuing another branch.
 `TECH-01` is merged/deployed via PR #28; `TECH-02` is merged via PR #30.
-`TECH-03` implements opt-in draft synchronization for review; see
+`TECH-03` opt-in draft synchronization is merged via PR #31; see
 `35_TECH_03_INVENTORY_SYNCHRONIZATION.md`. Physical-device cold-room acceptance
 remains open. Close that gate before claiming offline rollout readiness or
 advancing TECH-04. A synchronized draft is not a server-validated stock observation.
+
+The approved `UX-STOCK-01` follow-up harmonizes the offline stock interface,
+reduces explanatory noise and keeps save/sync/commit states distinct. It does
+not broaden offline access to other screens or change the sync protocol.
+See `36_UX_STOCK_OFFLINE_WORKFLOW.md`; device acceptance still remains open.
 
 Read the current state in `implementation/10_BACKLOG.md`, then the relevant
 `31_OFFLINE_AND_DOCUMENT_FOUNDATION.md` or `32_OPERATIONAL_COACH_ROADMAP.md`.

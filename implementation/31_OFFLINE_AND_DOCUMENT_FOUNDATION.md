@@ -6,8 +6,10 @@ Framed on 2026-09-11. `TECH-01` now has a read-only implementation and automated
 production-build acceptance; physical device acceptance remains open. See
 [the delivery record](./33_TECH_01_OFFLINE_WORKSPACE.md).
 `TECH-02` local drafts are merged via #30.
-`TECH-03` implements opt-in synchronization for review; physical-device acceptance
+`TECH-03` opt-in synchronization is merged via #31; physical-device acceptance
 remains open. See [its delivery record](./35_TECH_03_INVENTORY_SYNCHRONIZATION.md).
+The approved [UX-STOCK-01 follow-up](./36_UX_STOCK_OFFLINE_WORKFLOW.md) improves
+this stock-only interface without generalizing offline functionality.
 `TECH-04` through `TECH-06` remain planned, not delivered.
 The manager reports unreliable connectivity, particularly in the cold room.
 This is sufficient field evidence to prioritize resilient stock capture before

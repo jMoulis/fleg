@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { LocalInventoryDraft } from "@/domain/offline/inventory-draft";
 import type { PreparedWorkspace } from "@/domain/offline/schemas";
 import { syncTransportPolicy } from "@/domain/offline/sync";
+import { inventorySaveStatus } from "@/domain/offline/presentation";
 import {
   enableInventorySync,
   readInventorySync,
@@ -16,24 +17,22 @@ import {
 } from "@/lib/offline/inventory-sync";
 
 type State = NonNullable<Awaited<ReturnType<typeof readInventorySync>>>;
-const labels = {
-  pending: "En attente de synchronisation",
-  syncing: "Synchronisation en cours",
-  synchronized: "Brouillon synchronisé",
-  failed: "Synchronisation en échec",
-  conflict: "Conflit à résoudre",
-  locked: "Synchronisation verrouillée",
-};
 
 export function InventorySyncPanel({
   workspace,
   draft,
   disabled,
+  saving,
+  saveFailed,
+  complete,
   onConflictChange,
 }: {
   workspace: PreparedWorkspace;
   draft: LocalInventoryDraft;
   disabled: boolean;
+  saving: boolean;
+  saveFailed: boolean;
+  complete: number;
   onConflictChange: (conflict: boolean) => void;
 }) {
   const [state, setState] = useState<State | null>(null);
@@ -102,79 +101,152 @@ export function InventorySyncPanel({
     }
   }
 
+  const status = inventorySaveStatus({
+    saving,
+    failed: saveFailed,
+    syncEnabled: draft.schemaVersion === 2,
+    phase: state?.phase,
+    pendingCount: state?.pendingLines.length ?? 0,
+    receivedAt: state?.receivedAt,
+  });
+  const needsAttention =
+    Boolean(error) ||
+    (state && ["failed", "locked", "conflict"].includes(state.phase));
+
   return (
     <section
       aria-label="Synchronisation du brouillon"
-      className="space-y-3 rounded-xl border bg-muted/30 p-4 [&_button]:h-auto [&_button]:min-h-11 [&_button]:whitespace-normal"
+      className="space-y-3 [&_button]:h-auto [&_button]:min-h-11 [&_button]:whitespace-normal"
     >
-      <p role="status" className="font-semibold">
-        {state ? labels[state.phase] : "Brouillon local uniquement"}
-      </p>
-      <p className="text-sm">
-        {state?.message ??
-          "Activez l’envoi de ce brouillon vers le magasin. Il reprendra automatiquement au retour du réseau, tant que cet écran est ouvert et votre accès valide."}
-      </p>
-      <p className="text-sm">
-        Synchroniser ne valide pas le stock. Relisez puis validez le comptage
-        dans Stocks du matin, en ligne. Aucune commande n’est passée.
-      </p>
-      {state && (
-        <p className="text-xs text-muted-foreground">
-          {state.pendingLines.length} article(s) en attente · révision serveur{" "}
-          {state.serverRevision ?? "aucune"}
-          {state.receivedAt
-            ? ` · reçu le ${new Date(state.receivedAt).toLocaleString("fr-FR", { timeZone: draft.timeZone })}`
-            : ""}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      {!state ? (
-        <Button
-          disabled={disabled || busy}
-          onClick={() =>
-            void act(() =>
-              enableInventorySync(workspace, draft.id, draft.revision),
-            )
-          }
-        >
-          Activer la synchronisation de ce brouillon
-        </Button>
-      ) : (
-        state.phase !== "conflict" && (
+      <div id="sync-details" className="scroll-mt-20 space-y-3">
+        {needsAttention && (
+          <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
+            {state?.message ??
+              "Synchronisation indisponible. Vos saisies locales sont conservées."}
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        {state && needsAttention && state.phase !== "conflict" && (
           <Button
             variant="outline"
-            disabled={disabled || busy || state.phase === "syncing"}
+            disabled={disabled || busy}
             onClick={() => void act(() => send(true))}
           >
             Réessayer la synchronisation
           </Button>
-        )
-      )}
-      {state?.rejected && (
-        <Button
-          variant="outline"
-          disabled={disabled || busy}
-          onClick={() =>
-            void act(() => reviseRejectedSync(workspace, state.generation))
-          }
-        >
-          Réviser l’envoi refusé
-        </Button>
-      )}
-      {state?.phase === "conflict" && (
-        <ConflictResolver
-          key={`${draft.id}:${state.generation}`}
-          workspace={workspace}
-          draft={draft}
-          state={state}
-          disabled={disabled || busy}
-          act={act}
-        />
-      )}
+        )}
+        {state && (
+          <details className="rounded-xl border bg-card p-4 text-sm">
+            <summary className="cursor-pointer font-medium">
+              Détails de synchronisation
+            </summary>
+            <p className="mt-2">{state.message}</p>
+            <p className="mt-2 text-muted-foreground">
+              {state.pendingLines.length} article(s) en attente · révision
+              serveur {state.serverRevision ?? "aucune"}
+              {state.receivedAt
+                ? ` · reçu le ${new Date(state.receivedAt).toLocaleString("fr-FR", { timeZone: draft.timeZone })}`
+                : ""}
+            </p>
+          </details>
+        )}
+        {state?.rejected && (
+          <Button
+            variant="outline"
+            disabled={disabled || busy}
+            onClick={() =>
+              void act(() => reviseRejectedSync(workspace, state.generation))
+            }
+          >
+            Réviser l’envoi refusé
+          </Button>
+        )}
+        {state?.phase === "conflict" && (
+          <ConflictResolver
+            key={`${draft.id}:${state.generation}`}
+            workspace={workspace}
+            draft={draft}
+            state={state}
+            disabled={disabled || busy}
+            act={act}
+          />
+        )}
+      </div>
+      <div
+        data-inventory-save-bar
+        className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto max-w-5xl rounded-xl border bg-background/95 p-3 shadow-xl backdrop-blur sm:p-4"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p
+            role="status"
+            className={`text-xs sm:text-sm ${saveFailed ? "text-destructive" : "text-muted-foreground"}`}
+          >
+            {status.local}
+          </p>
+          <span className="text-xs font-medium">
+            {complete}/{draft.lines.length} complets
+          </span>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="min-w-0 text-xs sm:text-sm" role="status">
+            <p
+              className={`font-semibold ${needsAttention ? "text-amber-800" : ""}`}
+            >
+              {status.remote}
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {state?.pendingLines.length
+                ? `${state.pendingLines.length} article(s) à envoyer · `
+                : ""}
+              Validation finale en ligne
+            </p>
+          </div>
+          {saveFailed ? (
+            <a
+              href="#local-save-error"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-lg border px-3 text-sm font-medium text-destructive"
+            >
+              Voir l’erreur
+            </a>
+          ) : !state ? (
+            <Button
+              className="max-w-40 shrink-0"
+              aria-label="Activer l’envoi de ce brouillon"
+              disabled={disabled || busy}
+              onClick={() =>
+                void act(() =>
+                  enableInventorySync(workspace, draft.id, draft.revision),
+                )
+              }
+            >
+              Activer l’envoi
+            </Button>
+          ) : state.phase === "conflict" || needsAttention ? (
+            <a
+              href="#sync-details"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-lg border px-3 text-sm font-medium"
+            >
+              {state.phase === "conflict" ? "Résoudre" : "Voir le problème"}
+            </a>
+          ) : (
+            state.phase !== "synchronized" && (
+              <Button
+                variant="outline"
+                className="max-w-36 shrink-0"
+                aria-label="Réessayer la synchronisation"
+                disabled={disabled || busy || state.phase === "syncing"}
+                onClick={() => void act(() => send(true))}
+              >
+                Réessayer
+              </Button>
+            )
+          )}
+        </div>
+      </div>
     </section>
   );
 }
