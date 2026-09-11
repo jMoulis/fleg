@@ -1,4 +1,5 @@
 import { offlineDb as db } from "./storage";
+import { syncRecordSchema } from "@/domain/offline/sync";
 import {
   offlineFreshness,
   preparedWorkspaceSchema,
@@ -17,7 +18,10 @@ import {
   type LocalView,
 } from "@/domain/offline/inventory-draft";
 
-async function activeWorkspace(expected: PreparedWorkspace, now: number) {
+export async function activeWorkspace(
+  expected: PreparedWorkspace,
+  now: number,
+) {
   const record = await db.copies.get("current");
   const copy = preparedWorkspaceSchema.parse(record?.value);
   if (
@@ -106,69 +110,95 @@ async function mutate(
   },
   now: number,
 ) {
-  return db.transaction("rw", db.copies, db.drafts, db.operations, async () => {
-    await activeWorkspace(input.workspace, now);
-    const key = draftScope(input.workspace);
-    const draft = scopedDraft(
-      (await db.drafts.get(key))?.value,
-      input.workspace,
-    );
-    if (draft.id !== input.draftId || draft.revision !== input.expectedRevision)
-      throw new Error(
-        "Conflit local : un autre onglet a modifié ce brouillon. Votre saisie non enregistrée reste affichée ; rechargez explicitement la version enregistrée.",
-      );
-    if (now < Date.parse(draft.updatedAt))
-      throw new Error(
-        "Horloge incohérente : rétablissez la date et l’heure automatiques avant de réessayer.",
-      );
-    const savedAt = new Date(now).toISOString();
-    const updated: LocalInventoryDraft = {
-      ...draft,
-      revision: draft.revision + 1,
-      updatedAt: savedAt,
-    };
-    if (input.line) {
-      const line = localCountLineSchema.parse(input.line);
-      const original = draft.lines.find(
-        (value) => value.productId === line.productId,
+  return db.transaction(
+    "rw",
+    db.copies,
+    db.drafts,
+    db.operations,
+    db.sync,
+    async () => {
+      await activeWorkspace(input.workspace, now);
+      const key = draftScope(input.workspace);
+      const draft = scopedDraft(
+        (await db.drafts.get(key))?.value,
+        input.workspace,
       );
       if (
-        !original ||
-        original.label !== line.label ||
-        (line.observedAt !== null &&
-          (Date.parse(line.observedAt) > now ||
-            Date.parse(line.observedAt) < Date.parse(draft.createdAt))) ||
-        ((original.reserveCaseCount !== line.reserveCaseCount ||
-          original.shelfQuantity !== line.shelfQuantity) &&
-          !line.observedAt)
+        draft.id !== input.draftId ||
+        draft.revision !== input.expectedRevision
       )
-        throw new Error("Article ou heure d’observation invalide");
-      updated.lines = draft.lines.map((value) =>
-        value.productId === line.productId ? line : value,
-      );
-      // Only unsent local edits exist in TECH-02: coalesce by line, never grow
-      // a copy of the entire catalogue for every keystroke. TECH-03 must migrate
-      // to immutable in-flight operations before enabling any transport.
-      await db.operations.put({
-        key: `${draft.id}:line:${line.productId}`,
-        draftId: draft.id,
-        value: localOperationSchema.parse({
-          schemaVersion: 1,
-          id: crypto.randomUUID(),
+        throw new Error(
+          "Conflit local : un autre onglet a modifié ce brouillon. Votre saisie non enregistrée reste affichée ; rechargez explicitement la version enregistrée.",
+        );
+      if (now < Date.parse(draft.updatedAt))
+        throw new Error(
+          "Horloge incohérente : rétablissez la date et l’heure automatiques avant de réessayer.",
+        );
+      const savedAt = new Date(now).toISOString();
+      const updated: LocalInventoryDraft = {
+        ...draft,
+        revision: draft.revision + 1,
+        updatedAt: savedAt,
+      };
+      if (input.line) {
+        const storedSync = await db.sync.get(key);
+        if (storedSync) {
+          const sync = syncRecordSchema.parse(storedSync.value);
+          if (sync.phase === "conflict")
+            throw new Error(
+              "Résolvez le conflit serveur avant de modifier ce relevé",
+            );
+          if (sync.phase === "synchronized")
+            await db.sync.put({
+              key,
+              value: {
+                ...sync,
+                phase: "pending",
+                generation: sync.generation + 1,
+              },
+            });
+        }
+        const line = localCountLineSchema.parse(input.line);
+        const original = draft.lines.find(
+          (value) => value.productId === line.productId,
+        );
+        if (
+          !original ||
+          original.label !== line.label ||
+          (line.observedAt !== null &&
+            (Date.parse(line.observedAt) > now ||
+              Date.parse(line.observedAt) < Date.parse(draft.createdAt))) ||
+          ((original.reserveCaseCount !== line.reserveCaseCount ||
+            original.shelfQuantity !== line.shelfQuantity) &&
+            !line.observedAt)
+        )
+          throw new Error("Article ou heure d’observation invalide");
+        updated.lines = draft.lines.map((value) =>
+          value.productId === line.productId ? line : value,
+        );
+        // Coalesce unsent edits only. The sync table freezes a separate payload
+        // and its operation ids; acknowledgement never deletes a newer line edit.
+        await db.operations.put({
+          key: `${draft.id}:line:${line.productId}`,
           draftId: draft.id,
-          revision: updated.revision,
-          kind: "line",
-          line,
-          savedAt,
-          status: "local_only",
-        }),
-      });
-    }
-    if (input.view) updated.view = localViewSchema.parse(input.view);
-    const parsed = localInventoryDraftSchema.parse(updated);
-    await db.drafts.put({ key, value: parsed });
-    return parsed;
-  });
+          value: localOperationSchema.parse({
+            schemaVersion: 1,
+            id: crypto.randomUUID(),
+            draftId: draft.id,
+            revision: updated.revision,
+            kind: "line",
+            line,
+            savedAt,
+            status: "local_only",
+          }),
+        });
+      }
+      if (input.view) updated.view = localViewSchema.parse(input.view);
+      const parsed = localInventoryDraftSchema.parse(updated);
+      await db.drafts.put({ key, value: parsed });
+      return parsed;
+    },
+  );
 }
 
 export function saveLocalLine(
@@ -199,17 +229,30 @@ export async function discardLocalDraft(
   draftId: string,
   expectedRevision: number,
 ) {
-  return db.transaction("rw", db.copies, db.drafts, db.operations, async () => {
-    await activeWorkspace(workspace, Date.now());
-    const key = draftScope(workspace);
-    const draft = scopedDraft((await db.drafts.get(key))?.value, workspace);
-    if (draft.id !== draftId || draft.revision !== expectedRevision)
-      throw new Error(
-        "Le brouillon a changé. Rechargez-le avant de confirmer sa suppression.",
-      );
-    await db.operations.where("draftId").equals(draft.id).delete();
-    await db.drafts.delete(key);
-  });
+  return db.transaction(
+    "rw",
+    db.copies,
+    db.drafts,
+    db.operations,
+    db.sync,
+    async () => {
+      await activeWorkspace(workspace, Date.now());
+      const key = draftScope(workspace);
+      const draft = scopedDraft((await db.drafts.get(key))?.value, workspace);
+      const sync = await db.sync.get(key);
+      if (sync && syncRecordSchema.parse(sync.value).inFlight)
+        throw new Error(
+          "Résolvez la synchronisation en attente avant de supprimer ce brouillon : le serveur a peut-être reçu l’envoi.",
+        );
+      if (draft.id !== draftId || draft.revision !== expectedRevision)
+        throw new Error(
+          "Le brouillon a changé. Rechargez-le avant de confirmer sa suppression.",
+        );
+      await db.operations.where("draftId").equals(draft.id).delete();
+      await db.drafts.delete(key);
+      await db.sync.delete(key);
+    },
+  );
 }
 
 export async function localDraftDates(workspace: PreparedWorkspace) {

@@ -4,6 +4,7 @@ import { liveQuery } from "dexie";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InventorySyncPanel } from "./inventory-sync-panel";
 import {
   businessDateAt,
   inspectLocalLine,
@@ -42,6 +43,7 @@ export function LocalInventoryEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [writeFailed, setWriteFailed] = useState(false);
+  const [syncConflict, setSyncConflict] = useState(false);
   const display = useRef<LocalInventoryDraft | null>(null);
   const acknowledged = useRef<LocalInventoryDraft | null>(null);
   const queue = useRef(Promise.resolve());
@@ -145,7 +147,8 @@ export function LocalInventoryEditor({
   }
 
   function editLine(line: LocalCountLine, patch: Partial<LocalCountLine>) {
-    if (!accessible || blocked.current || !display.current) return;
+    if (!accessible || blocked.current || syncConflict || !display.current)
+      return;
     const current = display.current.lines.find(
       (value) => value.productId === line.productId,
     )!;
@@ -228,7 +231,7 @@ export function LocalInventoryEditor({
     if (
       !base ||
       !window.confirm(
-        "Supprimer définitivement ce brouillon local et ses saisies ? Il n’existe aucune copie serveur de ce travail.",
+        "Supprimer définitivement ce brouillon de cet appareil ? Les saisies non synchronisées seront perdues. Un éventuel brouillon serveur ne sera pas supprimé.",
       )
     )
       return;
@@ -295,9 +298,11 @@ export function LocalInventoryEditor({
         Brouillon de stock sur cet appareil
       </h2>
       <p className="text-sm text-amber-900">
-        Local uniquement · aucune synchronisation ni validation serveur. Ce
-        brouillon ne sert pas aux préconisations de commande. Pour le travail
-        réel, continuez à valider vos stocks dans l’écran connecté.
+        {draft?.schemaVersion === 2
+          ? "Synchronisation activée pour ce brouillon."
+          : "Local uniquement tant que vous n’activez pas la synchronisation."}{" "}
+        Ce brouillon ne sert pas aux préconisations de commande avant validation
+        explicite dans Stocks du matin, en ligne.
       </p>
       {dates.some((date) => date !== workspace.businessDate) && (
         <p className="text-sm">
@@ -338,12 +343,18 @@ export function LocalInventoryEditor({
         </Button>
       ) : (
         <>
+          <InventorySyncPanel
+            workspace={workspace}
+            draft={draft}
+            disabled={saving || Boolean(error)}
+            onConflictChange={setSyncConflict}
+          />
           <p className="text-sm font-medium">
             {draft.storeName} · date du relevé {draft.businessDate} ·{" "}
             {draft.timeZone}
           </p>
           <p className="text-xs text-muted-foreground">
-            Base serveur :{" "}
+            Base serveur initiale :{" "}
             {draft.serverCountId
               ? `comptage ${draft.serverCountId}, révision ${draft.baseRevision}`
               : "aucun brouillon lié"}{" "}
@@ -461,7 +472,10 @@ export function LocalInventoryEditor({
                   className="rounded-xl border bg-card p-4"
                 >
                   <h3 className="font-semibold">{line.label}</h3>
-                  <fieldset disabled={inactive} className="mt-3 grid gap-3">
+                  <fieldset
+                    disabled={inactive || syncConflict}
+                    className="mt-3 grid gap-3"
+                  >
                     <legend className="sr-only">
                       Comptage de {line.label}
                     </legend>
@@ -578,7 +592,9 @@ export function LocalInventoryEditor({
                   ? "Enregistrement sur cet appareil…"
                   : error
                     ? "Enregistrement local en échec"
-                    : "Enregistré sur cet appareil · non synchronisé"}
+                    : draft.schemaVersion === 2
+                      ? "Enregistré sur cet appareil · état d’envoi ci-dessus"
+                      : "Enregistré sur cet appareil · non synchronisé"}
               </p>
               <p>
                 {complete}/{draft.lines.length} articles complets ·{" "}

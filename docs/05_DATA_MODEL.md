@@ -6,6 +6,13 @@
 ## Mandatory tenant fields
 All business documents include `organizationId`, `storeId` where store-scoped, and usually `departmentId`.
 
+TECH-03 adds `inventorySyncCommands`: scoped user/organization/store, payload hash,
+compact immutable acknowledgement and creation time. Its implicit unique `_id`
+is SHA-256 of `[organizationId, storeId, userId, operationId]`. There is no TTL or
+full-count snapshot. Count patch, receipt and audit share one transaction.
+`inventoryCounts.lines.observedAt` is additive and optional for legacy counts;
+offline observation time is preserved independently of upload and commitment.
+
 ## Important indexes
 - stores `{organizationId:1, code:1}` unique
 - storeMemberships `{storeId:1,userId:1}` unique

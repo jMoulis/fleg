@@ -46,6 +46,20 @@ métier canoniques tant que des commandes ou événements d’audit s’y réfè
 Toute future édition après approbation nécessitera une nouvelle version
 immuable de preuve, pas une modification en place.
 
+## Synchronisation des stocks TECH-03
+
+`inventorySyncCommands` conserve un petit accusé de réception et l’empreinte du
+contenu, jamais le catalogue complet. Son `_id` unique est dérivé de l’organisation,
+du magasin, de l’utilisateur autorisé et de l’UUID d’opération. Il est inséré dans
+la même transaction que le brouillon et son audit de lignes modifiées. Un réessai
+réutilise ce reçu sans nouvelle écriture métier ni nouvel audit.
+
+Pas de TTL sur ces reçus : ils rendent une réponse perdue rejouable sans doublon.
+Les frappes locales coalescent avant envoi ; seules les lignes modifiées sont
+transmises. Un envoi en cours reste immuable. Mesurer les lots acceptés/jour/magasin
+et leur taille avant généralisation ; cette preuve de synchronisation croît avec
+l’usage réel. Aucune purge historique n’est ajoutée par TECH-03.
+
 ## Recommandations recalculables et preuves métier
 
 - Une lecture avec les mêmes entrées réutilise une génération complète déjà
