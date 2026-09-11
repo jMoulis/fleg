@@ -55,10 +55,11 @@ Exemple : 2 colis de 9 pièces et 5 pièces en rayon donnent 23 pièces observé
 - une valeur négative est conservée comme anomalie à contrôler, pas transformée
   en zéro.
 
-Utiliser **Enregistrer le brouillon** pour interrompre et reprendre le comptage.
-Les actions restent visibles pendant le défilement. Passer à l'étape suivante
-avec l'action principale enregistre également les modifications en attente.
-Un changement de date nécessite d'abord de sauvegarder le travail en cours.
+Les saisies s’enregistrent automatiquement sur l’appareil. Attendre
+**Enregistré sur cet appareil** avant de fermer l’app. Les actions restent
+visibles pendant le défilement. Réserve, rayon et vérification appartiennent
+au même relevé, avec ou sans réseau. **Changer de date** ouvre un autre relevé
+sans déplacer ni effacer les saisies de celui en cours.
 Une ligne commencée doit être complète avant validation. Les articles non
 configurés ou non comptés peuvent rester vides.
 
@@ -67,29 +68,29 @@ traçable au lieu d'écraser la précédente.
 
 ## Consulter le catalogue sans réseau
 
-Depuis **Stocks du matin**, le lien **Compter avec ou sans réseau**
-ouvre la saisie terrain, avec les mêmes repères de magasin et de date.
-Le catalogue y reste consultable et un **brouillon local**
-peut être saisi. Vous pouvez activer sa synchronisation, mais un brouillon
-synchronisé n’est **pas un stock validé**. La validation finale reste dans
-l’écran connecté. Avant d’utiliser ce parcours comme unique relevé, faites la
-recette sur votre appareil réel avec un relevé témoin.
+**Stocks du matin** ouvre directement le parcours unique de comptage. Le
+magasin et la date sont affichés. Le catalogue est préparé automatiquement à
+l’ouverture connectée ; en cas d’échec, **Préparer ce catalogue** permet de
+réessayer dans le même écran. Un brouillon synchronisé n’est **pas un stock
+validé** : la validation reste une décision explicite, avec du réseau, dans
+ce même parcours. Avant l’usage terrain, faites la recette avec un relevé témoin.
 
 1. Sur l’appareil que vous utiliserez en réserve, connectez-vous avec du réseau,
-   choisissez le magasin et la date dans Stocks du matin, puis suivez le lien.
-2. Appuyez sur **Préparer ce catalogue**. Attendez **Catalogue prêt** et vérifiez
+   choisissez le magasin et ouvrez Stocks du matin ; contrôlez la date.
+2. Attendez **Catalogue prêt** et vérifiez
    le nom du magasin, la date et le nombre d’articles.
    Le téléchargement comprend toutes les pages, pas seulement les articles déjà vus.
 3. Coupez le réseau, fermez puis rouvrez **Stocks du matin** (`/offline`).
    Recherchez un article jamais affiché auparavant.
-4. La simple consultation ne crée ni comptage ni commande. Pour envoyer vos
-   saisies locales, suivez le parcours de synchronisation ci-dessous.
+4. **Commencer le comptage** ou **Reprendre le comptage** démarre la saisie
+   et son envoi automatique lorsque le réseau revient. Un relevé déjà validé
+   s’ouvre en consultation. La simple préparation ne valide aucun stock.
 
 Une seule copie magasin/date est conservée : en préparer une autre remplace la
 précédente, **pas les brouillons locaux**. La consultation expire par défaut après 12 heures, ou plus tôt si
 la session expire. L’administrateur peut régler cette durée. La date limite et
 l’âge sont affichés ; les derniers stocks observés ont leur propre horodatage.
-Préparez de nouveau chaque matin. La copie expirée est effacée au prochain accès
+Ouvrez Stocks avec du réseau chaque matin pour renouveler la copie. La copie expirée est effacée au prochain accès
 après la durée de conservation (24 heures par défaut).
 
 Pour installer : dans Safari sur iPhone/iPad, **Partager → Sur l’écran d’accueil** ;
@@ -121,8 +122,10 @@ renseignées sont repliées dans chaque article ; le colisage reste directement 
 ## Essayer le brouillon local sans réseau
 
 Commencez sur un relevé d’essai pour vérifier la résistance aux coupures de
-votre appareil. La synchronisation doit être activée pour chaque brouillon ;
-les anciens brouillons restent locaux tant que vous ne l’activez pas.
+votre appareil. Pour les nouveaux relevés, l’accord d’envoi fait partie du
+démarrage. Les anciens brouillons créés sans envoi restent locaux : choisissez
+**Reprendre et synchroniser** pour autoriser leur envoi. Aucun accord n’est déduit
+du simple fait de rouvrir un ancien brouillon.
 
 1. Préparez de nouveau le catalogue avec un compte autorisé à saisir les stocks.
    Une ancienne copie ou un compte en lecture seule n’autorise pas la saisie locale.
@@ -130,7 +133,8 @@ les anciens brouillons restent locaux tant que vous ne l’activez pas.
 3. Renseignez famille, unité et colisage du relevé, puis **Réserve** et **Rayon**.
    Le colisage reste propre à ce brouillon : un téléchargement ultérieur ne le
    remplace pas. Les valeurs du comptage de référence ne sont pas de nouvelles observations.
-4. Attendez **Enregistré sur cet appareil · non synchronisé** après chaque saisie.
+4. Attendez **Enregistré sur cet appareil** après chaque saisie
+   (avec la mention **non synchronisé** pour un ancien brouillon local seul).
    `0` reste un zéro observé ; vide reste non compté ; `1,` reste une saisie
    incomplète, conservée jusqu’à correction. Aucun total n’est inventé.
 5. Fermez puis rouvrez l’app sans réseau. Vérifiez les valeurs, la recherche,
@@ -148,14 +152,18 @@ Après expiration, déconnexion ou changement de compte, les brouillons sont
 **verrouillés, pas supprimés**. Reconnectez-vous avec le compte propriétaire,
 choisissez le même magasin et la même date, puis préparez à nouveau. Les autres
 dates conservées pour votre compte/magasin sont indiquées dans l’espace local.
-Une nouvelle préparation n’écrase jamais les anciennes valeurs du brouillon.
+Une nouvelle préparation n’écrase pas vos valeurs en attente. Si le serveur a
+déjà validé ce relevé, elles restent conservées mais verrouillées : ouvrez une
+correction pour les comparer au stock validé.
 
 Par défaut, l’appareil conserve au maximum 14 brouillons (limite réglable par
 l’administrateur). Au-delà, la création est refusée sans effacer les anciens.
 Dans **Options du comptage**, **Supprimer ce brouillon local** exige confirmation
 et est irréversible : les saisies non synchronisées seront perdues, sans supprimer un éventuel brouillon
-serveur. Une réponse d’envoi incertaine bloque cette suppression : réessayez ou
+serveur. Une réponse d’envoi, de validation ou d’ouverture de correction incertaine bloque cette suppression : réessayez ou
 résolvez d’abord le conflit pour savoir ce qui a été reçu.
+Après validation, renouvelez le catalogue avant de supprimer sa copie locale :
+l’app doit conserver la connaissance de l’état validé si vous rouvrez ce relevé.
 Dans **Catalogue prêt → Gérer la copie locale**, **Effacer la copie locale** efface
 seulement le catalogue téléchargé et verrouille les brouillons jusqu’à nouvelle préparation.
 
@@ -166,21 +174,22 @@ peuvent entraîner leur perte.
 
 ## Synchroniser puis valider le stock
 
-1. Dans le brouillon, choisissez **Activer l’envoi**.
-   Vos saisies restent enregistrées immédiatement sur l’appareil. Les envois
-   reprennent au retour du réseau, tant que cet écran reste ouvert et votre accès
-   valide. Sans cet accord, rien n’est envoyé.
+1. L’envoi est prévu dès **Commencer le comptage** / **Reprendre le comptage**.
+   Pour un ancien brouillon local seul, choisissez **Reprendre et synchroniser**.
+   Les envois reprennent au retour du réseau, tant que cet écran reste ouvert
+   et votre accès valide. Sans cet accord, rien n’est envoyé.
 2. Au retour du réseau, rouvrez **Stocks du matin**. Si nécessaire,
-   touchez l’indicateur réseau pour vérifier la connexion, puis **Réessayer** si nécessaire.
+   touchez l’indicateur réseau pour vérifier la connexion. **Voir le problème**
+   mène au bouton **Réessayer la synchronisation** si l’envoi reste bloqué.
    Gardez l’écran ouvert jusqu’au résultat ; l’app ne promet pas d’envoyer en arrière-plan.
 3. Vérifiez **Brouillon synchronisé** dans la barre de sauvegarde. Ouvrez
    **Détails de synchronisation** pour la révision serveur et le nombre d’articles
    encore en attente. Une valeur incomplète comme `1,` doit être corrigée ; une
    quantité de référence doit être confirmée en la saisissant. Aucun zéro n’est inventé.
-4. Ouvrez l’application connectée, choisissez le même magasin et la même date
-   dans **Stocks du matin**, puis relisez toutes les lignes. N’utilisez pas un
-   ancien écran connecté resté ouvert : rechargez-le pour obtenir la nouvelle révision.
-5. Complétez les lignes partielles, puis **validez le comptage**. C’est seulement
+4. Dans ce même écran, choisissez **Vérifier**. Avec du réseau, l’app relit
+   la version serveur et les articles reçus ; les filtres ne suppriment aucune ligne.
+5. Complétez les lignes partielles, vérifiez les données reçues, puis choisissez
+   **Valider le comptage**. C’est seulement
    alors que le stock peut servir à la proposition de commande. La synchronisation
    ne valide pas le stock, ne calcule pas de commande et n’envoie rien au fournisseur.
 
@@ -194,8 +203,15 @@ En cas de **conflit**, la saisie des quantités est suspendue : comparez les val
 version serveur** pour chaque article, y compris sur les pages suivantes. Confirmez
 vos choix. Les quantités ne sont jamais additionnées. **Actualiser la version
 serveur** renouvelle la comparaison et demande de refaire les choix. Si le stock
-a déjà été validé, créez d’abord une correction dans l’écran connecté, puis actualisez
-le conflit. Ne contournez pas ce contrôle en recréant le même relevé ailleurs.
+a déjà été validé, **Corriger et comparer mes saisies** ouvre une nouvelle version
+dans le même écran, avant la comparaison. Ne recréez pas le relevé ailleurs.
+
+Après validation, le relevé est verrouillé. **Corriger ce relevé** ouvre une
+nouvelle version : l’ancien stock reste intact jusqu’à validation de la correction.
+Si la réponse de validation est perdue, **Vérifier la validation** reprend la
+même opération, même après fermeture de l’app. N’interprétez pas « validation
+à confirmer » comme un succès. **Reprendre la correction** joue le même rôle
+si la réponse d’ouverture de correction se perd.
 
 Un **accès verrouillé** demande une reconnexion avec le compte propriétaire,
 puis une nouvelle préparation du même magasin et de la même date. Les droits

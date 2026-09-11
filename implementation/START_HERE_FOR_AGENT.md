@@ -17,10 +17,14 @@ without changing the separate connected/offline workflows or sync protocol.
 See `36_UX_STOCK_OFFLINE_WORKFLOW.md`; device acceptance still remains open.
 
 The manager then confirmed the product correction: one business count regardless
-of connectivity. **Next implementation ticket: `UX-STOCK-02`**, framed in
-`37_UNIFIED_MORNING_INVENTORY.md`, not implemented yet. Unify start/resume,
-reserve/shelf, review and explicit online commitment; do not add a third editor.
-Preserve existing local work and versioned counts. This refocus precedes new
+of connectivity. **Current delivery: `UX-STOCK-02`**, implemented on the
+`codex/unified-morning-inventory` branch, pending PR review and device acceptance.
+`37_UNIFIED_MORNING_INVENTORY.md` records the contract, tests and recovery rules.
+The authorized Stocks entry now leads to the single static editor, with integrated
+preparation/consent, review, explicit online commitment and immutable correction.
+Legacy drafts are upgraded in place, never purged; the former connected editor
+is removed. Preserve local schema v3 and durable uncertain commit/correction intents.
+This refocus precedes new
 document/coach features without waiving TECH-03 device or PILOT-01 evidence gates.
 
 Read the current state in `implementation/10_BACKLOG.md`, then the relevant

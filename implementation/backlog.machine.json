@@ -839,7 +839,7 @@
       "epic": "ux",
       "title": "One morning count regardless of connectivity",
       "priority": "P0",
-      "status": "planned",
+      "status": "implemented_pending_review_and_device_validation",
       "dependsOn": ["V3-02", "TECH-03", "UX-STOCK-01"],
       "externalGates": [
         "Preserve existing local drafts and versioned stock through transition",

@@ -5,6 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InventorySyncPanel } from "./inventory-sync-panel";
+import { CountWorkflowActions } from "./count-workflow-actions";
+import { countIsEditable } from "@/domain/offline/count-lifecycle";
+import { openUnifiedCount } from "@/lib/offline/count-lifecycle";
 import {
   businessDateAt,
   inspectLocalLine,
@@ -19,7 +22,6 @@ import {
   readLocalDraft,
   saveLocalLine,
   saveLocalView,
-  startLocalDraft,
 } from "@/lib/offline/inventory-drafts";
 
 const pageSize = 25;
@@ -30,12 +32,14 @@ export function LocalInventoryEditor({
   now,
   onBusyChange,
   onActiveChange,
+  connected,
 }: {
   workspace: PreparedWorkspace;
   accessible: boolean;
   now: number;
   onBusyChange: (busy: boolean) => void;
   onActiveChange: (active: boolean) => void;
+  connected: boolean;
 }) {
   const [draft, setDraft] = useState<LocalInventoryDraft | null>(null);
   const [dates, setDates] = useState<string[]>([]);
@@ -44,6 +48,8 @@ export function LocalInventoryEditor({
   const [error, setError] = useState("");
   const [writeFailed, setWriteFailed] = useState(false);
   const [syncConflict, setSyncConflict] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [reviewRequest, setReviewRequest] = useState(0);
   const display = useRef<LocalInventoryDraft | null>(null);
   const acknowledged = useRef<LocalInventoryDraft | null>(null);
   const queue = useRef(Promise.resolve());
@@ -64,32 +70,50 @@ export function LocalInventoryEditor({
 
   useEffect(() => {
     if (!accessible || !workspace.canWriteInventory) return;
-    const subscription = liveQuery(async () => ({
-      draft: await readLocalDraft(workspace),
-      dates: await localDraftDates(workspace),
-    })).subscribe({
-      next: (value) => {
-        setDates(value.dates);
-        if (pending.current || blocked.current) return;
-        acknowledged.current = value.draft;
-        display.current = value.draft;
-        setDraft(value.draft);
-        onActiveChange(Boolean(value.draft));
-        setError("");
-        setLoading(false);
-      },
-      error: () => {
-        setLoading(false);
-        setError(
-          "Brouillon verrouillé ou stockage incompatible. Préparez à nouveau avec votre compte. Aucun brouillon n’a été effacé.",
-        );
-      },
-    });
-    return () => subscription.unsubscribe();
+    let disposed = false;
+    let unsubscribe = () => {};
+    void openUnifiedCount(workspace)
+      .then(() => {
+        if (disposed) return;
+        const subscription = liveQuery(async () => ({
+          draft: await readLocalDraft(workspace),
+          dates: await localDraftDates(workspace),
+        })).subscribe({
+          next: (value) => {
+            setDates(value.dates);
+            if (pending.current || blocked.current) return;
+            acknowledged.current = value.draft;
+            display.current = value.draft;
+            setDraft(value.draft);
+            onActiveChange(Boolean(value.draft));
+            setError("");
+            setLoading(false);
+          },
+          error: () => {
+            setLoading(false);
+            setError(
+              "Brouillon verrouillé ou stockage incompatible. Préparez à nouveau avec votre compte. Aucun brouillon n’a été effacé.",
+            );
+          },
+        });
+        unsubscribe = () => subscription.unsubscribe();
+      })
+      .catch(() => {
+        if (!disposed) {
+          setLoading(false);
+          setError(
+            "Reprise impossible. Vos saisies existantes sont conservées.",
+          );
+        }
+      });
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
   }, [workspace, accessible, onActiveChange]);
 
   useEffect(() => {
-    onBusyChange(saving || writeFailed);
+    onBusyChange(saving || writeFailed || actionBusy);
     const preventLoss = (event: BeforeUnloadEvent) => {
       if (!pending.current && !blocked.current) return;
       event.preventDefault();
@@ -97,7 +121,7 @@ export function LocalInventoryEditor({
     };
     window.addEventListener("beforeunload", preventLoss);
     return () => window.removeEventListener("beforeunload", preventLoss);
-  }, [saving, writeFailed, onBusyChange]);
+  }, [saving, writeFailed, actionBusy, onBusyChange]);
 
   function show(value: LocalInventoryDraft | null) {
     display.current = value;
@@ -105,6 +129,14 @@ export function LocalInventoryEditor({
       setDraft(value);
       onActiveChange(Boolean(value));
     }
+  }
+
+  async function refreshAfterAction() {
+    const saved = await readLocalDraft(workspace);
+    if (pending.current || blocked.current)
+      throw new Error("Une saisie locale reste à résoudre.");
+    acknowledged.current = saved;
+    show(saved);
   }
 
   function enqueue(line?: LocalCountLine, view?: LocalView) {
@@ -147,7 +179,13 @@ export function LocalInventoryEditor({
   }
 
   function editLine(line: LocalCountLine, patch: Partial<LocalCountLine>) {
-    if (!accessible || blocked.current || syncConflict || !display.current)
+    if (
+      !accessible ||
+      blocked.current ||
+      syncConflict ||
+      !display.current ||
+      !countIsEditable(display.current.lifecycle)
+    )
       return;
     const current = display.current.lines.find(
       (value) => value.productId === line.productId,
@@ -172,6 +210,7 @@ export function LocalInventoryEditor({
 
   function editView(patch: Partial<LocalView>) {
     if (!display.current || blocked.current) return;
+    if (patch.area === "review") setReviewRequest((value) => value + 1);
     const view = { ...display.current.view, ...patch };
     dirtyView.current = true;
     show({ ...display.current, view });
@@ -182,7 +221,7 @@ export function LocalInventoryEditor({
     setSaving(true);
     setError("");
     try {
-      const saved = await startLocalDraft(workspace);
+      const saved = await openUnifiedCount(workspace, true, true);
       acknowledged.current = saved;
       show(saved);
     } catch (cause) {
@@ -279,20 +318,25 @@ export function LocalInventoryEditor({
         line.label
           .toLocaleLowerCase("fr")
           .includes(view.search.trim().toLocaleLowerCase("fr"))) &&
-      (!view?.family || line.familyCode === view.family) &&
+      (!view?.family ||
+        (view.family === "unconfigured"
+          ? !line.familyCode || !line.stockUnit || !line.packSize.trim()
+          : line.familyCode === view.family)) &&
       (view?.progress === "all" ||
-        (view?.progress === "complete"
-          ? result.state === "complete"
-          : result.state !== "complete")),
+        (view?.progress === "stockout"
+          ? result.state === "complete" && result.total === 0
+          : view?.progress === "complete"
+            ? result.state === "complete"
+            : result.state !== "complete")),
   );
   const pageCount = Math.max(1, Math.ceil(matches.length / pageSize));
   const page = Math.min(view?.page ?? 1, pageCount);
-  const inactive = (saving && !draft) || Boolean(error);
+  const inactive = (saving && !draft) || Boolean(error) || actionBusy;
 
   return (
     <section
       aria-labelledby="local-count-title"
-      className="mt-5 space-y-4 pb-4"
+      className="mt-3 space-y-3 pb-4"
     >
       <h2
         id="local-count-title"
@@ -332,14 +376,43 @@ export function LocalInventoryEditor({
         </div>
       )}
       {!draft ? (
-        <Button
-          disabled={saving || !workspace.products.length}
-          onClick={() => void start()}
-        >
-          Commencer le comptage
-        </Button>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Vos saisies seront conservées sur cet appareil et envoyées
+            automatiquement avec du réseau. La validation restera votre
+            décision.
+          </p>
+          <Button
+            disabled={saving || !workspace.products.length}
+            onClick={() => void start()}
+          >
+            {workspace.countReference?.status === "committed"
+              ? "Consulter le relevé validé"
+              : workspace.countReference
+                ? "Reprendre le comptage"
+                : "Commencer le comptage"}
+          </Button>
+        </div>
       ) : (
         <>
+          <p
+            className={
+              draft.lifecycle?.phase === "editing" && !draft.lifecycle.count
+                ? "sr-only"
+                : "text-sm font-medium"
+            }
+            role="status"
+          >
+            {draft.lifecycle?.phase === "committed"
+              ? `Stock validé · version ${draft.lifecycle.count.version}. Le relevé est verrouillé.`
+              : draft.lifecycle?.phase === "server_committed"
+                ? "Le serveur a déjà validé ce relevé. Vos saisies restent conservées pour comparaison."
+                : draft.lifecycle?.phase === "committing"
+                  ? "Validation non confirmée : le relevé est verrouillé jusqu’à réception de la réponse."
+                  : draft.lifecycle?.phase === "correcting"
+                    ? "Ouverture de la correction à confirmer. L’ancien relevé reste inchangé."
+                    : `Comptage en cours${draft.lifecycle?.phase === "editing" && draft.lifecycle.count ? ` · version ${draft.lifecycle.count.version}` : ""}`}
+          </p>
           {businessDateAt(now, draft.timeZone) !== draft.businessDate && (
             <p role="status" className="text-sm text-amber-900">
               La date locale actuelle diffère du relevé. Vous travaillez
@@ -347,24 +420,33 @@ export function LocalInventoryEditor({
               automatiquement.
             </p>
           )}
-          <div className="grid grid-cols-2 gap-3 rounded-xl border bg-background p-3">
+          <div className="grid grid-cols-2 gap-2 rounded-xl border bg-background p-3">
             <div
-              role="group"
-              aria-label="Zone de comptage"
-              className="col-span-2 flex gap-2"
+              role="navigation"
+              aria-label="Étapes du comptage"
+              className="col-span-2 grid grid-cols-4 gap-1"
             >
-              {(["reserve", "shelf"] as const).map((area) => (
-                <Button
-                  key={area}
-                  className="min-h-11 flex-1"
-                  variant={view!.area === area ? "default" : "outline"}
-                  disabled={inactive}
-                  aria-pressed={view!.area === area}
-                  onClick={() => editView({ area })}
-                >
-                  {area === "reserve" ? "Réserve" : "Rayon"}
-                </Button>
-              ))}
+              {(["reserve", "shelf", "review", "configuration"] as const).map(
+                (area) => (
+                  <Button
+                    key={area}
+                    className="min-h-11 px-1 text-xs sm:text-sm"
+                    variant={view!.area === area ? "default" : "outline"}
+                    disabled={inactive}
+                    aria-pressed={view!.area === area}
+                    onClick={() => editView({ area })}
+                  >
+                    {
+                      {
+                        reserve: "Réserve",
+                        shelf: "Rayon",
+                        review: "Vérifier",
+                        configuration: "Configurer",
+                      }[area]
+                    }
+                  </Button>
+                ),
+              )}
             </div>
             <label className="col-span-2 text-sm">
               <span className="sr-only">Rechercher dans le brouillon</span>
@@ -395,6 +477,7 @@ export function LocalInventoryEditor({
                 <option value="">Toutes les familles</option>
                 <option value="3400">Fruits · 3400</option>
                 <option value="3402">Légumes · 3402</option>
+                <option value="unconfigured">À configurer</option>
               </select>
             </label>
             <label className="text-sm">
@@ -413,6 +496,7 @@ export function LocalInventoryEditor({
                 <option value="all">Tous les articles</option>
                 <option value="remaining">À compléter</option>
                 <option value="complete">Complets</option>
+                <option value="stockout">Ruptures confirmées</option>
               </select>
             </label>
             <nav
@@ -456,115 +540,125 @@ export function LocalInventoryEditor({
                   className="rounded-xl border bg-card p-4"
                 >
                   <h3 className="font-semibold">{line.label}</h3>
-                  <fieldset
-                    disabled={inactive || syncConflict}
-                    className="mt-3 grid gap-3"
-                  >
-                    <legend className="sr-only">
-                      Comptage de {line.label}
-                    </legend>
-                    <details
-                      open={!line.familyCode || !line.stockUnit}
-                      className="text-sm"
+                  {view!.area !== "review" && (
+                    <fieldset
+                      disabled={
+                        inactive ||
+                        syncConflict ||
+                        !countIsEditable(draft.lifecycle)
+                      }
+                      className="mt-3 grid gap-3"
                     >
-                      <summary className="cursor-pointer py-1 text-muted-foreground">
-                        {line.familyCode && line.stockUnit
-                          ? `${line.familyCode === "3400" ? "Fruits" : "Légumes"} · ${line.stockUnit === "piece" ? "pièces" : "kg"} · modifier`
-                          : "Famille et unité à renseigner"}
-                      </summary>
-                      <div className="mt-2 grid grid-cols-2 gap-2">
+                      <legend className="sr-only">
+                        Comptage de {line.label}
+                      </legend>
+                      <details
+                        open={
+                          view!.area === "configuration" ||
+                          !line.familyCode ||
+                          !line.stockUnit
+                        }
+                        className="text-sm"
+                      >
+                        <summary className="cursor-pointer py-1 text-muted-foreground">
+                          {line.familyCode && line.stockUnit
+                            ? `${line.familyCode === "3400" ? "Fruits" : "Légumes"} · ${line.stockUnit === "piece" ? "pièces" : "kg"} · modifier`
+                            : "Famille et unité à renseigner"}
+                        </summary>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <label className="text-sm">
+                            Famille
+                            <select
+                              className="mt-1 block min-h-11 w-full rounded-lg border px-2"
+                              value={line.familyCode ?? ""}
+                              onChange={(event) =>
+                                editLine(line, {
+                                  familyCode:
+                                    event.target.value === ""
+                                      ? null
+                                      : (event.target
+                                          .value as LocalCountLine["familyCode"]),
+                                })
+                              }
+                            >
+                              <option value="">À renseigner</option>
+                              <option value="3400">3400 · Fruits</option>
+                              <option value="3402">3402 · Légumes</option>
+                            </select>
+                          </label>
+                          <label className="text-sm">
+                            Unité
+                            <select
+                              className="mt-1 block min-h-11 w-full rounded-lg border px-2"
+                              value={line.stockUnit ?? ""}
+                              onChange={(event) =>
+                                editLine(line, {
+                                  stockUnit:
+                                    event.target.value === ""
+                                      ? null
+                                      : (event.target
+                                          .value as LocalCountLine["stockUnit"]),
+                                })
+                              }
+                            >
+                              <option value="">À renseigner</option>
+                              <option value="kg">kg</option>
+                              <option value="piece">Pièce</option>
+                            </select>
+                          </label>
+                        </div>
+                      </details>
+                      <div className="grid grid-cols-2 items-end gap-3">
                         <label className="text-sm">
-                          Famille
-                          <select
-                            className="mt-1 block min-h-11 w-full rounded-lg border px-2"
-                            value={line.familyCode ?? ""}
-                            onChange={(event) =>
-                              editLine(line, {
-                                familyCode:
-                                  event.target.value === ""
-                                    ? null
-                                    : (event.target
-                                        .value as LocalCountLine["familyCode"]),
-                              })
-                            }
-                          >
-                            <option value="">À renseigner</option>
-                            <option value="3400">3400 · Fruits</option>
-                            <option value="3402">3402 · Légumes</option>
-                          </select>
-                        </label>
-                        <label className="text-sm">
-                          Unité
-                          <select
-                            className="mt-1 block min-h-11 w-full rounded-lg border px-2"
-                            value={line.stockUnit ?? ""}
-                            onChange={(event) =>
-                              editLine(line, {
-                                stockUnit:
-                                  event.target.value === ""
-                                    ? null
-                                    : (event.target
-                                        .value as LocalCountLine["stockUnit"]),
-                              })
-                            }
-                          >
-                            <option value="">À renseigner</option>
-                            <option value="kg">kg</option>
-                            <option value="piece">Pièce</option>
-                          </select>
-                        </label>
-                      </div>
-                    </details>
-                    <div className="grid grid-cols-2 items-end gap-3">
-                      <label className="text-sm">
-                        Colisage du relevé
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          maxLength={40}
-                          className="mt-1 min-h-11"
-                          value={line.packSize}
-                          onChange={(event) =>
-                            editLine(line, { packSize: event.target.value })
-                          }
-                        />
-                      </label>
-                      {view!.area === "reserve" ? (
-                        <label className="text-sm">
-                          Colis en réserve
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={40}
-                            className="mt-1 min-h-11"
-                            value={line.reserveCaseCount}
-                            onChange={(event) =>
-                              editLine(line, {
-                                reserveCaseCount: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                      ) : (
-                        <label className="text-sm">
-                          Quantité en rayon (
-                          {line.stockUnit ?? "unité à renseigner"})
+                          Colisage du relevé
                           <Input
                             type="text"
                             inputMode="decimal"
                             maxLength={40}
                             className="mt-1 min-h-11"
-                            value={line.shelfQuantity}
+                            value={line.packSize}
                             onChange={(event) =>
-                              editLine(line, {
-                                shelfQuantity: event.target.value,
-                              })
+                              editLine(line, { packSize: event.target.value })
                             }
                           />
                         </label>
-                      )}
-                    </div>
-                  </fieldset>
+                        {view!.area === "reserve" ? (
+                          <label className="text-sm">
+                            Colis en réserve
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={40}
+                              className="mt-1 min-h-11"
+                              value={line.reserveCaseCount}
+                              onChange={(event) =>
+                                editLine(line, {
+                                  reserveCaseCount: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                        ) : view!.area === "shelf" ? (
+                          <label className="text-sm">
+                            Quantité en rayon (
+                            {line.stockUnit ?? "unité à renseigner"})
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              maxLength={40}
+                              className="mt-1 min-h-11"
+                              value={line.shelfQuantity}
+                              onChange={(event) =>
+                                editLine(line, {
+                                  shelfQuantity: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                        ) : null}
+                      </div>
+                    </fieldset>
+                  )}
                   <p className="mt-3 text-sm">
                     Réserve : {line.reserveCaseCount || "non comptée"} colis ·
                     rayon : {line.shelfQuantity || "non compté"}{" "}
@@ -617,6 +711,29 @@ export function LocalInventoryEditor({
             saveFailed={Boolean(error)}
             complete={complete}
             onConflictChange={setSyncConflict}
+            workflowActions={
+              <CountWorkflowActions
+                key={view!.area}
+                workspace={workspace}
+                draft={draft}
+                connected={connected}
+                reviewRequest={reviewRequest}
+                disabled={saving || Boolean(error)}
+                onBusyChange={setActionBusy}
+                onSettled={refreshAfterAction}
+                next={() =>
+                  editView({
+                    area:
+                      view!.area === "configuration"
+                        ? "reserve"
+                        : view!.area === "reserve"
+                          ? "shelf"
+                          : "review",
+                    page: 1,
+                  })
+                }
+              />
+            }
           />
         </>
       )}

@@ -1,4 +1,8 @@
-import { prepareCatalogue, openProductConfiguration } from "./offline-ui";
+import {
+  prepareCatalogue,
+  openProductConfiguration,
+  restoreLegacyDraft,
+} from "./offline-ui";
 import { chromium, expect, test, type Page } from "@playwright/test";
 import { join } from "node:path";
 import { getDemoStorePair, importFixtureIntoStore } from "./demo-store";
@@ -38,7 +42,7 @@ async function prepare(
     page.getByRole("button", { name: "Préparer ce catalogue" }),
   ).toBeEnabled({ timeout: 45000 });
   await prepareCatalogue(page);
-  await page.getByRole("button", { name: "Commencer le comptage" }).click();
+  await restoreLegacyDraft(page, copy);
   await expect(
     page.getByText("Enregistré sur cet appareil · non synchronisé", {
       exact: true,
@@ -80,7 +84,7 @@ async function fill(page: Page, quantity: string) {
 }
 async function enable(page: Page) {
   await panel(page)
-    .getByRole("button", { name: "Activer l’envoi de ce brouillon" })
+    .getByRole("button", { name: "Reprendre et synchroniser ce brouillon" })
     .click();
 }
 async function connected(page: Page) {
@@ -205,7 +209,10 @@ test("TECH-03 reprend après arrêt Chromium et rejoue une réponse perdue sans 
     await online.goto(
       `/${copy.organizationSlug}/stores/${copy.identity.storeId}/inventory?businessDate=${businessDate}`,
     );
-    await online.getByRole("button", { name: /Vérifier/ }).click();
+    await online
+      .getByRole("navigation", { name: "Étapes du comptage" })
+      .getByRole("button", { name: "Vérifier", exact: true })
+      .click();
     const committedResponse = online.waitForResponse(
       (response) =>
         response.url().endsWith("/commit") &&

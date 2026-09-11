@@ -24,10 +24,10 @@ Merged via PR #32, `UX-STOCK-01`: coherent connected/offline stock presentation,
 compact field counting and progressive disclosure, without generalized offline
 navigation or new synchronization semantics. See [the UX contract](./36_UX_STOCK_OFFLINE_WORKFLOW.md).
 
-**Next implementation ticket: `UX-STOCK-02` — one morning count regardless of
-connectivity.** The manager confirmed that separate local/server workflows create
-avoidable ambiguity. The [new contract](./37_UNIFIED_MORNING_INVENTORY.md) frames
-their unification; it is not delivered functionality. Preserve all existing
+**Current delivery: `UX-STOCK-02` — one morning count regardless of
+connectivity**, implemented on `codex/unified-morning-inventory`, pending PR review
+and target-device acceptance. The [contract and delivery record](./37_UNIFIED_MORNING_INVENTORY.md)
+describe the single editor and its lifecycle. Preserve all existing
 drafts and versioned stock. TECH-03 physical acceptance and PILOT-01 remain open;
 new document/coach features wait while this product path is corrected.
 
@@ -345,7 +345,7 @@ for this complete historical table. New planned entries include `dependsOn`,
 
 ## Technical foundation acceptance
 
-### UX-STOCK-02 — unified morning count (planned)
+### UX-STOCK-02 — unified morning count (implemented, review/device acceptance pending)
 
 - one operational editor for start/resume, reserve, shelf, review and validation;
 - network transitions change save/sync status, not the counting workflow;

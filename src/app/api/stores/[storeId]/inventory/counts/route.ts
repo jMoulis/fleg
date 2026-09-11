@@ -8,6 +8,7 @@ import {
 } from "@/domain/inventory/schemas";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { inventoryErrorResponse } from "@/server/http/inventory-error-response";
+import { assertInventorySessionBinding } from "@/server/http/inventory-session-binding";
 import {
   createInventoryCount,
   getInventoryWorkspace,
@@ -58,6 +59,7 @@ export async function POST(request: Request, routeContext: RouteContext) {
       ["inventory.write"],
       request.headers,
     );
+    await assertInventorySessionBinding(request.headers);
     const createInput = inventoryCountCreateInputSchema.parse(
       await request.json(),
     );

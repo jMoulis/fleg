@@ -2,6 +2,7 @@ import {
   prepareCatalogue,
   openProductConfiguration,
   openPreparation,
+  restoreLegacyDraft,
 } from "./offline-ui";
 import {
   chromium,
@@ -16,6 +17,7 @@ import {
   preparedWorkspaceSchema,
 } from "@/domain/offline/schemas";
 import { preparedFixture } from "@/test/fixtures/offline";
+import { businessDateAt } from "@/domain/offline/inventory-draft";
 import { getDemoStorePair, importFixtureIntoStore } from "./demo-store";
 
 async function prepare(page: Page, context: BrowserContext) {
@@ -27,6 +29,9 @@ async function prepare(page: Page, context: BrowserContext) {
   const now = Date.now();
   const copy = {
     ...preparedFixture(),
+    // This geometry recipe models today's count; historical-date warnings have
+    // their own meaning and must not appear just because the test date aged.
+    businessDate: businessDateAt(now, "Europe/Paris"),
     identity,
     canWriteInventory: true,
     storeName: primary.name,
@@ -44,7 +49,7 @@ async function prepare(page: Page, context: BrowserContext) {
   ).toBeEnabled({ timeout: 45000 });
   await prepareCatalogue(page);
   await expect(page.getByText("Catalogue prêt", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Commencer le comptage" }).click();
+  await restoreLegacyDraft(page, preparedWorkspaceSchema.parse(copy));
   await saved(page);
   return { copy, endpoint };
 }
@@ -371,17 +376,13 @@ test("TECH-02 compte hors ligne depuis un vrai catalogue Mercalys préparé par 
   await expect(
     page.getByRole("heading", { name: "Stocks du matin", exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("link", { name: "Compter avec ou sans réseau", exact: true })
-    .click();
   await expect(page).toHaveURL(
     new RegExp(`/offline\\?storeId=${primary.id}&businessDate=2026-09-11`),
   );
-  await expect(
-    page.getByRole("button", { name: "Préparer ce catalogue" }),
-  ).toBeEnabled({ timeout: 45000 });
-  await prepareCatalogue(page);
-  await page.getByRole("button", { name: "Commencer le comptage" }).click();
+  await expect(page.getByText("Catalogue prêt", { exact: true })).toBeVisible({
+    timeout: 45000,
+  });
+  await restoreLegacyDraft(page, before);
   await saved(page);
   await context.setOffline(true);
   await page.getByLabel("Rechercher dans le brouillon").fill(product.label);
@@ -503,7 +504,7 @@ test("UX-STOCK-01 garde le comptage au premier plan, les actions accessibles et 
   await expect(bar).toBeInViewport();
   await expect(
     bar.getByRole("button", {
-      name: "Activer l’envoi de ce brouillon",
+      name: "Reprendre et synchroniser ce brouillon",
     }),
   ).toBeInViewport();
   expect(

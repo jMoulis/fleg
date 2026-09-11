@@ -1,12 +1,13 @@
 "use client";
 
 import { liveQuery } from "dexie";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type { LocalInventoryDraft } from "@/domain/offline/inventory-draft";
 import type { PreparedWorkspace } from "@/domain/offline/schemas";
 import { syncTransportPolicy } from "@/domain/offline/sync";
 import { inventorySaveStatus } from "@/domain/offline/presentation";
+import { observeCommittedConflict } from "@/lib/offline/count-lifecycle";
 import {
   enableInventorySync,
   readInventorySync,
@@ -26,6 +27,7 @@ export function InventorySyncPanel({
   saveFailed,
   complete,
   onConflictChange,
+  workflowActions,
 }: {
   workspace: PreparedWorkspace;
   draft: LocalInventoryDraft;
@@ -34,6 +36,7 @@ export function InventorySyncPanel({
   saveFailed: boolean;
   complete: number;
   onConflictChange: (conflict: boolean) => void;
+  workflowActions: ReactNode;
 }) {
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,6 +48,18 @@ export function InventorySyncPanel({
       next: (value) => {
         setState(value);
         onConflictChange(value?.phase === "conflict");
+        if (
+          value?.phase === "conflict" &&
+          value.conflict?.current?.status === "committed"
+        )
+          void observeCommittedConflict(
+            workspace,
+            value.conflict.current,
+          ).catch(() =>
+            setError(
+              "Le relevé doit être relu avec votre compte propriétaire.",
+            ),
+          );
       },
       error: () =>
         setError(
@@ -70,8 +85,10 @@ export function InventorySyncPanel({
     [workspace, disabled],
   );
 
+  const syncEnabled = Boolean(state);
+  const editable = !draft.lifecycle || draft.lifecycle.phase === "editing";
   useEffect(() => {
-    if (draft.schemaVersion !== 2 || disabled) return;
+    if (!syncEnabled || disabled || !editable) return;
     const resume = () => {
       if (document.visibilityState === "visible") void send();
     };
@@ -87,7 +104,7 @@ export function InventorySyncPanel({
       window.removeEventListener("focus", resume);
       document.removeEventListener("visibilitychange", resume);
     };
-  }, [draft.schemaVersion, disabled, send]);
+  }, [syncEnabled, editable, disabled, send]);
 
   async function act(action: () => Promise<unknown>) {
     setBusy(true);
@@ -104,7 +121,7 @@ export function InventorySyncPanel({
   const status = inventorySaveStatus({
     saving,
     failed: saveFailed,
-    syncEnabled: draft.schemaVersion === 2,
+    syncEnabled: Boolean(state),
     phase: state?.phase,
     pendingCount: state?.pendingLines.length ?? 0,
     receivedAt: state?.receivedAt,
@@ -196,13 +213,23 @@ export function InventorySyncPanel({
             <p
               className={`font-semibold ${needsAttention ? "text-amber-800" : ""}`}
             >
-              {status.remote}
+              {draft.lifecycle?.phase === "committed"
+                ? "Stock validé · relevé verrouillé"
+                : draft.lifecycle?.phase === "server_committed"
+                  ? "Stock déjà validé · saisies à comparer"
+                  : draft.lifecycle?.phase === "committing"
+                    ? "Validation à confirmer"
+                    : draft.lifecycle?.phase === "correcting"
+                      ? "Correction à confirmer"
+                      : status.remote}
             </p>
             <p className="mt-1 text-muted-foreground">
               {state?.pendingLines.length
                 ? `${state.pendingLines.length} article(s) à envoyer · `
                 : ""}
-              Validation finale en ligne
+              {draft.lifecycle?.phase === "committed"
+                ? `Version ${draft.lifecycle.count.version}`
+                : "Validation explicite en ligne"}
             </p>
           </div>
           {saveFailed ? (
@@ -212,10 +239,12 @@ export function InventorySyncPanel({
             >
               Voir l’erreur
             </a>
+          ) : draft.lifecycle && draft.lifecycle.phase !== "editing" ? (
+            workflowActions
           ) : !state ? (
             <Button
               className="max-w-40 shrink-0"
-              aria-label="Activer l’envoi de ce brouillon"
+              aria-label="Reprendre et synchroniser ce brouillon"
               disabled={disabled || busy}
               onClick={() =>
                 void act(() =>
@@ -223,7 +252,7 @@ export function InventorySyncPanel({
                 )
               }
             >
-              Activer l’envoi
+              Reprendre et synchroniser
             </Button>
           ) : state.phase === "conflict" || needsAttention ? (
             <a
@@ -233,17 +262,7 @@ export function InventorySyncPanel({
               {state.phase === "conflict" ? "Résoudre" : "Voir le problème"}
             </a>
           ) : (
-            state.phase !== "synchronized" && (
-              <Button
-                variant="outline"
-                className="max-w-36 shrink-0"
-                aria-label="Réessayer la synchronisation"
-                disabled={disabled || busy || state.phase === "syncing"}
-                onClick={() => void act(() => send(true))}
-              >
-                Réessayer
-              </Button>
-            )
+            workflowActions
           )}
         </div>
       </div>
@@ -281,8 +300,8 @@ function ConflictResolver({
       </p>
       {current?.status === "committed" ? (
         <p role="alert" className="text-sm">
-          Créez une correction dans Stocks du matin, puis actualisez le conflit
-          ici. Le stock validé ne peut pas être écrasé.
+          Utilisez « Corriger et comparer mes saisies » dans la barre d’action.
+          Le stock validé ne peut pas être écrasé.
         </p>
       ) : (
         <>

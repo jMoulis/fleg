@@ -5,10 +5,10 @@
 Direction produit confirmée par le responsable le 2026-09-11, après fusion de
 la PR #32 : **un seul comptage métier, quel que soit l’état du réseau**.
 
-Ce document cadre le prochain lot ; il ne décrit pas une fonctionnalité déjà
-livrée. La PR de cadrage ne change ni l’application ni les données existantes.
-Les règles détaillées ci-dessous traduisent cette direction en contrat de
-réalisation à vérifier dans le code et dans la recette terrain.
+La PR #33 est le cadrage sans changement de l’application. La réalisation sur
+`codex/unified-morning-inventory` est maintenant soumise à revue ; sa disponibilité
+en production dépend de la fusion et du déploiement. La recette sur l’appareil
+réel reste ouverte. Les règles ci-dessous restent le contrat d’acceptation.
 
 ## Pourquoi recentrer
 
@@ -138,3 +138,61 @@ forme de relevé qu’ils ne comprennent pas.
 Les tests automatisés protègent la cohérence ; ils ne prouvent pas le gain de
 temps terrain. TECH-03 garde sa validation physique ouverte et PILOT-01 garde
 ses exigences de données réelles. La clôture d’UX-STOCK-02 ne les clôt pas seule.
+
+## Réalisation et reprise — branche de livraison
+
+- L’entrée autorisée `/…/inventory` détermine la date dans le fuseau du magasin
+  puis conduit à `/offline` avec préparation intégrée. `/offline` reste l’entrée
+  statique à froid ; aucun HTML/RSC privé ni réponse d’API ne rejoint le cache global.
+- `LocalInventoryEditor` est l’unique éditeur ; l’ancien `InventoryCountManager`
+  et ses exports exclusifs ont été retirés (récupérables dans Git).
+- Les quatre vues Réserve/Rayon/Vérifier/Configurer partagent les mêmes lignes,
+  filtres famille/progression/ruptures, recherche et pagination de 25 articles.
+- Le démarrage annonce l’enregistrement local et l’envoi automatique au premier
+  plan. Un ancien relevé sans consentement exige « Reprendre et synchroniser ».
+- La revue relit la version serveur et bloque les saisies en attente, anomalies
+  ou conflits. La validation conserve la révision vérifiée et une clé idempotente
+  durable avant tout appel. La réponse perdue est rejouable après réouverture ;
+  le relevé reste verrouillé tant que son résultat est inconnu.
+- La correction possède également une intention durable. Après le reçu de création,
+  la version actuelle est relue : un ancien reçu ne peut pas rouvrir en écriture
+  une correction déjà validée ailleurs. Les valeurs locales concurrentes exigent
+  une comparaison par article dans la nouvelle version.
+- Les écritures locales de validation/correction portent la liaison exacte de
+  session, contrôlée en plus de l’autorisation magasin ; les API existantes sans
+  cet en-tête conservent leur contrat d’autorisation serveur.
+- Le guide en ligne et la checklist bêta décrivent ce parcours unique. Le lien
+  vers la préconisation ne change ni ses calculs ni l’exigence de stock validé.
+
+### Compatibilité et retour arrière
+
+Les brouillons v1 locaux et v2 synchronisables sont lus puis promus en v3 dans
+la même clé compte/organisation/magasin/date. Identifiant, valeurs brutes, files
+d’opérations et demandes en vol sont conservés ; aucun envoi n’est créé sans
+consentement. Un catalogue renouvelé ajoute ses nouveaux articles sans écraser
+les valeurs locales. Les anciennes versions de l’app refusent le schéma v3
+qu’elles ne comprennent pas, au lieu de modifier ses validations en attente.
+
+Pas de migration MongoDB ni purge IndexedDB. En cas de rollback, **ne pas
+effacer les données du site ni rétrograder les brouillons v3**. Les clients anciens
+resteront verrouillés sur ces relevés ; redéployer le lecteur v3 pour les récupérer.
+Attendre une sauvegarde locale confirmée avant fermeture des onglets lors d’une
+mise à jour. Une copie préparée expire selon les limites TECH-01 existantes.
+
+### Preuves automatisées
+
+- Tests du cycle local : consentement ancien, nouveau jour vide, valeurs brutes,
+  refus d’éditer pendant une validation incertaine, fermeture/réouverture,
+  rejeu de clé, reçu étranger, déconnexion, correction et état serveur déjà validé.
+- Tests d’autorisation d’entrée, fuseau/date et liaison de session ; suites
+  d’isolation MongoDB et de synchronisation conservées.
+- Recette E2E mobile 390 et ordinateur 1440 : réserve connectée → rayon sans
+  réseau → rechargement → synchronisation → revue → réponse de validation perdue
+  → reprise → correction ; anciens tests de quotas, deux appareils, cache privé
+  absent et reprise après arrêt Chromium conservés.
+- La commande de recette demeure `E2E_MONGODB_URI=<replica-set local jetable>
+  npm run test:e2e` ; aucune utilisation d’Atlas ou d’OpenAI réel. Les résultats
+  finaux de la suite complète sont consignés dans la PR.
+
+Prochaine étape : revue/fusion, déploiement, puis recette du responsable sur le
+téléphone installé. TECH-04 et le coaching restent hors périmètre de ce lot.
