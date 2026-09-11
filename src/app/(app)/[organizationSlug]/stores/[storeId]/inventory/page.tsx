@@ -52,6 +52,12 @@ export default async function InventoryPage({
         la commande suivante.
       </p>
 
+      <aside className="mt-6 rounded-xl border p-4 text-sm">
+        <a className="font-semibold text-primary underline" href={`/offline?storeId=${storeId}&businessDate=${businessDate}`}>
+          Préparer la consultation hors connexion
+        </a>
+        <p className="mt-2 text-muted-foreground">Téléchargez le catalogue complet avant de perdre le réseau. Lecture seule pour le moment ; la saisie des stocks reste connectée.</p>
+      </aside>
       <InventoryCountManager
         canWrite={context.permissions.includes("inventory.write")}
         initialWorkspace={workspace}

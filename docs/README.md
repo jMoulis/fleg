@@ -1,7 +1,7 @@
 # Documentation F&L Cockpit
 
 Ce portail indique quel document lire selon le besoin. La documentation
-utilisateur décrit l'interface livrée au 10 septembre 2026. Les spécifications
+utilisateur décrit l'interface livrée au 11 septembre 2026. Les spécifications
 numérotées conservent la vision et l'historique de conception ; elles ne
 constituent pas toutes une promesse de fonctionnalité déjà disponible.
 

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Db, ObjectId, type WithId } from "mongodb";
+import { z } from "zod";
 
 import type {
   StoreIdentity,
@@ -9,6 +10,7 @@ import type {
 import type {
   StorePermission,
   StoreRole,
+  AuthorizedStoreContext,
 } from "@/domain/stores/schemas";
 
 export interface StoreListItem {
@@ -55,6 +57,16 @@ export class StoreRepository {
   constructor(db: Db) {
     this.stores = db.collection<StoreDocument>("stores");
     this.memberships = db.collection<StoreMembershipDocument>("storeMemberships");
+  }
+
+  async getOfflineReferenceMetadata(context: AuthorizedStoreContext) {
+    const store = await this.stores.findOne({
+      _id: new ObjectId(context.storeId),
+      organizationId: context.organizationId,
+      active: true,
+    }, { projection: { name: 1, dataRevision: 1 } });
+    if (!store) return null;
+    return z.object({ name: z.string().min(1), dataRevision: z.number().int().nonnegative().default(0) }).parse(store);
   }
 
   async findIdentityById(storeId: string): Promise<StoreIdentity | null> {

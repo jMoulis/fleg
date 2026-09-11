@@ -1,7 +1,7 @@
 {
   "version": "2.1",
   "planningUpdatedAt": "2026-09-11",
-  "nextTicket": "TECH-01",
+  "nextTicket": "TECH-02",
   "tickets": [
     {
       "id": "FND-01",
@@ -516,7 +516,8 @@
       "epic": "offline",
       "title": "Installable PWA and prepared field workspace",
       "priority": "P0",
-      "status": "planned",
+      "status": "implemented_pending_device_validation",
+      "deliveryRecord": "implementation/33_TECH_01_OFFLINE_WORKSPACE.md",
       "dependsOn": ["AUTH-02", "UX-LIST-01"],
       "externalGates": ["Planning documentation merged; framework and target-device compatibility reviewed"],
       "spec": "implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md",

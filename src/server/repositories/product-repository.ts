@@ -25,7 +25,11 @@ export class ProductRepository {
 
   async listOptions(
     context: AuthorizedStoreContext,
+    limit = 1_000,
   ): Promise<ProductOption[]> {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 2_001) {
+      throw new Error("Limite de catalogue invalide");
+    }
     const products = await this.products
       .find(
         {
@@ -36,7 +40,7 @@ export class ProductRepository {
         { projection: { label: 1 } },
       )
       .sort({ label: 1 })
-      .limit(1_000)
+      .limit(limit)
       .toArray();
 
     return products.map((product) =>

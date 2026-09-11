@@ -65,6 +65,50 @@ configurés ou non comptés peuvent rester vides.
 Une validation fige le comptage. Une correction crée une nouvelle version
 traçable au lieu d'écraser la précédente.
 
+## Consulter le catalogue sans réseau
+
+Depuis **Stocks du matin**, le lien **Préparer la consultation hors connexion**
+ouvre un espace dédié. Cette première étape est **en lecture seule** : ne faites
+pas encore votre saisie de stock en mode avion. La saisie persistante et la
+synchronisation seront ajoutées dans TECH-02/03.
+
+1. Sur l’appareil que vous utiliserez en réserve, connectez-vous avec du réseau,
+   choisissez le magasin et la date dans Stocks du matin, puis suivez le lien.
+2. Appuyez sur **Préparer ce catalogue**. Attendez **Prêt pour la consultation
+   hors connexion** et vérifiez le nom du magasin, la date et le nombre d’articles.
+   Le téléchargement comprend toutes les pages, pas seulement les articles déjà vus.
+3. Coupez le réseau, fermez puis rouvrez **Espace hors connexion** (`/offline`).
+   Recherchez un article jamais affiché auparavant. Aucune quantité n’est modifiable.
+4. Au retour du réseau, ouvrez l’application connectée pour saisir et valider
+   le comptage. La copie consultée n’a créé ni comptage ni commande.
+
+Une seule copie magasin/date est conservée : en préparer une autre remplace la
+précédente. La consultation expire par défaut après 12 heures, ou plus tôt si
+la session expire. L’administrateur peut régler cette durée. La date limite et
+l’âge sont affichés ; les derniers stocks observés ont leur propre horodatage.
+Préparez de nouveau chaque matin. La copie expirée est effacée au prochain accès
+après la durée de conservation (24 heures par défaut).
+
+Pour installer : dans Safari sur iPhone/iPad, **Partager → Sur l’écran d’accueil** ;
+sur Android ou ordinateur, **Installer l’application** dans le menu du navigateur,
+si cette option est proposée. Préparez ensuite le catalogue **dans l’app installée**,
+qui peut utiliser un stockage distinct de l’onglet du navigateur.
+
+Un avertissement de conservation signifie que le navigateur peut effacer cette
+copie. Vérifiez-la avant de couper le réseau ; l’installation n’est pas une
+garantie de conservation. En cas d’espace insuffisant, libérez du stockage et
+réessayez. Un téléchargement incomplet n’est jamais annoncé comme prêt.
+
+Utilisez un appareil de confiance protégé par un code. **Effacer la copie locale**
+ne supprime aucune donnée serveur. Une déconnexion ou un changement de compte
+efface également cette copie de lecture. Une révocation distante ne peut pas être
+détectée immédiatement hors connexion : la durée maximale limite cet accès différé.
+
+Si une mise à jour est disponible, terminez et enregistrez votre travail connecté,
+puis fermez tous les onglets de l’app et rouvrez-la. Aucun rechargement n’est forcé.
+La première connexion, les autres écrans et les nouvelles réponses du Copilote
+restent indisponibles sans réseau.
+
 ## Préparer la proposition
 
 Dans **Commande**, sélectionner la date de commande puis préparer la
