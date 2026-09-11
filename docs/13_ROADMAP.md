@@ -57,27 +57,65 @@ Before extending the learning network, complete the bridge defined in
    access and real daily exports.
 
 No unavailable operational observation may be replaced with synthetic pilot
-evidence. V4 priorities are adjusted only from observed pilot friction and
-outcomes.
+evidence. V4 priorities are adjusted from documented pilot findings. The manager
+has additionally reported unreliable in-store connectivity, including the cold
+room; this operational constraint justifies the technical sequence below before
+commercial calibration. Connected pilot work can resume as soon as real exports
+are available, independently of document/AI delivery.
 
-## V4 Learning network
+## Technical field and document foundation — planned 2026-09-11
 
-V4 remains gated by `PILOT-01`. Its first framed, but not yet scheduled, ticket
-is:
+1. `TECH-01` — installable PWA, prepared catalog and offline field entry point.
+2. `TECH-02` — durable local inventory drafts, restored after app closure.
+3. `TECH-03` — idempotent synchronization, conflict resolution and real-device
+   cold-room acceptance. This gates the offline pilot claim, not the start of
+   connected commercial observations.
+4. `TECH-04` — private Blob files, recoverable uploads and legacy-photo transition.
+5. `TECH-05` — durable document-processing jobs with retries and bounded cost.
+6. `TECH-06` — scoped, cited document retrieval, after `V4-01` extraction.
 
-1. `V4-01` — import a weekly central commercial brief from PDF or image pages,
-   review page-grounded extraction, resolve products and confirm a source brief
-   without automatically adopting or executing its recommendations.
+The next implementation ticket is `TECH-01` after the planning PR is merged.
+No PWA, Blob service or vector index is activated by this documentation. See
+[the technical contract](../implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md).
 
-The implementation contract is documented in
-`implementation/30_WEEKLY_COMMERCIAL_BRIEF_IMPORT.md`. The broader V4 direction
-remains calibrated location coefficients, comparable-store benchmarks,
-control-store/difference-in-differences experiment evaluation,
-experiment-derived location/family response learning and recommendation
-outcome learning. `V4-01` ordering may still change from observed pilot
-evidence.
+## V4 Operational coaching and learning — planned
 
-## V5 Advanced
-Computer vision from fixture photos, constrained optimizer, supplier/order integrations, anomaly detection.
+Preserve `V4-01` and the original learning-network direction. The new tickets
+extend existing stock, ordering, context, space and experiment engines:
+
+1. `V4-01` — reviewed weekly commercial brief PDF/image import; requires
+   `TECH-05`, the pilot findings and a representative original PDF.
+2. `V4-02` — automatic and qualitative context journal.
+3. `V4-03` — local product/theme hypotheses and anonymous demand signals, with
+   optional suitable aggregate territorial context and no customer profiling.
+4. `V4-04` — objective-led briefing and a small, scored action shortlist.
+5. `V4-05` — AI-assisted test design with granular evaluation and human conclusions.
+6. `V4-06` — contextual coaching of the already delivered `V3-06` order drafts.
+7. `V4-07` — constrained TG, island and allocation proposals.
+8. `V4-08` — empirical context effects, reusable experiment results and explicit
+   promotion of calibrated coefficients after shadow evaluation.
+
+The first useful outcome is less time spent reaching a supported decision.
+Freshness, waste and availability remain guardrails when optimizing revenue or
+margin. Penetration needs aggregate transaction data that current product sales
+alone do not supply. Recommendations, experiments and notifications share a
+bounded manager workload.
+
+Detailed dependencies and acceptance are in
+[the coach roadmap](../implementation/32_OPERATIONAL_COACH_ROADMAP.md),
+[the original brief contract](../implementation/30_WEEKLY_COMMERCIAL_BRIEF_IMPORT.md)
+and [the backlog](../implementation/10_BACKLOG.md). Pilot findings may change the
+suggested order; suitable data and controls remain additional calibration gates.
+
+## V5 Multimodal coach — deferred
+
+1. `V5-01` — sourced international professional/research knowledge with explicit
+   applicability and local test follow-up.
+2. `V5-02` — photo-assisted presentation observations confirmed by the manager.
+3. `V5-03` — visual merchandising proposals and bounded, evidence-based simulation.
+4. `V5-04` — actionable anomaly follow-up within the same attention budget.
 
 Do not start V5 before data quality and decision outcome tracking are reliable.
+The historical supplier-integration idea is deferred outside this sequence:
+FLEG does not place actual supplier orders. Generated visuals do not constitute
+observed execution, food-safety checks or verified stock quantities.

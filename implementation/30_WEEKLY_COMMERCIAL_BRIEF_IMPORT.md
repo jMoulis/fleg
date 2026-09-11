@@ -4,7 +4,8 @@
 
 This ticket is framed but not scheduled for implementation. `PILOT-01` remains
 the product gate for V4 prioritization, and implementation also requires at
-least one representative original PDF. The seven photographs reviewed during
+least one representative original PDF and `TECH-05` (private storage and durable
+processing through `TECH-04/05`). The seven photographs reviewed during
 framing show one week-32 edition photographed from a screen; they are useful
 domain evidence, but they do not prove that the source template is stable.
 
@@ -49,6 +50,13 @@ For PDFs, extraction uses the embedded text layer when usable and OCR only for
 scanned regions. Image-only sources always expose their degraded extraction
 quality. The source fingerprint, original filename, page count, extraction
 method and processing version are frozen with the import.
+
+Use the shared [document foundation](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md)
+for private upload and durable processing. Text/OCR and multimodal extraction
+are implementation options to evaluate on representative pages; preserve the
+raw page/excerpt and uncertainty regardless of method. Vector retrieval is a
+separate `TECH-06` delivery after reviewed extraction, not a prerequisite to
+reading the first brief or a substitute for validated business fields.
 
 Uploading the same source fingerprint again in the same authorized store
 returns the existing import. A corrected source is a new version and never
@@ -201,3 +209,8 @@ explicit non-executed draft handoffs. A later ticket may combine that brief
 with local sales, seasonality, forecasts, stock, layout and weather to generate
 alternative TG and island scenarios. Computer-vision execution checks remain a
 V5 concern.
+
+The extended [coach roadmap](./32_OPERATIONAL_COACH_ROADMAP.md) assigns bounded
+TG/island proposals to `V4-07`, order coaching to `V4-06` (extending `V3-06`) and
+empirical calibration to `V4-08`. These handoffs do not broaden this import's
+approval or execution authority.

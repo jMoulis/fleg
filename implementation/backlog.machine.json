@@ -1,5 +1,7 @@
 {
-  "version": "2.0",
+  "version": "2.1",
+  "planningUpdatedAt": "2026-09-11",
+  "nextTicket": "TECH-01",
   "tickets": [
     {
       "id": "FND-01",
@@ -497,6 +499,7 @@
       "epic": "product_validation",
       "title": "Instrumented single-store operational pilot",
       "priority": "P0",
+      "status": "awaiting_field_data",
       "acceptance": [
         "execution waits for restored Mercalys access",
         "named store owner dates and frozen baseline",
@@ -504,7 +507,107 @@
         "workflow time data coverage suggestions overrides markdown and availability measured",
         "morning stock and current-day arrival assumptions tested against observed practice",
         "repeatable daily beta checklist and categorized weekly field report",
+        "device connectivity interruptions and recovery recorded with TECH-03 gating offline claims only",
         "pilot evidence informs V4 without automatic supplier execution"
+      ]
+    },
+    {
+      "id": "TECH-01",
+      "epic": "offline",
+      "title": "Installable PWA and prepared field workspace",
+      "priority": "P0",
+      "status": "planned",
+      "dependsOn": ["AUTH-02", "UX-LIST-01"],
+      "externalGates": ["Planning documentation merged; framework and target-device compatibility reviewed"],
+      "spec": "implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md",
+      "acceptance": [
+        "offline cold launch from a completely prepared authorized catalog",
+        "visible preparation scope revision age and storage readiness",
+        "separate static shell and private scoped data without blanket API caching",
+        "safe upgrades local retention and production-build device tests"
+      ]
+    },
+    {
+      "id": "TECH-02",
+      "epic": "offline",
+      "title": "Persistent local inventory drafts",
+      "priority": "P0",
+      "status": "planned",
+      "dependsOn": ["TECH-01", "V3-02"],
+      "externalGates": [],
+      "spec": "implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md",
+      "acceptance": [
+        "atomic local draft and pending-operation persistence before acknowledgement",
+        "account store and date scoped restoration after reload and reopen",
+        "unfinished inputs blank zero observation time unit and pack size preserved",
+        "local completion separated from server stock commitment and authoritative ordering"
+      ]
+    },
+    {
+      "id": "TECH-03",
+      "epic": "offline",
+      "title": "Reliable synchronization and cold-room acceptance",
+      "priority": "P0",
+      "status": "planned",
+      "dependsOn": ["TECH-02"],
+      "externalGates": ["Real target-device offline recovery and account-isolation acceptance before rollout"],
+      "spec": "implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md",
+      "acceptance": [
+        "stable immutable operation ids with ordered revision-checked replay",
+        "no duplicate effect after lost responses or silent conflicting stock overwrite",
+        "expired or revoked sessions cannot replay or expose another account queue",
+        "foreground reconnect and reopen recovery without Background Sync dependency",
+        "online commitment approval and documented real-device recovery recipe"
+      ]
+    },
+    {
+      "id": "TECH-04",
+      "epic": "documents",
+      "title": "Private Blob objects and recoverable uploads",
+      "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["PREV3-04", "TECH-03"],
+      "externalGates": ["Private storage region credentials quotas and costs reviewed before provisioning"],
+      "spec": "implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md",
+      "acceptance": [
+        "server-authorized private object upload and content access",
+        "idempotent upload intent validation linking reconciliation and orphan cleanup",
+        "bounded offline field-photo queue and interrupted-upload recovery",
+        "verified migration with continued legacy BSON photo reads",
+        "retention and deletion across source derived and temporary provider artifacts"
+      ]
+    },
+    {
+      "id": "TECH-05",
+      "epic": "documents",
+      "title": "Durable document-processing jobs",
+      "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["TECH-04"],
+      "externalGates": ["Durable runtime compatibility budgets and provider data policy reviewed"],
+      "spec": "implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md",
+      "acceptance": [
+        "persistent checkpointed extraction and optional indexing independent of browser lifetime",
+        "bounded retries cancellation spend and deletion-race handling",
+        "versioned store-scoped workers treat source instructions as untrusted data",
+        "sanitized lifecycle acceptance without claiming representative commercial validation"
+      ]
+    },
+    {
+      "id": "TECH-06",
+      "epic": "documents",
+      "title": "Cited and scoped document retrieval",
+      "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["TECH-05", "V4-01", "AI-01"],
+      "externalGates": ["Actual Atlas vector capability cost and approved corpus evaluation"],
+      "spec": "implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md",
+      "acceptance": [
+        "versioned chunks and embeddings with confirmed document and page provenance",
+        "exact business filters combined with semantic retrieval",
+        "server-injected tenant and authorized-store prefilters plus visibility checks",
+        "citation abstention isolation deletion and reindexing evals",
+        "similarity never represented as numeric correctness or calibrated confidence"
       ]
     },
     {
@@ -512,6 +615,10 @@
       "epic": "commercial_intelligence",
       "title": "Weekly commercial brief PDF and image import",
       "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["PILOT-01", "TECH-05"],
+      "externalGates": ["Representative original PDF and explicit provider processing policy"],
+      "spec": "implementation/30_WEEKLY_COMMERCIAL_BRIEF_IMPORT.md",
       "acceptance": [
         "store-scoped fingerprinted versioned and idempotent source import",
         "PDF-first extraction with visibly degraded image fallback",
@@ -521,6 +628,187 @@
         "extraction confirmation separated from adoption and execution",
         "confidential retention and explicit external-provider policy",
         "no automatic TG allocation forecast order or supplier mutation"
+      ]
+    },
+    {
+      "id": "V4-02",
+      "epic": "context",
+      "title": "Automatic and qualitative context journal",
+      "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["PILOT-01", "V3-05", "TECH-03", "TECH-05"],
+      "externalGates": ["Suitable weather and calendar provider coverage terms and budgets"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "automatic context and offline qualitative notes retain source and observation time",
+        "forecast issuance regional alerts and actual observations remain distinct",
+        "versioned corrections deduplication provider failure and unknown states",
+        "measured journal effort and no unexplained forecast multiplier"
+      ]
+    },
+    {
+      "id": "V4-03",
+      "epic": "assortment",
+      "title": "Local assortment opportunities",
+      "priority": "P2",
+      "status": "planned",
+      "dependsOn": ["PILOT-01", "V4-02"],
+      "externalGates": ["Optional territorial sources require documented suitability anonymity and lawful reuse before activation"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "product and culinary-theme hypotheses can initiate a bounded test without sales history",
+        "anonymous aggregate requests and manager observations retain uncertainty",
+        "no individual sensitive-trait inference customer ethnic segmentation or disguised proxies",
+        "commercial conclusions follow observed tests rather than geographic assumptions"
+      ]
+    },
+    {
+      "id": "V4-04",
+      "epic": "coaching",
+      "title": "Objective-led briefing and bounded prioritization",
+      "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["PILOT-01", "AI-03", "REC-01", "TECH-03"],
+      "externalGates": [],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "manager objective and configurable bounded shortlist with evidence effort and risk",
+        "deterministic versioned ranking components without invented financial gains",
+        "distinct opportunity score evidence grade and statistical uncertainty",
+        "useful no-action exploration and missing-source states with duplicate suppression",
+        "penetration unavailable without a suitable aggregate transaction denominator",
+        "decision time and usefulness evaluated against pilot baseline"
+      ]
+    },
+    {
+      "id": "V4-05",
+      "epic": "experiments",
+      "title": "Guided tests and granular evaluation",
+      "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["V4-04", "V3-01", "EXP-05"],
+      "externalGates": ["Suitable daily coverage for short-test outcome evaluation"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "AI-drafted protocol reuses the human-controlled experiment lifecycle",
+        "short tests use explicit granular baselines without monthly and daily double counting",
+        "actual execution confounders guardrails and workload limits recorded",
+        "reproducible outcomes include negative and inconclusive results",
+        "no automatic conclusion training coefficient update or rollout"
+      ]
+    },
+    {
+      "id": "V4-06",
+      "epic": "ordering",
+      "title": "Contextual coaching of existing order suggestions",
+      "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["V4-01", "V4-02", "V4-04", "V3-06", "TECH-03"],
+      "externalGates": ["Learned quantity adjustments require V4-08 coefficient promotion; initial coaching uses existing formulas"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "extend V3-06 calendar morning stock variable-pack and freshness semantics",
+        "authoritative calculations require synchronized committed stock and current revisions",
+        "context guides review without LLM-generated quantity adjustments",
+        "pack surplus and auditable overrides remain visible",
+        "review effort and outcomes measured without supplier transmission"
+      ]
+    },
+    {
+      "id": "V4-07",
+      "epic": "merchandising",
+      "title": "Constrained TG island and allocation proposals",
+      "priority": "P1",
+      "status": "planned",
+      "dependsOn": ["V4-01", "V4-04", "V4-05", "PREV3-03"],
+      "externalGates": ["Validated layout dimensions and current source versions"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "bounded drafts combine confirmed brief evidence with actual layout versions",
+        "capacity must-stock locked placements and suitability remain deterministic constraints",
+        "field tasks risks and optional experiments accompany proposals",
+        "human adoption and publication use existing permissioned workflows"
+      ]
+    },
+    {
+      "id": "V4-08",
+      "epic": "learning",
+      "title": "Empirical context effects and reusable learning",
+      "priority": "P2",
+      "status": "planned",
+      "dependsOn": ["V4-02", "V4-05", "EXP-06", "PREV3-02"],
+      "externalGates": ["Suitable observations experiments and controls for the selected method"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "associations and causal estimates expose method confounding and uncertainty",
+        "predefined outcomes and leakage-free backtests account for selection bias",
+        "versioned conclusions and proposed coefficients preserve exact evidence scope",
+        "shadow evaluation and audited promotion or rollback gate operational use",
+        "network evidence reauthorized without mandatory cross-store pooling"
+      ]
+    },
+    {
+      "id": "V5-01",
+      "epic": "knowledge",
+      "title": "Sourced primeur and merchandising knowledge",
+      "priority": "P2",
+      "status": "planned",
+      "dependsOn": ["TECH-06", "V4-05"],
+      "externalGates": ["Reliable pilot outcomes reviewed permitted corpus and explicit V5 delivery decision"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "professional and primary research sources have provenance rights and applicability",
+        "external practices central instructions and measured local results remain distinct",
+        "cited advice with transfer uncertainty leads to bounded tests",
+        "no invented academic sources or universal uplift constants"
+      ]
+    },
+    {
+      "id": "V5-02",
+      "epic": "vision",
+      "title": "Photo-assisted field observations",
+      "priority": "P2",
+      "status": "planned",
+      "dependsOn": ["TECH-04", "V4-05", "V5-01"],
+      "externalGates": ["Representative permitted field photos and reviewed evaluation set"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "region-grounded presentation fill and signage cues with uncertainty",
+        "human confirmation with model and authorized source provenance",
+        "no hidden-stock food-safety shelf-life or precise-geometry assertion",
+        "no shopper profiling or automatic stock and layout mutation"
+      ]
+    },
+    {
+      "id": "V5-03",
+      "epic": "simulation",
+      "title": "Visual merchandising proposals and bounded simulation",
+      "priority": "P2",
+      "status": "planned",
+      "dependsOn": ["V4-07", "V4-08", "V5-02"],
+      "externalGates": ["Reliable dimensions constraints and measured response data"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "bounded generated proposals anchored to actual versioned layout constraints",
+        "visuals clearly separated from observed execution photos",
+        "numeric scenarios use deterministic versioned models with uncertainty",
+        "publication and field experiments require separate human action"
+      ]
+    },
+    {
+      "id": "V5-04",
+      "epic": "coaching",
+      "title": "Actionable anomaly follow-up",
+      "priority": "P2",
+      "status": "planned",
+      "dependsOn": ["V4-04", "V4-08"],
+      "externalGates": ["Sufficient historical coverage and a false-alert evaluation"],
+      "spec": "implementation/32_OPERATIONAL_COACH_ROADMAP.md",
+      "acceptance": [
+        "anomalies preserve evidence age coverage and missing-data guards",
+        "briefing attention budget duplicate suppression defer and dismiss controls",
+        "precision response effort and field usefulness evaluated",
+        "uncertain causes request evidence without autonomous intervention"
       ]
     }
   ]

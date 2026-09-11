@@ -64,6 +64,10 @@ seront ajoutées avec les données du pilote réel afin de ne pas documenter des
 - [Consolidation post-V3](../implementation/18_POST_V3_CONSOLIDATION.md)
 - [Audit de cohérence documentaire DOC-01](../implementation/20_DOCUMENTATION_AUDIT.md)
 - [Parcours de comptage UX-LIST-01](../implementation/21_INVENTORY_LIST_UX.md)
+- [Backlog et prochaine étape](../implementation/10_BACKLOG.md)
+- [Socle hors ligne et documents — prévu](../implementation/31_OFFLINE_AND_DOCUMENT_FOUNDATION.md)
+- [Coach opérationnel V4/V5 — prévu](../implementation/32_OPERATIONAL_COACH_ROADMAP.md)
+- [Brief commercial V4-01 — cadré](../implementation/30_WEEKLY_COMMERCIAL_BRIEF_IMPORT.md)
 
 ## Règle de lecture
 

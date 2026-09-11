@@ -1,5 +1,23 @@
 # Build backlog — recommended order
 
+## Current planning baseline — 2026-09-11
+
+V1/V2/V3 and the post-V3 list/documentation sequence are delivered;
+`PILOT-01` still awaits real field evidence. The reported cold-room connectivity
+problem makes `TECH-01` the next implementation ticket after this documentation
+is merged. New `TECH-*`, `V4-*` and `V5-*` entries below are planned, not shipped.
+
+Follow [the technical sequence](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md) and
+[the coach delivery gates](./32_OPERATIONAL_COACH_ROADMAP.md). Preserve existing
+ids: `V4-01` remains the commercial brief, while `V4-06` extends the already
+delivered `V3-06` ordering engine. A ticket's priority does not waive dependencies
+or evidence gates. Technical recovery and sanitized fixture work can proceed
+before the pilot; commercial calibration cannot.
+
+`backlog.machine.json` is a selective machine-readable mirror, not a replacement
+for this complete historical table. New planned entries include `dependsOn`,
+`externalGates` and `spec`; gates are not claims of completion.
+
 | ID | Epic | Ticket | Priority | Depends on |
 |---|---|---|---|---|
 | FND-01 | Foundation | Scaffold Next.js, strict TS, Tailwind, shadcn | P0 | — |
@@ -60,7 +78,24 @@
 | UX-LIST-08 | UX | Scalable context product selection and evidence histories | P0 | UX-LIST-07, V3-05 |
 | UX-LIST-09 | UX | Searchable bounded photo target selection | P0 | UX-LIST-08, PREV3-04 |
 | PILOT-01 | Product validation | Instrumented single-store operational pilot | P0 | UX-LIST-09, Mercalys access |
-| V4-01 | Commercial intelligence | Weekly commercial brief PDF/image import | P1 | PILOT-01, representative original PDF |
+| TECH-01 | Offline | Installable PWA and prepared field workspace | P0 | AUTH-02, UX-LIST-01 |
+| TECH-02 | Offline | Persistent local inventory drafts | P0 | TECH-01, V3-02 |
+| TECH-03 | Offline | Reliable synchronization and cold-room acceptance | P0 | TECH-02, target-device validation |
+| TECH-04 | Documents | Private Blob objects and recoverable uploads | P1 | PREV3-04, TECH-03 |
+| TECH-05 | Documents | Durable document-processing jobs | P1 | TECH-04 |
+| TECH-06 | Documents | Cited and scoped document retrieval | P1 | TECH-05, V4-01, AI-01 |
+| V4-01 | Commercial intelligence | Weekly commercial brief PDF/image import | P1 | PILOT-01, TECH-05, representative original PDF |
+| V4-02 | Context | Automatic and qualitative context journal | P1 | PILOT-01, V3-05, TECH-03, TECH-05 |
+| V4-03 | Assortment | Local assortment opportunities | P2 | PILOT-01, V4-02 |
+| V4-04 | Coaching | Objective-led briefing and bounded prioritization | P1 | PILOT-01, AI-03, REC-01, TECH-03 |
+| V4-05 | Experiments | Guided tests and granular evaluation | P1 | V4-04, V3-01, EXP-05 |
+| V4-06 | Ordering | Contextual coaching of existing order suggestions | P1 | V4-01, V4-02, V4-04, V3-06, TECH-03 |
+| V4-07 | Merchandising | Constrained TG, island and allocation proposals | P1 | V4-01, V4-04, V4-05, PREV3-03 |
+| V4-08 | Learning | Empirical context effects and reusable learning | P2 | V4-02, V4-05, EXP-06, PREV3-02, suitable evidence |
+| V5-01 | Knowledge | Sourced primeur and merchandising knowledge | P2 | TECH-06, V4-05, reviewed corpus |
+| V5-02 | Vision | Photo-assisted field observations | P2 | TECH-04, V4-05, V5-01, representative photo evals |
+| V5-03 | Simulation | Visual merchandising proposals and bounded simulation | P2 | V4-07, V4-08, V5-02, measured response data |
+| V5-04 | Coaching | Actionable anomaly follow-up | P2 | V4-04, V4-08, false-alert evaluation |
 
 ## Pre-V3 gate acceptance
 
@@ -279,10 +314,66 @@
 - the beta operator follows a repeatable daily checklist and supplies a weekly
   report that separates data defects, business-model assumptions, UX friction
   and missing capabilities;
+- record device/browser, connectivity interruptions, unsynchronized work and
+  recovery time; offline acceptance requires the delivered `TECH-03` recipe,
+  and connected commercial observations can begin independently;
 - only observed pilot friction can reprioritize the V4 learning roadmap; supplier execution remains out of scope.
+
+## Technical foundation acceptance
+
+Detailed scope, shared security rules, recovery cases and release evidence live
+in [31 — Offline and document foundation](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md).
+
+### TECH-01
+
+- installable shell and prepared authorized catalog support offline cold launch;
+- preparation completeness, scope, revision, age and storage readiness are visible;
+- static assets and private domain data have separate explicit caching policies;
+- safe app upgrades, local retention and target-device behavior are documented.
+
+### TECH-02
+
+- each inventory edit and pending operation is durably stored before local acknowledgement;
+- drafts restore after reload/reopen and are isolated by account/store/date;
+- incomplete inputs, blank/zero, observed time, unit and variable pack size survive;
+- local completion is not server commitment and cannot supply authoritative orders.
+
+### TECH-03
+
+- stable idempotent operations synchronize in order with revision checks;
+- lost responses, multiple tabs/devices and conflicts cannot duplicate or silently overwrite stock;
+- session expiry and revoked access stop replay without exposing another user's draft;
+- foreground reconnect/reopen recovery works without requiring Background Sync;
+- commitment/approval stay online and real-device offline acceptance is recorded.
+
+### TECH-04
+
+- private Blob upload/read access derives from the server-authorized store;
+- intent, validation, linking, reconciliation and cleanup are idempotent;
+- bounded queued field photos and interrupted uploads expose recovery states;
+- existing BSON photos remain readable throughout a verified storage transition;
+- retention/deletion cover source files and derived/provider artifacts.
+
+### TECH-05
+
+- persistent jobs checkpoint bounded extraction/indexing work independently of the browser;
+- retries, cancellation, provider spend, deletion races and status are explicit;
+- workers preserve store scope, source versions and untrusted-document boundaries;
+- sanitized lifecycle tests do not claim representative PDF or business validation.
+
+### TECH-06
+
+- versioned chunks and embeddings retain confirmed source/page provenance;
+- retrieval combines exact business filters with semantic search;
+- authorized tenant/store prefilters and current visibility checks protect every query;
+- citations, abstention, reindexing and deletion behavior have explicit evals;
+- similarity is never represented as numeric correctness or statistical confidence.
+
+## V4 acceptance
 
 ### V4-01
 
+- implementation requires `PILOT-01`, `TECH-05` and a representative original PDF;
 - original PDFs are preferred while validated image pages remain a visibly
   degraded fallback;
 - the store-scoped source is fingerprinted, versioned and idempotent, with raw
@@ -303,3 +394,82 @@
   provider-side response storage disabled;
 - automated tests use sanitized fixtures and cover ambiguity, idempotency,
   adversarial store isolation and the responsive review workflow.
+
+The following tickets share the full acceptance and evidence gates in
+[32 — Operational coach roadmap](./32_OPERATIONAL_COACH_ROADMAP.md).
+
+### V4-02
+
+- automatic weather/calendar context and qualitative offline notes preserve source, time and corrections;
+- forecasts, regional alerts and actual store observations remain distinct;
+- missing/provider-failure states stay unknown and collection adds no hidden forecast multiplier;
+- journal usefulness and maintenance time are measured.
+
+### V4-03
+
+- product/theme hypotheses can initiate a limited test without historical sales;
+- optional public aggregate territorial sources require documented suitability and reuse checks;
+- no individual ethnicity/religion inference, customer ethnic segmentation or disguised proxy profiling;
+- anonymous requests and observations remain hypotheses until tested commercially.
+
+### V4-04
+
+- objective selection produces a configurable bounded shortlist with evidence, effort and risk;
+- ranking components are deterministic, explicit and versioned; numeric gains are never invented;
+- no-action, exploration and missing-source states remain useful without flooding the manager;
+- penetration stays unavailable without the required aggregate transaction denominator;
+- decision time and usefulness are evaluated against the pilot.
+
+### V4-05
+
+- AI drafts use the existing human-controlled experiment lifecycle;
+- short tests require explicit granular baselines/evaluation, not monthly proxy results;
+- protocol, actual execution, confounders and workload limits are recorded;
+- reproducible outcomes include negative/inconclusive results and never trigger silent training.
+
+### V4-06
+
+- extend V3-06 with context and explanation while retaining its deterministic calendar and stock/pack semantics;
+- authoritative computation consumes synchronized committed stock and checks revisions at approval;
+- only validated coefficients can produce contextual quantity adjustments;
+- overrides remain auditable and actual supplier ordering remains external.
+
+### V4-07
+
+- bounded merchandising drafts use confirmed source evidence and actual layout versions;
+- capacity, must-stock, locked placements and suitability remain deterministic constraints;
+- every proposal states field tasks, risks and an optional test;
+- manager adoption/publication uses existing permissioned workflows.
+
+### V4-08
+
+- empirical associations and causal estimates expose method, confounding and uncertainty;
+- suitable observations, controls and leakage-free backtests gate calibration;
+- proposed coefficients preserve source experiments, exact store scope and applicability;
+- shadow evaluation and audited promotion/rollback precede operational consumption.
+
+## V5 acceptance — deferred until data and outcomes are reliable
+
+### V5-01
+
+- a reviewed, permitted professional/research corpus has attributable sources and applicability limits;
+- external practices remain distinct from central instructions and measured local results;
+- cited advice becomes a bounded experiment when transfer is unproven.
+
+### V5-02
+
+- permitted fixture photos produce uncertain, region-grounded presentation observations;
+- hidden stock, food safety, shelf life and exact geometry are not inferred as facts;
+- managers confirm observations without automatic stock/layout mutation or shopper profiling.
+
+### V5-03
+
+- generated views are clearly proposals anchored to validated layout constraints;
+- simulations use deterministic versioned response models and explicit uncertainty;
+- publication and field experiments require separate human action.
+
+### V5-04
+
+- evidence-backed anomalies reuse the briefing's bounded notification budget;
+- coverage, false alerts, duplicate suppression and field effort are evaluated;
+- uncertain causes trigger evidence gathering, not autonomous intervention.
