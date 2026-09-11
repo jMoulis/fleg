@@ -123,4 +123,5 @@ validée reste un support de décision : le manager reporte ensuite les quantit�
 dans l'outil de commande habituel.
 
 Voir aussi [Produits et prévisions](./03_PRODUCTS_FORECASTS_AND_RECOMMENDATIONS.md)
-et [le glossaire](./07_GLOSSARY_AND_TROUBLESHOOTING.md).
+et [le glossaire](./07_GLOSSARY_AND_TROUBLESHOOTING.md). Pendant `PILOT-01`,
+utiliser aussi la [checklist terrain du pilote bêta](./08_PILOT_BETA_CHECKLIST.md).
