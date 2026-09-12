@@ -12,6 +12,14 @@ des anciens writers et un inventaire des références historiques.
 
 ## Current planning baseline — 2026-09-12
 
+**Preview infrastructure prerequisite:** PR #41 is merged; dedicated Preview
+MongoDB databases/account and Better Auth secret are now configured and access
+isolation tested. Production values are preserved. Deployed acceptance, retirement
+of old shared-credential Previews, coordinated credential rotation and cross-DB
+Blob quota coordination remain open. See the
+[deployment record](../docs/19_VERCEL_DEPLOYMENT.md#isolation-mongodb-preview--état-vérifié-le-2026-09-12).
+This does not close TECH-04 or PILOT-01.
+
 **Latest TECH-04 update (supersedes the historical dev gate below):** the manager
 explicitly authorized usable uploads and bounded real Blob dev tests. PR #41 adds
 the connected Documents/PDF journey, owner-only post-PUT verification, recovery

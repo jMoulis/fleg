@@ -2,6 +2,24 @@
 
 ## Current continuation — 2026-09-12
 
+### Latest operation: dedicated Preview MongoDB configuration
+
+PR #41 is merged (`acef6e8`). The manager authorized isolating Preview after
+finding that it shared Production MongoDB variables. Atlas user `fleg_preview`
+now has only `readWrite` on `fleg_preview_app` / `fleg_preview_auth`, scoped to
+`Cluster0`. Real synthetic read/write/cleanup passed; both production database
+reads were explicitly denied. Vercel has dedicated sensitive Preview URI/database
+variables and Better Auth secret; legacy Mongo user/password entries are now
+Production-only. Production values, local env and Blob flags were not changed.
+Read the [deployment record](../docs/19_VERCEL_DEPLOYMENT.md#isolation-mongodb-preview--état-vérifié-le-2026-09-12).
+Still pending: Preview auth origin, synthetic app seed/indexes, redeployment and
+application acceptance. Old deployments retain their former credentials; their
+retirement and coordinated rotation of the exposed historical Mongo password
+are not done. No shared-credential Production change is authorized implicitly.
+Separate Mongo databases mean local/Preview Blob quota counters are not globally
+atomic despite sharing Blob dev. Keep the remote upload gate and charged
+tombstones; coordinate the cumulative test budget before deployed acceptance.
+
 ### Latest override: usable development PDF uploads
 
 The manager explicitly authorized debugging/uploads and real tests on Blob dev.

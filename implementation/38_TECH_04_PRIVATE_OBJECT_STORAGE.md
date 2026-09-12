@@ -2,6 +2,23 @@
 
 ## Statut et reprise du plan
 
+### Prérequis Preview MongoDB — 2026-09-12
+
+Après fusion de la PR #41 (`acef6e8`), le responsable autorise l’isolation de
+MongoDB : compte `fleg_preview`, bases `fleg_preview_app` / `fleg_preview_auth`,
+droits limités vérifiés et variables Vercel Preview séparées, secret Better Auth
+compris. Valeurs Production et configuration Blob inchangées. La preuve des
+permissions et les limites sont consignées dans le
+[dossier de déploiement](../docs/19_VERCEL_DEPLOYMENT.md#isolation-mongodb-preview--état-vérifié-le-2026-09-12).
+Ce préalable ne prouve pas encore le parcours sur une fonction Vercel : origine
+authentifiée, seed synthétique, redéploiement et recette restent à faire.
+Les anciennes Previews ne sont pas révoquées par cette configuration ; rotation
+du credential historique exposé et retrait des anciens accès restent à coordonner.
+Attention au Blob dev partagé : des compteurs MongoDB dans deux bases distinctes
+ne constituent plus un plafond ressource atomique commun. Ne pas activer la
+recette distante sans son budget cumulé explicite. Aucun quota/tombstone libéré,
+aucun upload distant, migration ou changement fonctionnel dans ce préalable.
+
 ### Autorisation de mise au point — 2026-09-12
 
 Le responsable demande maintenant explicitement de débloquer l’upload et
