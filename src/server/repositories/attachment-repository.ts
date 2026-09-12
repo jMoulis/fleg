@@ -1,12 +1,13 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import {
   Binary,
   Db,
   MongoClient,
   MongoServerError,
   ObjectId,
-  type ClientSession,
   type WithId,
 } from "mongodb";
 
@@ -21,7 +22,19 @@ import {
   type AttachmentTarget,
 } from "@/domain/attachments/schemas";
 import { buildAttachmentScope } from "@/domain/attachments/store-scope";
+import {
+  PrivateStorageError,
+  privateBlobReferenceSchema,
+  type PrivateBlobReference,
+} from "@/domain/attachments/private-storage";
+import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
+import {
+  assertAttachmentTargetExists,
+  prepareAttachmentTargetLock,
+  reserveAttachmentTargetSlot,
+} from "@/server/repositories/attachment-target";
+import type { PrivateObjectReader } from "@/server/storage/private-object-reader";
 
 type AttachmentDocument = Omit<
   Attachment,
@@ -29,6 +42,8 @@ type AttachmentDocument = Omit<
 > & {
   storeId: ObjectId;
   createdAt: Date;
+  storage?: { backend: "mongo_bson" } | PrivateBlobReference;
+  storageState?: "linked" | "deleting";
 };
 
 interface AttachmentObjectDocument {
@@ -48,6 +63,7 @@ interface AttachmentCommandDocument {
   action: "create" | "delete";
   attachmentId: ObjectId;
   snapshot: Attachment;
+  payloadHash?: string;
   createdAt: Date;
 }
 
@@ -73,7 +89,9 @@ export class AttachmentLimitError extends Error {
   readonly code = "ATTACHMENT_LIMIT_REACHED";
 
   constructor() {
-    super(`La limite de ${attachmentMaxPerTarget} photos est atteinte pour cette cible`);
+    super(
+      `La limite de ${attachmentMaxPerTarget} photos est atteinte pour cette cible`,
+    );
     this.name = "AttachmentLimitError";
   }
 }
@@ -102,21 +120,18 @@ export class AttachmentRepository {
   private readonly attachments;
   private readonly attachmentObjects;
   private readonly attachmentCommands;
-  private readonly layoutVersions;
-  private readonly commercialEvents;
   private readonly auditLogs;
 
   constructor(
-    db: Db,
+    private readonly db: Db,
     private readonly client?: MongoClient,
+    private readonly privateReader?: () => PrivateObjectReader,
   ) {
     this.attachments = db.collection<AttachmentDocument>("attachments");
     this.attachmentObjects =
       db.collection<AttachmentObjectDocument>("attachmentObjects");
     this.attachmentCommands =
       db.collection<AttachmentCommandDocument>("attachmentCommands");
-    this.layoutVersions = db.collection("layoutVersions");
-    this.commercialEvents = db.collection("commercialEvents");
     this.auditLogs = db.collection("auditLogs");
   }
 
@@ -124,11 +139,18 @@ export class AttachmentRepository {
     context: AuthorizedStoreContext,
     targetTypes?: AttachmentTarget["type"][],
   ): Promise<Attachment[]> {
+    if (!context.permissions.includes("stores.read"))
+      throw new StoreAccessDeniedError();
     const scope = buildAttachmentScope(context);
     const documents = await this.attachments
       .find({
         organizationId: scope.organizationId,
         storeId: new ObjectId(scope.storeId),
+        $or: [
+          { storage: { $exists: false } },
+          { "storage.backend": "mongo_bson" },
+          { "storage.backend": "vercel_blob", storageState: "linked" },
+        ],
         ...(targetTypes && targetTypes.length > 0
           ? { "target.type": { $in: targetTypes } }
           : {}),
@@ -146,26 +168,61 @@ export class AttachmentRepository {
     attachment: Attachment;
     bytes: Uint8Array;
   }> {
+    if (!input.context.permissions.includes("stores.read"))
+      throw new StoreAccessDeniedError();
     const scope = buildAttachmentScope(input.context);
     const attachmentId = new ObjectId(input.attachmentId);
     const storeId = new ObjectId(scope.storeId);
-    const [attachmentDocument, objectDocument] = await Promise.all([
-      this.attachments.findOne({
-        _id: attachmentId,
-        organizationId: scope.organizationId,
-        storeId,
-      }),
-      this.attachmentObjects.findOne({
-        _id: attachmentId,
-        organizationId: scope.organizationId,
-        storeId,
-      }),
-    ]);
-    if (!attachmentDocument || !objectDocument) {
+    const attachmentDocument = await this.attachments.findOne({
+      _id: attachmentId,
+      organizationId: scope.organizationId,
+      storeId,
+    });
+    if (!attachmentDocument) throw new AttachmentNotFoundError();
+    const attachment = toAttachment(attachmentDocument);
+    if (
+      attachmentDocument.storage &&
+      attachmentDocument.storage.backend !== "mongo_bson"
+    ) {
+      const reference = privateBlobReferenceSchema.parse(
+        attachmentDocument.storage,
+      );
+      if (attachmentDocument.storageState !== "linked")
+        throw new AttachmentNotFoundError();
+      if (!this.privateReader)
+        throw new PrivateStorageError(
+          "STORAGE_UNAVAILABLE",
+          "Lecture du stockage privé indisponible",
+        );
+      const bytes = await this.privateReader().readPhoto(
+        input.context,
+        reference,
+        attachment,
+      );
+      // A deletion while fetching wins before content is returned.
+      const stillVisible = await this.attachments.findOne(
+        {
+          _id: attachmentId,
+          organizationId: scope.organizationId,
+          storeId,
+          storageState: "linked",
+          storage: reference,
+        },
+        { projection: { _id: 1 } },
+      );
+      if (!stillVisible) throw new AttachmentNotFoundError();
+      return { attachment, bytes };
+    }
+    const objectDocument = await this.attachmentObjects.findOne({
+      _id: attachmentId,
+      organizationId: scope.organizationId,
+      storeId,
+    });
+    if (!objectDocument) {
       throw new AttachmentNotFoundError();
     }
     return {
-      attachment: toAttachment(attachmentDocument),
+      attachment,
       bytes: new Uint8Array(objectDocument.content.buffer),
     };
   }
@@ -180,6 +237,8 @@ export class AttachmentRepository {
     requestId: string;
   }): Promise<Attachment> {
     const { context, metadata } = input;
+    if (!context.permissions.includes("attachments.write"))
+      throw new StoreAccessDeniedError();
     const scope = buildAttachmentScope(context);
     const storeId = new ObjectId(scope.storeId);
     const commandFilter = {
@@ -187,32 +246,67 @@ export class AttachmentRepository {
       storeId,
       idempotencyKey: metadata.idempotencyKey,
     };
+    const payloadHash = createHash("sha256")
+      .update(
+        JSON.stringify({
+          metadata,
+          originalFileName: input.originalFileName,
+          mimeType: input.mimeType,
+          sizeBytes: input.bytes.byteLength,
+          checksumSha256: input.checksumSha256,
+        }),
+      )
+      .digest("hex");
+    const replay = (command: AttachmentCommandDocument) => {
+      const snapshot = attachmentSchema.parse(command.snapshot);
+      // Historical receipts did not have a payload hash; compare their frozen
+      // business fields instead of accepting any payload with the same key.
+      if (
+        command.action !== "create" ||
+        snapshot.uploadedBy !== context.userId ||
+        (command.payloadHash
+          ? command.payloadHash !== payloadHash
+          : snapshot.targetKey !== attachmentTargetKey(metadata.target) ||
+            snapshot.caption !== metadata.caption ||
+            snapshot.originalFileName !== input.originalFileName ||
+            snapshot.mimeType !== input.mimeType ||
+            snapshot.sizeBytes !== input.bytes.byteLength ||
+            snapshot.checksumSha256 !== input.checksumSha256)
+      )
+        throw new AttachmentConflictError();
+      return snapshot;
+    };
     const duplicate = await this.attachmentCommands.findOne(commandFilter);
     if (duplicate) {
-      if (duplicate.action !== "create") throw new AttachmentConflictError();
-      return attachmentSchema.parse(duplicate.snapshot);
+      return replay(duplicate);
     }
-    if (!this.client) throw new Error("Client MongoDB requis pour cette opération");
+    if (!this.client)
+      throw new Error("Client MongoDB requis pour cette opération");
+
+    // Invalid targets must not leave permanent lock documents behind.
+    await assertAttachmentTargetExists(this.db, context, metadata.target);
+    await prepareAttachmentTargetLock(this.db, context, metadata.target);
 
     const session = this.client.startSession();
     try {
       const result = await session.withTransaction(async () => {
-        await this.assertTargetExists({
-          organizationId: scope.organizationId,
-          storeId,
-          target: metadata.target,
+        const existing = await this.attachmentCommands.findOne(commandFilter, {
           session,
         });
-        const targetKey = attachmentTargetKey(metadata.target);
-        const count = await this.attachments.countDocuments(
-          {
-            organizationId: scope.organizationId,
-            storeId,
-            targetKey,
-          },
-          { session },
+        if (existing) return replay(existing);
+        await assertAttachmentTargetExists(
+          this.db,
+          context,
+          metadata.target,
+          session,
         );
-        if (count >= attachmentMaxPerTarget) throw new AttachmentLimitError();
+        await reserveAttachmentTargetSlot(
+          this.db,
+          context,
+          metadata.target,
+          session,
+        );
+        const targetKey = attachmentTargetKey(metadata.target);
 
         const attachmentId = new ObjectId();
         const createdAt = new Date();
@@ -270,6 +364,7 @@ export class AttachmentRepository {
             action: "create",
             attachmentId,
             snapshot: attachment,
+            payloadHash,
             createdAt,
           },
           { session },
@@ -298,7 +393,7 @@ export class AttachmentRepository {
       if (error instanceof MongoServerError && error.code === 11000) {
         const existing = await this.attachmentCommands.findOne(commandFilter);
         if (existing?.action === "create") {
-          return attachmentSchema.parse(existing.snapshot);
+          return replay(existing);
         }
         throw new AttachmentConflictError();
       }
@@ -314,6 +409,8 @@ export class AttachmentRepository {
     idempotencyKey: string;
     requestId: string;
   }): Promise<Attachment> {
+    if (!input.context.permissions.includes("attachments.write"))
+      throw new StoreAccessDeniedError();
     const scope = buildAttachmentScope(input.context);
     const storeId = new ObjectId(scope.storeId);
     const attachmentId = new ObjectId(input.attachmentId);
@@ -332,7 +429,8 @@ export class AttachmentRepository {
       }
       return attachmentSchema.parse(duplicate.snapshot);
     }
-    if (!this.client) throw new Error("Client MongoDB requis pour cette opération");
+    if (!this.client)
+      throw new Error("Client MongoDB requis pour cette opération");
 
     const session = this.client.startSession();
     try {
@@ -346,6 +444,13 @@ export class AttachmentRepository {
           { session },
         );
         if (!document) throw new AttachmentNotFoundError();
+        // No remote objects can yet be created through the app. Until the
+        // durable deletion worker ships, never orphan one via BSON deletion.
+        if (document.storage && document.storage.backend !== "mongo_bson")
+          throw new PrivateStorageError(
+            "STORAGE_UNAVAILABLE",
+            "La suppression des photos distantes n’est pas encore activée",
+          );
         const attachment = toAttachment(document);
 
         await this.attachmentObjects.deleteOne(
@@ -402,51 +507,5 @@ export class AttachmentRepository {
     } finally {
       await session.endSession();
     }
-  }
-
-  private async assertTargetExists(input: {
-    organizationId: string;
-    storeId: ObjectId;
-    target: AttachmentTarget;
-    session: ClientSession;
-  }): Promise<void> {
-    if (input.target.type === "store") return;
-
-    if (input.target.type === "layout") {
-      const layout = await this.layoutVersions.findOne(
-        {
-          _id: new ObjectId(input.target.layoutVersionId),
-          organizationId: input.organizationId,
-          storeId: input.storeId,
-        },
-        { projection: { _id: 1 }, session: input.session },
-      );
-      if (layout) return;
-      throw new AttachmentReferenceError();
-    }
-
-    if (input.target.type === "fixture") {
-      const layout = await this.layoutVersions.findOne(
-        {
-          _id: new ObjectId(input.target.layoutVersionId),
-          organizationId: input.organizationId,
-          storeId: input.storeId,
-          fixtures: { $elemMatch: { id: input.target.fixtureId } },
-        },
-        { projection: { _id: 1 }, session: input.session },
-      );
-      if (layout) return;
-      throw new AttachmentReferenceError();
-    }
-
-    const event = await this.commercialEvents.findOne(
-      {
-        _id: new ObjectId(input.target.eventId),
-        organizationId: input.organizationId,
-        storeId: input.storeId,
-      },
-      { projection: { _id: 1 }, session: input.session },
-    );
-    if (!event) throw new AttachmentReferenceError();
   }
 }

@@ -42,6 +42,15 @@ list queries and audit snapshots from carrying image bytes.
 Photo content has no public object URL. The authorized content route returns
 `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
 
+TECH-04 lot 1 adds a disabled foundation; it does not change the available
+photo workflow. The repository can read a verified, linked private Blob
+reference without falling back to BSON, but no application route creates such
+a link yet. New intent routes only reserve metadata/quotas, require explicit
+configuration and never issue a token. BSON creation and deletion remain
+available; a remote reference cannot be erased through the legacy delete path.
+See [the TECH-04 record](../implementation/38_TECH_04_PRIVATE_OBJECT_STORAGE.md)
+for the remaining transport, deletion, queue and migration gates.
+
 ## Interface
 
 La cible courante et sa description restent visibles dans la photothèque.

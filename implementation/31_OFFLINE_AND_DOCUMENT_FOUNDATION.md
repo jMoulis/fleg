@@ -20,7 +20,9 @@ authorization and physical-device rollout gates below still apply.
 The [TECH-04 contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md) records explicitly
 approved private Paris resources, now configured separately for Development/Preview
 and Production. Application uploads, their limits and their acceptance are not
-delivered by resource provisioning; TECH-04 implementation is next.
+delivered by resource provisioning. TECH-04 lot 1 now implements disabled
+metadata reservations, quotas and a hybrid reader; lots 2–4 remain open. No
+direct upload, PDF verification, remote cleanup or photo queue is available yet.
 The manager reports unreliable connectivity, particularly in the cold room.
 This is sufficient field evidence to prioritize resilient stock capture before
 new coaching features. No Mercalys data is needed to test technical recovery

@@ -42,6 +42,18 @@ async function run() {
       AUTH_ALLOW_SIGN_UP: "false",
       INVITATION_EMAIL_PROVIDER: "manual",
       OPENAI_API_KEY: process.env.RUN_LIVE_AI_E2E === "true" ? (process.env.OPENAI_API_KEY ?? "") : "",
+      // Next loads .env.local even for the E2E production build. Explicit empty
+      // credentials take priority: tests must never contact a real Blob store.
+      BLOB_INTENTS_ENABLED: "false",
+      BLOB_READ_WRITE_TOKEN: "",
+      BLOB_STORE_ID: "",
+      BLOB_NAMESPACE: "",
+      BLOB_ENV_QUOTA_BYTES: "",
+      BLOB_STORE_QUOTA_BYTES: "",
+      BLOB_STORE_QUOTA_OBJECTS: "",
+      BLOB_ENV_QUOTA_OBJECTS: "",
+      VERCEL_OIDC_TOKEN: "",
+      BLOB_WEBHOOK_PUBLIC_KEY: "",
       SEED_ENV_FILE: "/dev/null",
       SEED_DEMO_EMAIL: "admin@fleg.local",
       SEED_DEMO_PASSWORD: "FlegDemo!2026",

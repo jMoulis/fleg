@@ -568,7 +568,15 @@
       "epic": "documents",
       "title": "Private Blob objects and recoverable uploads",
       "priority": "P1",
-      "status": "infrastructure_configured_pending_implementation",
+      "status": "foundation_implemented_uploads_disabled",
+      "implementationProgress": {
+        "completedLot": 1,
+        "nextLot": "Direct transport, byte verification, linking, durable deletion and reconciliation",
+        "featureFlag": "BLOB_INTENTS_ENABLED=false",
+        "directUploadsAvailable": false,
+        "localPhotoQueueAvailable": false,
+        "migrationExecuted": false
+      },
       "dependsOn": ["PREV3-04", "TECH-03"],
       "externalGates": [
         "Usage budget and global storage cap agreed before operational uploads",

@@ -3,7 +3,8 @@
 ## Statut et reprise du plan
 
 Contrat de réalisation préparé le 2026-09-12. **Infrastructure configurée après
-accord explicite ; uploads applicatifs non implémentés, non activés.**
+accord explicite ; lot 1 applicatif implémenté, désactivé par défaut. TECH-04
+reste ouvert : aucun envoi direct Blob n’est encore disponible.**
 Il précise TECH-04 de la [PR #26](https://github.com/jMoulis/fleg/pull/26), sans
 nouvel identifiant ni extension de la feuille de route.
 
@@ -26,8 +27,9 @@ Ordre conservé : TECH-04 (objets), TECH-05 (traitements durables), V4-01
   ou une opération commerciale. Garder ces liens immuables.
 - JPEG/PNG/WebP, 4 Mio par photo, 20 photos par cible ; conservation jusqu’à
   suppression manuelle. Lire le [contrat existant](../docs/21_MEDIA_ATTACHMENTS.md).
-- Le SDK Blob n’est pas installé dans l’application. Les deux variables Blob
-  locales sont maintenant configurées pour le développement, sans secret versionné.
+- Le SDK `@vercel/blob` 2.8.0 est verrouillé dans l’application pour le lecteur
+  privé. Les deux variables Blob locales sont configurées pour le développement,
+  sans secret versionné ; namespace et budgets applicatifs restent non activés.
 - `vercel.json` déclare les fonctions à Paris (`cdg1`), comme les nouveaux stores.
   La région d’Atlas n’a pas été auditée ici.
 
@@ -223,6 +225,89 @@ jeton. Ils ne remplacent pas les vérifications FLEG ci-dessus.
 4. Préparer la migration avec dry-run, inventaire, vérification des copies et
    rollback. Ne l’exécuter qu’après autorisation ; pas de double stockage permanent.
 
+### Lot 1 — fondation applicative (2026-09-12)
+
+Périmètre implémenté sur `codex/tech-04-storage-foundation` après fusion du
+contrat via PR #35, sans modification des variables Vercel ou de `.env.local` :
+
+- Schémas stricts d’intention photo/PDF : taille/type annoncés, cible, légende,
+  fichier normalisé, SHA-256 et clé idempotente. Une intention PDF n’est pas une
+  validation PDF : le parseur borné du lot 2 reste obligatoire avant liaison.
+- `POST /api/stores/:storeId/attachments/upload-intents` et lecture individuelle
+  pour retrouver un reçu. Droits `attachments.write`, auteur propriétaire,
+  origine exacte pour la mutation, JSON limité à 4 Kio et délai de réception de
+  5 secondes. Ni token, URL ni chemin Blob n’est accepté du client ou renvoyé.
+- `uploadIntents` contient uniquement des métadonnées. Chemin serveur aléatoire
+  sous `fleg/<namespace>/<hash organisation>/<magasin>/…` ; état `reserved`,
+  `uploadAvailable: false`. Doublons et ACK perdus retournent le même reçu ;
+  changement de contenu, propriétaire ou namespace provoque un conflit.
+- Réservation transactionnelle des octets et du nombre d’objets dans
+  `objectStorageQuotas` ; un compteur
+  par magasin/ressource et un compteur partagé par **ressource Blob**, incluant
+  tous ses namespaces (donc Development et Preview partagent le plafond).
+  Les plafonds n’ont pas de valeur d’activation implicite. Pas de recalcul global
+  depuis une liste fournisseur ni d’inventaire distant prétendu effectué.
+- `attachmentTargetLocks` sérialise les admissions photo, BSON et Blob, avant
+  de compter photos existantes et réservations. Les cibles forgées sont refusées
+  avant création de verrous et recontrôlées en transaction. Les fichiers existants
+  ne sont pas modifiés. Les reçus BSON bénéficient aussi d’un contrôle de contenu.
+- Lecteur hybride : absence de référence ou `mongo_bson` conserve BSON ; une
+  référence `vercel_blob` exige l’état `linked`, le scope/namespace/store attendus
+  et une lecture privée bornée à 4 Mio. Taille, type, signature et hash sont
+  vérifiés avant réponse. Suppression pendant la lecture : recontrôle final.
+  Jamais de repli sur les octets BSON en cas de panne Blob.
+  La règle Next spécifique aux pièces jointes maintient `private, no-store`
+  jusque dans le serveur de production (la règle API générique était `no-store`).
+- Aucune API ne peut encore créer une liaison Blob. La suppression BSON reste
+  fonctionnelle ; une référence distante injectée pour test ne peut pas être
+  supprimée par l’ancien chemin (503 explicite, métadonnées conservées), tant que
+  le worker durable de suppression n’est pas livré. Ce garde-fou n’est pas une
+  implémentation de la suppression distante.
+
+Configuration serveur et limites de ce lot :
+
+- `BLOB_INTENTS_ENABLED=false` par défaut. Le commutateur n’active que la
+  réservation de métadonnées ; ne pas l’activer opérationnellement à ce stade.
+- `BLOB_STORE_ID` et le store embarqué dans le token RW doivent correspondre à
+  la ressource approuvée de l’environnement. `BLOB_NAMESPACE` est explicite,
+  avec préfixe `local-`, `preview-` ou `production-` selon `VERCEL_ENV`.
+  Le namespace doit rester stable pour retrouver les intentions de cette lignée
+  de preview ; le token seul n’active rien. Nouvelle ressource = revue de la
+  table de correspondance serveur, jamais fallback silencieux.
+- `BLOB_STORE_QUOTA_BYTES`, `BLOB_ENV_QUOTA_BYTES`, `BLOB_STORE_QUOTA_OBJECTS`
+  et `BLOB_ENV_QUOTA_OBJECTS` sont requis pour réserver, positifs,
+  magasin ≤ environnement. Les places bornent aussi l’accumulation de métadonnées
+  par de nombreuses intentions PDF minuscules. `BLOB_READ_TIMEOUT_MS` : 15 s par défaut,
+  borné à 1–30 s. Ces budgets techniques ne sont pas un plafond de facturation.
+- Choix provisoire RW explicite : le SDK installé supporte OIDC pour la lecture,
+  mais `handleUpload` nécessite un token RW. Le futur lot transport doit comparer
+  ce chemin au presigned/OIDC avant livraison ; aucune callback ou restriction
+  de jeton réelle n’est prétendue testée ici. Le SDK reçoit toujours le credential
+  explicite contrôlé ; aucune résolution implicite vers OIDC/production.
+  [Contrat du SDK Blob](https://vercel.com/docs/vercel-blob/using-blob-sdk).
+- Aucun compteur ne prouve l’occupation du bucket : ce sont les réservations de
+  ce nouveau chemin. Les liaisons, la migration et le rapprochement devront
+  maintenir ces compteurs avant toute activation. Les intentions abandonnées
+  sont indexées après 24 h **sans TTL ni libération automatique de quota** ;
+  callbacks, abandon, reprises et nettoyage restent le lot 2.
+- L’E2E neutralise explicitement les credentials Blob/OIDC, le commutateur et
+  les quotas avant le build Next pour empêcher `.env.local` de réintroduire les
+  valeurs réelles. Aucun adaptateur fictif sélectionnable en production ; les
+  simulations sont injectées uniquement depuis les tests.
+
+Vérifications de ce lot : `npm run check` (385 tests unitaires/intégration dans
+94 fichiers, dont les transactions sur MongoDB local jetable) est vert. La
+recette complète E2E mobile/desktop passe : 66 réussis, 4 tests OpenAI réels
+volontairement ignorés. Elle couvre aussi la désactivation des nouvelles routes
+et les en-têtes privés des photos BSON. Après l’ajout final du plafond d’objets,
+le build de production et le parcours REL-06 sont revérifiés séparément :
+2 tests mobile/desktop réussis.
+Pas de recette Blob réel, de fichier transmis, de migration ou d’activation.
+
+Suite immédiate : lot 2 (transport direct, vérification effective, liaison,
+suppression durable et rapprochement). Puis lot 3 (photothèque/file locale),
+lot 4 (outillage de migration). Ne pas avancer à TECH-05 sur ce seul lot 1.
+
 La migration copie et relit chaque objet pour vérifier taille/hash avant un CAS
 de la référence. Une suppression concurrente gagne ; elle ne peut être annulée
 par une copie tardive. Supprimer le BSON après bascule vérifiée et autorisée.
@@ -259,5 +344,5 @@ une économie d’espace déjà obtenue.
 - Appareil/mode/version et résultats du test de comptage déjà rapporté.
 
 Les ressources et deux variables locales sont configurées après autorisation.
-TECH-04 reste à implémenter : cela ne livre ni upload utilisateur, ni extraction,
-ni recherche vectorielle et ne clôture aucune recette métier.
+Le lot 1 implémenté n’active aucun upload Blob utilisateur ; TECH-04 reste ouvert,
+sans extraction ni recherche vectorielle et sans clôture de recette métier.
