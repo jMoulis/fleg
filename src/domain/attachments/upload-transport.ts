@@ -37,9 +37,23 @@ export const signedUploadSchema = z
       "image/webp",
       "application/pdf",
     ]),
+    headers: z
+      .object({
+        "x-content-type": z.enum([
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "application/pdf",
+        ]),
+      })
+      .strict(),
     validUntil: z.iso.datetime(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) => value.headers["x-content-type"] === value.contentType,
+    "En-tête MIME incohérent",
+  );
 
 // Passthrough is deliberate: the SDK authenticates JSON.stringify(originalBody).
 // Validate the shape but do not reorder/strip properties before verification.

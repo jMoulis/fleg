@@ -180,6 +180,86 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
   }
   const reconcile = () => lifecycle.reconcile(context, randomUUID());
 
+  it("immediately verifies an owner's PDF before grant expiry, links once and keeps quota held", async () => {
+    const bytes = pdf();
+    const receipt = await reserve(bytes, "document");
+    const grant = await repo.beginAuthorization(
+      context,
+      receipt.id,
+      randomUUID(),
+    );
+    objects.read.mockResolvedValue(bytes);
+    expect(await reconcile()).toEqual({ processed: false });
+    const results = await Promise.all([
+      lifecycle.reconcile(context, randomUUID(), receipt.id),
+      lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ]);
+    expect(
+      results.some((result) => result.processed && result.outcome === "linked"),
+    ).toBe(true);
+    expect(Date.parse(grant.validUntil)).toBeGreaterThan(Date.now());
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toEqual({ processed: false });
+    expect(objects.read).toHaveBeenCalledTimes(1);
+    expect(await db.collection("documentSources").countDocuments()).toBe(1);
+    expect(
+      await db
+        .collection("auditLogs")
+        .countDocuments({ action: "attachment.upload_linked" }),
+    ).toBe(1);
+    expect(await intents().findOne({ _id: receipt.id })).toMatchObject({
+      budgetHeld: true,
+      state: "linked",
+    });
+  });
+  it("does not read unissued, foreign owner/store/organization or cancelled intents through owner verification", async () => {
+    const receipt = await reserve();
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toEqual({ processed: false });
+    await repo.beginAuthorization(context, receipt.id, randomUUID());
+    for (const foreign of [
+      { ...context, userId: new ObjectId().toHexString() },
+      { ...context, storeId: new ObjectId().toHexString() },
+      { ...context, organizationId: "foreign" },
+    ])
+      expect(
+        await lifecycle.reconcile(foreign, randomUUID(), receipt.id),
+      ).toEqual({ processed: false });
+    await repo.cancel(context, receipt.id, randomUUID());
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toEqual({ processed: false });
+    expect(objects.read).not.toHaveBeenCalled();
+    expect(objects.remove).not.toHaveBeenCalled();
+  });
+  it("bounds repeated immediate checks after missing bytes and refuses linking if cancelled during the read", async () => {
+    const receipt = await reserve();
+    await repo.beginAuthorization(context, receipt.id, randomUUID());
+    objects.read.mockResolvedValueOnce(null);
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toMatchObject({ outcome: "retry" });
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toEqual({ processed: false });
+    expect(objects.read).toHaveBeenCalledTimes(1);
+    await intents().updateOne(
+      { _id: receipt.id },
+      { $set: { reconcileAfter: new Date(0) } },
+    );
+    objects.read.mockImplementationOnce(async () => {
+      await repo.cancel(context, receipt.id, randomUUID());
+      return png;
+    });
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toMatchObject({ outcome: "superseded" });
+    expect(await db.collection("attachments").countDocuments()).toBe(0);
+    expect(objects.remove).not.toHaveBeenCalled();
+  });
+
   it("recovers a lost callback and links once transactionally under parallel reconciliation", async () => {
     const { receipt } = await ready();
     const results = await Promise.all([reconcile(), reconcile()]);
@@ -225,13 +305,11 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
   });
   it("rejects a target removed while its object is being verified", async () => {
     const eventId = new ObjectId();
-    await db
-      .collection("commercialEvents")
-      .insertOne({
-        _id: eventId,
-        organizationId: context.organizationId,
-        storeId: new ObjectId(context.storeId),
-      });
+    await db.collection("commercialEvents").insertOne({
+      _id: eventId,
+      organizationId: context.organizationId,
+      storeId: new ObjectId(context.storeId),
+    });
     await ready(png, "photo", {
       type: "commercial_event",
       eventId: eventId.toHexString(),
@@ -250,21 +328,17 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
     await reconcile();
     const template = (await db.collection("documentSources").findOne({}))!;
     for (let index = 0; index < 24; index++)
-      await db
-        .collection("documentSources")
-        .insertOne({
-          ...template,
-          _id: new ObjectId(),
-          uploadIntentId: randomUUID(),
-        });
-    await db
-      .collection("documentSources")
-      .insertOne({
+      await db.collection("documentSources").insertOne({
         ...template,
         _id: new ObjectId(),
-        storeId: new ObjectId(),
         uploadIntentId: randomUUID(),
       });
+    await db.collection("documentSources").insertOne({
+      ...template,
+      _id: new ObjectId(),
+      storeId: new ObjectId(),
+      uploadIntentId: randomUUID(),
+    });
     const sources = new DocumentSourceRepository(db);
     const first = await sources.list(context);
     expect(first.sources).toHaveLength(20);

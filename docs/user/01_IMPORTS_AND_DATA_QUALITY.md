@@ -71,5 +71,28 @@ Contrôler la fraîcheur des données sur l'Accueil puis ouvrir Produits. Les
 calculs quotidiens exigent une couverture journalière suffisante ; un historique
 mensuel seul ne permet pas de reconstituer des jours manquants.
 
+## Conserver un PDF dans Documents
+
+La rubrique **Documents** est distincte des imports de ventes. Elle permet de
+conserver un PDF pour le magasin actif ; elle ne transforme pas son contenu en
+ventes, promotions ou recommandations IA. L’envoi est actuellement ouvert sur
+l’environnement de développement uniquement, pas sur le site de production.
+
+1. Ouvrir **Documents**, choisir un PDF de 25 Mo et 60 pages maximum.
+2. Ajouter éventuellement une description puis cliquer sur **Envoyer le PDF**.
+3. Attendre **PDF vérifié et enregistré**, puis retrouver le document dans la liste.
+
+Une connexion est requise. Après une interruption, recharger le même onglet puis
+utiliser **Vérifier la réception** : cela vérifie l’envoi existant sans renvoyer le
+fichier. Si une heure de reprise est affichée, attendre cette heure. **Abandonner
+l’envoi** retire le suivi ; le nettoyage distant reste séparé. Ne pas fermer
+définitivement l’onglet tant que la réception est incertaine.
+
+**Télécharger** restitue le PDF aux utilisateurs autorisés du magasin.
+**Supprimer** le retire immédiatement de la liste après confirmation ; l’effacement
+du stockage intervient séparément. Un plafond de stockage atteint nécessite un
+contrôle par l’administrateur, pas des envois répétés. Les photos existantes gardent
+leur fonctionnement habituel.
+
 Voir aussi [Produits, prévisions et recommandations](./03_PRODUCTS_FORECASTS_AND_RECOMMENDATIONS.md)
 et [le dépannage des imports](./07_GLOSSARY_AND_TROUBLESHOOTING.md#imports).

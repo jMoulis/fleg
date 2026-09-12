@@ -18,12 +18,15 @@ import {
 import { PrivateStorageError } from "@/domain/attachments/private-storage";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
-import type { UploadIntentConfig } from "@/server/storage/config";
+import {
+  requireUploadIntentConfig,
+  type UploadIntentConfig,
+} from "@/server/storage/config";
 import { scopedObjectPrefix } from "@/server/storage/private-object-reader";
 
 export type UploadTransportConfig = UploadIntentConfig & {
-  callbackUrl: string;
-  webhookPublicKey: string;
+  callbackUrl?: string;
+  webhookPublicKey?: string;
 };
 
 const signedTokenSchema = z.object({
@@ -32,15 +35,37 @@ const signedTokenSchema = z.object({
   validUntil: z.number().int().positive(),
 });
 
-export function requireUploadTransportConfig(): UploadTransportConfig {
-  // Release gate, not an environment toggle. Lot 2b must provide byte/PDF
-  // verification, current-author reauthorization, cleanup + operational trigger,
-  // provider lifetime evidence and live non-production acceptance first.
-  // Even BLOB_INTENTS_ENABLED=true cannot open this incomplete lifecycle.
-  throw new PrivateStorageError(
-    "STORAGE_DISABLED",
-    "Les envois privés attendent la validation du cycle de vérification et de nettoyage",
-  );
+export function requireUploadTransportConfig(
+  env: Record<string, string | undefined> = process.env,
+): UploadTransportConfig {
+  // Live dev acceptance verified MIME/size/path/overwrite/private reads. This
+  // opt-in is NOT a production release: issued tombstones still retain quota.
+  if (
+    env.BLOB_DEV_UPLOADS_ENABLED !== "true" ||
+    env.VERCEL_ENV === "production"
+  )
+    throw new PrivateStorageError(
+      "STORAGE_DISABLED",
+      "Les envois privés ne sont pas activés sur cet environnement",
+    );
+  const config = requireUploadIntentConfig(env);
+  if (config.storeId !== "store_5MOJSflf0L273Hz3")
+    throw new PrivateStorageError(
+      "STORAGE_DISABLED",
+      "Les essais d’envoi sont réservés au stockage de développement",
+    );
+  // Development uses explicit, authenticated verification after the PUT. No
+  // public callback origin/key is invented, and no browser receipt is trusted.
+  return config;
+}
+
+export function privateUploadsAvailable() {
+  try {
+    requireUploadTransportConfig();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export class VercelUploadTransport {
@@ -93,13 +118,17 @@ export class VercelUploadTransport {
         validUntil,
         allowOverwrite: false,
         addRandomSuffix: false,
-        onUploadCompleted: {
-          callbackUrl: this.config.callbackUrl,
-          tokenPayload: JSON.stringify({
-            intentId: grant.intentId,
-            attemptId: grant.attemptId,
-          }),
-        },
+        ...(this.config.callbackUrl
+          ? {
+              onUploadCompleted: {
+                callbackUrl: this.config.callbackUrl,
+                tokenPayload: JSON.stringify({
+                  intentId: grant.intentId,
+                  attemptId: grant.attemptId,
+                }),
+              },
+            }
+          : {}),
       });
       // Signing material and provider errors must never reach a client or audit.
       // `put` also covers multipart in SDK 2.8.0: this is NOT a PUT-only or
@@ -108,6 +137,7 @@ export class VercelUploadTransport {
         method: "PUT",
         url: presignedUrl,
         contentType: grant.input.mimeType,
+        headers: { "x-content-type": grant.input.mimeType },
         validUntil: grant.validUntil,
       });
     } catch {
@@ -123,6 +153,8 @@ export class VercelUploadTransport {
     body: unknown,
   ): Promise<ProviderCompletion> {
     try {
+      if (!this.config.webhookPublicKey)
+        throw new Error("Callback not configured");
       providerCompletionSchema.parse(body);
       // Retain the original property order and unknown signed provider fields.
       const original = body as CompletionEnvelope;

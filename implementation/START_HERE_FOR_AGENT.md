@@ -2,6 +2,27 @@
 
 ## Current continuation — 2026-09-12
 
+### Latest override: usable development PDF uploads
+
+The manager explicitly authorized debugging/uploads and real tests on Blob dev.
+PR #41 now also adds a connected **Documents** page and owner-triggered verified
+linking. Local `.env.local` enables `BLOB_DEV_UPLOADS_ENABLED=true` plus intent
+reservations, namespace `local-development`, 100 MiB / 20-object ceilings.
+Production is still rejected; no production variables or resources were changed.
+The v2 `x-content-type` live probe passed all 14 checks, including a 25 MiB PDF;
+the `Content-Type` control stored `image/png` and failed its negative check.
+Both probes were cleaned. A separate real browser test on local disposable
+MongoDB uploaded one 329-byte synthetic PDF to dev, recovered after an interrupted
+verification and reload, linked once, downloaded identical SHA-256 bytes, then
+removed the source (download becomes 404). Read the updated contract for evidence
+and cleanup status. No user PDF, Atlas, production or OpenAI was used.
+The following paragraphs retain the preceding lots' history, not the current
+dev gate. Further per-run approval is not needed for bounded, in-scope dev tests.
+Do not infer production rollout, a monthly budget, release of charged tombstones,
+an offline photo queue, migration or AI extraction. TECH-04 and PILOT-01 stay open.
+
+### Previously delivered lots and their historical gates
+
 The original vertical slice, V1/V2/V3 and post-V3 UX sequence are delivered.
 `PILOT-01` remains open for real operational evidence. `HARD-STORAGE-01` was
 merged and deployed via PR #29; preserve its isolated E2E runner and retention

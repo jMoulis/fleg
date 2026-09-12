@@ -12,6 +12,17 @@ des anciens writers et un inventaire des références historiques.
 
 ## Current planning baseline — 2026-09-12
 
+**Latest TECH-04 update (supersedes the historical dev gate below):** the manager
+explicitly authorized usable uploads and bounded real Blob dev tests. PR #41 adds
+the connected Documents/PDF journey, owner-only post-PUT verification, recovery
+after reload, private download and source removal. Local uploads are enabled with
+explicit 100 MiB / 20-object ceilings. Production stays locked; the photo queue,
+migration, provider lifetime/quota-release proof and deployed acceptance remain
+open. The `x-content-type` dev probe passed all 14 checks; a separate real browser
+test verified interrupted-upload recovery and identical downloaded bytes.
+See the [current delivery record](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md).
+No change of roadmap, no extraction/embeddings and no PILOT-01 closure.
+
 V1/V2/V3 and the post-V3 list/documentation sequence are delivered;
 `PILOT-01` still awaits real field evidence. The reported cold-room connectivity
 problem prioritized `TECH-01` (merged/deployed) and `TECH-02` (merged via #30).

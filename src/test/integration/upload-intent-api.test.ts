@@ -70,9 +70,9 @@ describe("upload intent API boundary", () => {
       BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_5MOJSflf0L273Hz3_fake",
       BLOB_NAMESPACE: "preview-tests",
       BLOB_STORE_QUOTA_BYTES: "1000",
-        BLOB_ENV_QUOTA_BYTES: "2000",
-        BLOB_STORE_QUOTA_OBJECTS: "20",
-        BLOB_ENV_QUOTA_OBJECTS: "40",
+      BLOB_ENV_QUOTA_BYTES: "2000",
+      BLOB_STORE_QUOTA_OBJECTS: "20",
+      BLOB_ENV_QUOTA_OBJECTS: "40",
       VERCEL_ENV: "preview",
     }))
       vi.stubEnv(key, value);
@@ -115,6 +115,16 @@ describe("upload intent API boundary", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(mocks.reserve).not.toHaveBeenCalled();
     expect(mocks.db).not.toHaveBeenCalled();
+  });
+  it("advertises available uploads only for the explicitly enabled dev transport", async () => {
+    vi.stubEnv("BLOB_DEV_UPLOADS_ENABLED", "true");
+    expect(await (await POST(request(), route)).json()).toMatchObject({
+      intent: { uploadAvailable: true },
+    });
+    vi.stubEnv("BLOB_DEV_UPLOADS_ENABLED", "false");
+    expect(await (await POST(request(), route)).json()).toMatchObject({
+      intent: { uploadAvailable: false },
+    });
   });
   it("rejects cross-origin/missing origin and forged client references before persistence", async () => {
     for (const req of [

@@ -45,6 +45,7 @@ async function run() {
       // Next loads .env.local even for the E2E production build. Explicit empty
       // credentials take priority: tests must never contact a real Blob store.
       BLOB_INTENTS_ENABLED: "false",
+      BLOB_DEV_UPLOADS_ENABLED: "false",
       BLOB_READ_WRITE_TOKEN: "",
       BLOB_STORE_ID: "",
       BLOB_NAMESPACE: "",

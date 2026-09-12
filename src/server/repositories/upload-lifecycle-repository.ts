@@ -27,6 +27,7 @@ import type { IntentDocument } from "./upload-intent-repository";
 import type { PrivateStorageConfig } from "@/server/storage/config";
 import type { PrivateUploadObjectStore } from "@/server/storage/private-upload-object";
 import { validatePdf } from "@/server/storage/pdf-validator";
+import * as z from "zod";
 
 const leaseMs = 120000;
 const retryMs = 300000;
@@ -83,14 +84,29 @@ export class UploadLifecycleRepository {
 
   // One lease per call, stable indexed ordering and durable retry date. Repeating
   // this endpoint drains successive pages without loading an unbounded backlog.
-  async reconcile(context: AuthorizedStoreContext, requestId: string) {
+  async reconcile(
+    context: AuthorizedStoreContext,
+    requestId: string,
+    ownerIntentId?: string,
+  ) {
     const scope = this.scope(context);
     const now = new Date();
     const intents = this.db.collection<IntentDocument>("uploadIntents");
     const document = await intents.findOneAndUpdate(
       {
         ...scope,
-        reconcileAfter: { $lte: now },
+        ...(ownerIntentId
+          ? {
+              _id: z.uuid().parse(ownerIntentId),
+              ownerId: context.userId,
+              authorization: { $exists: true },
+              state: { $in: ["reserved", "uploaded"] },
+              $or: [
+                { lastMaintenanceCode: { $exists: false } },
+                { lastMaintenanceCode: "RETRY", reconcileAfter: { $lte: now } },
+              ],
+            }
+          : { reconcileAfter: { $lte: now } }),
         $and: [
           {
             $or: [
@@ -190,9 +206,11 @@ export class UploadLifecycleRepository {
           outcome: released ? ("deleted" as const) : ("superseded" as const),
         };
       }
-      // Do not validate before the issuance ceiling: a missing callback is
-      // recovered by reading the persisted exact path, not by listing a bucket.
-      if (document.authorization.validUntil > now) {
+      // The owner may request immediate verification after a PUT. The object
+      // remains non-overwritable and every read verifies its persisted hash;
+      // authorization expiry is still required before physical cleanup below.
+      // Background recovery of missing callbacks keeps its original schedule.
+      if (!ownerIntentId && document.authorization.validUntil > now) {
         await intents.updateOne(filter, {
           $set: { reconcileAfter: document.authorization.validUntil },
           $unset: { lease: "" },
