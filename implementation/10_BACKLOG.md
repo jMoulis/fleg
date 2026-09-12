@@ -10,26 +10,37 @@ Ce correctif ne change pas les gates PILOT/TECH/V4 ; TECH-01 reste dans sa PR
 indépendante. La migration des anciennes recommandations attend le retrait
 des anciens writers et un inventaire des références historiques.
 
-## Current planning baseline — 2026-09-11
+## Current planning baseline — 2026-09-12
 
 V1/V2/V3 and the post-V3 list/documentation sequence are delivered;
 `PILOT-01` still awaits real field evidence. The reported cold-room connectivity
 problem prioritized `TECH-01` (merged/deployed) and `TECH-02` (merged via #30).
 `TECH-03` synchronization is merged via #31; physical-device cold-room
-validation remains the next gate before rollout/TECH-04. Other `TECH-*`, `V4-*` and `V5-*`
-entries below remain planned, not shipped. See [TECH-01 evidence](./33_TECH_01_OFFLINE_WORKSPACE.md)
+evidence still bounds rollout claims. The manager reported testing the unified
+journey on 2026-09-12 and explicitly requested resuming the PR #26 roadmap.
+Device/browser and scenario outcomes are requested, not assumed complete.
+Other `TECH-*`, `V4-*` and `V5-*` entries remain undelivered.
+See [TECH-01 evidence](./33_TECH_01_OFFLINE_WORKSPACE.md)
 and [TECH-03 boundaries and evidence](./35_TECH_03_INVENTORY_SYNCHRONIZATION.md).
 
 Merged via PR #32, `UX-STOCK-01`: coherent connected/offline stock presentation,
 compact field counting and progressive disclosure, without generalized offline
 navigation or new synchronization semantics. See [the UX contract](./36_UX_STOCK_OFFLINE_WORKFLOW.md).
 
-**Current delivery: `UX-STOCK-02` — one morning count regardless of
-connectivity**, implemented on `codex/unified-morning-inventory`, pending PR review
-and target-device acceptance. The [contract and delivery record](./37_UNIFIED_MORNING_INVENTORY.md)
+`UX-STOCK-02` — one morning count regardless of connectivity — and its framing
+are merged via PR #34/#33, with green quality/build and E2E checks.
+The [contract and delivery record](./37_UNIFIED_MORNING_INVENTORY.md)
 describe the single editor and its lifecycle. Preserve all existing
-drafts and versioned stock. TECH-03 physical acceptance and PILOT-01 remain open;
-new document/coach features wait while this product path is corrected.
+drafts and versioned stock. The reported test does not close `PILOT-01` or
+prove unreported device/isolation scenarios.
+
+**Next ticket: `TECH-04` — private Blob objects and recoverable uploads.**
+Resume its preparation, not another inventory UX detour. The
+[execution contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md) identifies the
+resource/region/budget approvals needed before cloud activation. No Blob
+resource or upload feature is delivered by this documentation. The subsequent
+order remains TECH-05, then V4-01 after its own gates, then TECH-06; do not skip
+from storage directly to vectorization or coaching.
 
 Follow [the technical sequence](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md) and
 [the coach delivery gates](./32_OPERATIONAL_COACH_ROADMAP.md). Preserve existing
@@ -345,7 +356,7 @@ for this complete historical table. New planned entries include `dependsOn`,
 
 ## Technical foundation acceptance
 
-### UX-STOCK-02 — unified morning count (implemented, review/device acceptance pending)
+### UX-STOCK-02 — unified morning count (merged, user test reported)
 
 - one operational editor for start/resume, reserve, shelf, review and validation;
 - network transitions change save/sync status, not the counting workflow;
@@ -384,6 +395,8 @@ in [31 — Offline and document foundation](./31_OFFLINE_AND_DOCUMENT_FOUNDATION
 
 ### TECH-04
 
+- current work is preparation; see [the execution contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md);
+- separate cloud resources, region, quotas and costs need explicit approval before activation;
 - private Blob upload/read access derives from the server-authorized store;
 - intent, validation, linking, reconciliation and cleanup are idempotent;
 - bounded queued field photos and interrupted uploads expose recovery states;

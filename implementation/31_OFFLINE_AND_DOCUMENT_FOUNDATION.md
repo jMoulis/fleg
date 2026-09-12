@@ -12,9 +12,13 @@ The approved [UX-STOCK-01 follow-up](./36_UX_STOCK_OFFLINE_WORKFLOW.md) improves
 this stock-only interface without generalizing offline functionality.
 After its merge via #32, the manager confirmed [UX-STOCK-02](./37_UNIFIED_MORNING_INVENTORY.md):
 unify the stock journey instead of exposing separate connected/local workflows.
-This planned correction takes priority over new document/coach implementation;
-the persistence, authorization and physical-device gates below still apply.
+That correction and its framing are merged via PR #34/#33. On 2026-09-12 the
+manager reported testing and explicitly requested resuming this PR #26 sequence.
+Record that report without fabricating device/scenario evidence; persistence,
+authorization and physical-device rollout gates below still apply.
 `TECH-04` through `TECH-06` remain planned, not delivered.
+Current work is [TECH-04 preparation](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md):
+implementation contract and resource approvals, without cloud activation.
 The manager reports unreliable connectivity, particularly in the cold room.
 This is sufficient field evidence to prioritize resilient stock capture before
 new coaching features. No Mercalys data is needed to test technical recovery
@@ -157,6 +161,9 @@ limitations. Synthetic recovery tests are not commercial pilot evidence.
 **Priority:** P1. **Depends on:** `PREV3-04`, `TECH-03`.
 **Value:** handle commercial PDFs and field photos without storing growing
 binary payloads in business collections or blocking on poor connectivity.
+
+Execution detail and activation gates:
+[38 — Private object storage](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md).
 
 Scope and acceptance:
 

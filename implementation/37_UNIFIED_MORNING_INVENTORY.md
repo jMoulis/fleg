@@ -5,10 +5,14 @@
 Direction produit confirmée par le responsable le 2026-09-11, après fusion de
 la PR #32 : **un seul comptage métier, quel que soit l’état du réseau**.
 
-La PR #33 est le cadrage sans changement de l’application. La réalisation sur
-`codex/unified-morning-inventory` est maintenant soumise à revue ; sa disponibilité
-en production dépend de la fusion et du déploiement. La recette sur l’appareil
-réel reste ouverte. Les règles ci-dessous restent le contrat d’acceptation.
+La PR #33 est le cadrage sans changement de l’application. Elle et la réalisation
+PR #34 sont fusionnées dans `master` (commit `3b66c03`) ; les contrôles qualité,
+build et E2E sont réussis. Le 2026-09-12, le responsable indique « Ok j’ai testé »
+et demande de reprendre la feuille de route PR #26. Ce retour est enregistré
+comme test utilisateur déclaré, pas comme une matrice de recette complète.
+Le téléphone, navigateur/mode PWA, la version effectivement testée et le détail
+des scénarios ne sont pas encore documentés. Une demande de précision est faite.
+Les règles ci-dessous restent le contrat d’acceptation.
 
 ## Pourquoi recentrer
 
@@ -194,5 +198,7 @@ mise à jour. Une copie préparée expire selon les limites TECH-01 existantes.
   npm run test:e2e` ; aucune utilisation d’Atlas ou d’OpenAI réel. Les résultats
   finaux de la suite complète sont consignés dans la PR.
 
-Prochaine étape : revue/fusion, déploiement, puis recette du responsable sur le
-téléphone installé. TECH-04 et le coaching restent hors périmètre de ce lot.
+Suite après fusion et retour utilisateur : reprendre la préparation TECH-04
+selon [son contrat](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md), et compléter les
+preuves terrain dès réception. Aucun nouveau chantier UX stock n’est demandé.
+Ce retour ne vaut ni recette commerciale PILOT-01 ni autorisation cloud.
