@@ -22,12 +22,14 @@ export function attachmentErrorResponse(input: {
 }) {
   if (input.error instanceof PrivateStorageError) {
     const status =
-      input.error.code === "UPLOAD_NOT_FOUND"
-        ? 404
-        : input.error.code === "UPLOAD_CONFLICT" ||
-            input.error.code === "UPLOAD_QUOTA"
-          ? 409
-          : 503;
+      input.error.code === "UPLOAD_CALLBACK_INVALID"
+        ? 400
+        : input.error.code === "UPLOAD_NOT_FOUND"
+          ? 404
+          : input.error.code === "UPLOAD_CONFLICT" ||
+              input.error.code === "UPLOAD_QUOTA"
+            ? 409
+            : 503;
     return NextResponse.json(
       apiErrorSchema.parse({
         code: input.error.code,

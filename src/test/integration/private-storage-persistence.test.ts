@@ -23,6 +23,11 @@ import { ensureFoundationIndexesForDb } from "@/server/db/foundation-indexes";
 import { AttachmentRepository } from "@/server/repositories/attachment-repository";
 import { UploadIntentRepository } from "@/server/repositories/upload-intent-repository";
 import { scopedObjectPrefix } from "@/server/storage/private-object-reader";
+import {
+  uploadAuthorizationLifetimeMs,
+  uploadAuthorizationMaxIssuances,
+  type UploadGrant,
+} from "@/domain/attachments/upload-transport";
 
 const uri = process.env.STORAGE_TEST_MONGODB_URI;
 const context: AuthorizedStoreContext = {
@@ -44,6 +49,12 @@ const config = {
   storeQuotaObjects: 100,
   environmentQuotaObjects: 200,
 };
+interface IntentProbe {
+  _id: string;
+  budgetHeld: boolean;
+  callbackReceivedAt?: Date;
+  lateUploadReceivedAt?: Date;
+}
 function payload() {
   const input = uploadIntentInputSchema.parse({
     idempotencyKey: randomUUID(),
@@ -109,6 +120,314 @@ describe.skipIf(!uri)("TECH-04 isolated MongoDB persistence", () => {
       checksumSha256: checksum,
       requestId: randomUUID(),
     });
+
+  function completion(grant: UploadGrant) {
+    return {
+      intentId: grant.intentId,
+      attemptId: grant.attemptId,
+      pathname: grant.storage.pathname,
+      contentType: grant.input.mimeType,
+      url: `https://test.private.blob.vercel-storage.com/${grant.storage.pathname}`,
+    };
+  }
+
+  it("persists one fixed authorization ceiling, bounds parallel retries and keeps quota after lost ACK", async () => {
+    const intent = await repo.reserve(context, payload(), randomUUID());
+    const results = await Promise.allSettled(
+      Array.from({ length: 10 }, () =>
+        repo.beginAuthorization(context, intent.id, randomUUID()),
+      ),
+    );
+    const grants = results.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    );
+    expect(grants).toHaveLength(uploadAuthorizationMaxIssuances);
+    expect(new Set(grants.map((item) => item.attemptId)).size).toBe(1);
+    expect(new Set(grants.map((item) => item.validUntil)).size).toBe(1);
+    expect(
+      Date.parse(grants[0].validUntil) - Date.parse(grants[0].issuedAt),
+    ).toBe(uploadAuthorizationLifetimeMs);
+    expect(
+      await db
+        .collection("auditLogs")
+        .countDocuments({ action: "attachment.upload_authorized" }),
+    ).toBe(1);
+    expect(await db.collection("attachments").countDocuments({})).toBe(0);
+    expect(await repo.get(context, intent.id)).toMatchObject({
+      state: "reserved",
+      uploadAvailable: false,
+    });
+    const quota = await db
+      .collection<{
+        _id: string;
+        bytes: number;
+        objects: number;
+      }>("objectStorageQuotas")
+      .findOne({ _id: `environment:${config.storeId}` });
+    expect(quota).toMatchObject({ bytes: bytes.length, objects: 1 });
+    const stored = JSON.stringify(
+      await db
+        .collection<IntentProbe>("uploadIntents")
+        .findOne({ _id: intent.id }),
+    );
+    expect(stored).not.toMatch(
+      /presignedUrl|clientSigningToken|delegationToken|readWriteToken/,
+    );
+  });
+
+  it("does not issue or cancel another owner's, organization's, store's or namespace's intent", async () => {
+    const intent = await repo.reserve(context, payload(), randomUUID());
+    for (const actor of [
+      { ...context, userId: "other" },
+      { ...context, organizationId: "foreign" },
+      { ...context, storeId: new ObjectId().toHexString() },
+      { ...context, permissions: [] },
+    ]) {
+      await expect(
+        repo.beginAuthorization(actor, intent.id, randomUUID()),
+      ).rejects.toThrow();
+      await expect(
+        repo.cancel(actor, intent.id, randomUUID()),
+      ).rejects.toThrow();
+    }
+    const other = new UploadIntentRepository(db, client, {
+      ...config,
+      namespace: "preview-other",
+    });
+    await expect(
+      other.beginAuthorization(context, intent.id, randomUUID()),
+    ).rejects.toThrow();
+    await expect(
+      other.cancel(context, intent.id, randomUUID()),
+    ).rejects.toThrow();
+    expect(await db.collection("auditLogs").countDocuments({})).toBe(1);
+  });
+
+  it("rechecks target/version before issuing and after provider work", async () => {
+    const layoutId = new ObjectId();
+    await db.collection("layoutVersions").insertOne({
+      _id: layoutId,
+      organizationId: context.organizationId,
+      storeId: new ObjectId(context.storeId),
+    });
+    const input = {
+      ...payload(),
+      target: {
+        type: "layout" as const,
+        layoutVersionId: layoutId.toHexString(),
+      },
+    };
+    const intent = await repo.reserve(context, input, randomUUID());
+    const grant = await repo.beginAuthorization(
+      context,
+      intent.id,
+      randomUUID(),
+    );
+    await repo.assertAuthorizationCurrent(context, grant);
+    await db.collection("layoutVersions").deleteOne({ _id: layoutId });
+    await expect(
+      repo.assertAuthorizationCurrent(context, grant),
+    ).rejects.toThrow();
+    await expect(
+      repo.beginAuthorization(context, intent.id, randomUUID()),
+    ).rejects.toThrow();
+  });
+
+  it("records duplicate callbacks once without linking unverified bytes or releasing quota", async () => {
+    const intent = await repo.reserve(context, payload(), randomUUID());
+    const grant = await repo.beginAuthorization(
+      context,
+      intent.id,
+      randomUUID(),
+    );
+    await Promise.all(
+      Array.from({ length: 6 }, () =>
+        repo.recordCompletion(completion(grant), randomUUID()),
+      ),
+    );
+    expect(await repo.get(context, intent.id)).toMatchObject({
+      state: "uploaded",
+      uploadAvailable: false,
+    });
+    expect(await db.collection("attachments").countDocuments({})).toBe(0);
+    expect(
+      await db
+        .collection("auditLogs")
+        .countDocuments({ action: "attachment.upload_received" }),
+    ).toBe(1);
+    await expect(
+      repo.assertAuthorizationCurrent(context, grant),
+    ).rejects.toThrow();
+    const stored = await db
+      .collection<IntentProbe>("uploadIntents")
+      .findOne({ _id: intent.id });
+    expect(stored?.budgetHeld).toBe(true);
+    expect(stored?.callbackReceivedAt).toBeInstanceOf(Date);
+    expect(JSON.stringify(stored)).not.toContain("https://");
+  });
+
+  it("matches callback correlation, exact private URL, resource, namespace and declared MIME before persistence", async () => {
+    const intent = await repo.reserve(context, payload(), randomUUID());
+    const grant = await repo.beginAuthorization(
+      context,
+      intent.id,
+      randomUUID(),
+    );
+    for (const event of [
+      { ...completion(grant), attemptId: randomUUID() },
+      { ...completion(grant), intentId: randomUUID() },
+      { ...completion(grant), pathname: "foreign/path.png" },
+      { ...completion(grant), url: "https://attacker.example/file.png" },
+      { ...completion(grant), url: completion(grant).url + "?attacker=1" },
+      {
+        ...completion(grant),
+        url: completion(grant).url.replace(".private.", ".public."),
+      },
+      { ...completion(grant), contentType: "text/html" },
+    ])
+      await expect(repo.recordCompletion(event, randomUUID())).rejects.toThrow(
+        "invalide",
+      );
+    for (const altered of [
+      { ...config, namespace: "preview-other" },
+      { ...config, storeId: "store_foreign" },
+    ])
+      await expect(
+        new UploadIntentRepository(db, client, altered).recordCompletion(
+          completion(grant),
+          randomUUID(),
+        ),
+      ).rejects.toThrow("invalide");
+    expect(await repo.get(context, intent.id)).toMatchObject({
+      state: "reserved",
+    });
+    expect(
+      await db
+        .collection("auditLogs")
+        .countDocuments({ action: "attachment.upload_received" }),
+    ).toBe(0);
+  });
+
+  it("cancellation wins concurrent and late callbacks, is idempotent and retains the charged cleanup record", async () => {
+    const intent = await repo.reserve(context, payload(), randomUUID());
+    const grant = await repo.beginAuthorization(
+      context,
+      intent.id,
+      randomUUID(),
+    );
+    await Promise.all([
+      repo.recordCompletion(completion(grant), randomUUID()),
+      repo.cancel(context, intent.id, randomUUID()),
+      repo.cancel(context, intent.id, randomUUID()),
+    ]);
+    await Promise.all(
+      Array.from({ length: 4 }, () =>
+        repo.recordCompletion(completion(grant), randomUUID()),
+      ),
+    );
+    const receipt = await repo.get(context, intent.id);
+    expect(receipt).toMatchObject({
+      state: "cancelled",
+      uploadAvailable: false,
+    });
+    expect(await repo.cancel(context, intent.id, randomUUID())).toEqual(
+      receipt,
+    );
+    await expect(
+      repo.assertAuthorizationCurrent(context, grant),
+    ).rejects.toThrow();
+    await expect(
+      repo.beginAuthorization(context, intent.id, randomUUID()),
+    ).rejects.toThrow();
+    const stored = await db
+      .collection<IntentProbe>("uploadIntents")
+      .findOne({ _id: intent.id });
+    expect(stored).toMatchObject({ budgetHeld: true, cleanupRequired: true });
+    expect(stored?.lateUploadReceivedAt).toBeInstanceOf(Date);
+    expect(
+      await db
+        .collection("auditLogs")
+        .countDocuments({ action: "attachment.upload_cancelled" }),
+    ).toBe(1);
+    expect(
+      await db.collection("auditLogs").countDocuments({
+        action: "attachment.upload_received_after_cancellation",
+      }),
+    ).toBe(1);
+    expect(await db.collection("attachments").countDocuments({})).toBe(0);
+  });
+
+  it("does not renew expired capabilities, infer absence from a missing callback or purge a cancellation", async () => {
+    const intent = await repo.reserve(context, payload(), randomUUID());
+    const grant = await repo.beginAuthorization(
+      context,
+      intent.id,
+      randomUUID(),
+    );
+    await db
+      .collection<IntentProbe>("uploadIntents")
+      .updateOne(
+        { _id: intent.id },
+        { $set: { "authorization.validUntil": new Date(Date.now() - 1000) } },
+      );
+    await expect(
+      repo.beginAuthorization(context, intent.id, randomUUID()),
+    ).rejects.toThrow();
+    await expect(
+      repo.assertAuthorizationCurrent(context, grant),
+    ).rejects.toThrow();
+    await repo.cancel(context, intent.id, randomUUID());
+    await repo.recordCompletion(completion(grant), randomUUID());
+    expect(await repo.get(context, intent.id)).toMatchObject({
+      state: "cancelled",
+    });
+    expect(
+      await db.collection("uploadIntents").countDocuments({ budgetHeld: true }),
+    ).toBe(1);
+    expect(
+      (await db.collection("uploadIntents").indexes()).some(
+        (index) => "expireAfterSeconds" in index,
+      ),
+    ).toBe(false);
+    // Future cleanup may run between deliveries: even an old signed callback
+    // must re-arm verification, never revive the source or duplicate its audit.
+    await db
+      .collection<IntentProbe>("uploadIntents")
+      .updateOne({ _id: intent.id }, { $set: { cleanupRequired: false } });
+    await repo.recordCompletion(completion(grant), randomUUID());
+    expect(
+      await db
+        .collection<IntentProbe>("uploadIntents")
+        .findOne({ _id: intent.id }),
+    ).toMatchObject({
+      state: "cancelled",
+      budgetHeld: true,
+      cleanupRequired: true,
+    });
+    expect(
+      await db
+        .collection("auditLogs")
+        .countDocuments({
+          action: "attachment.upload_received_after_cancellation",
+        }),
+    ).toBe(1);
+  });
+
+  it("serializes cancellation versus first issuance without restoring a cancelled intent", async () => {
+    for (let index = 0; index < 5; index++) {
+      const intent = await repo.reserve(context, payload(), randomUUID());
+      await Promise.allSettled([
+        repo.beginAuthorization(context, intent.id, randomUUID()),
+        repo.cancel(context, intent.id, randomUUID()),
+      ]);
+      expect(await repo.get(context, intent.id)).toMatchObject({
+        state: "cancelled",
+      });
+      await expect(
+        repo.beginAuthorization(context, intent.id, randomUUID()),
+      ).rejects.toThrow();
+    }
+  });
 
   it("reserves once under duplicate requests and lost ACK, with no binary or credentials", async () => {
     const input = payload();

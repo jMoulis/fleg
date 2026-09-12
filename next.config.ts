@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
       {
+        source: "/api/storage/blob/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
         source: "/sw.js",
         headers: [
           {

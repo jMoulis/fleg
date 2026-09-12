@@ -37,10 +37,18 @@ variables now point only to development; do not print or commit their tokens.
 After PR #35, TECH-04 lot 1 implements strict upload-intent metadata, atomic
 quotas, shared photo admission locks and a private/hybrid reader with pinned
 `@vercel/blob` 2.8.0. It is disabled by default (`BLOB_INTENTS_ENABLED=false`).
-No tokens, direct uploads, callbacks, remote deletion worker, PDF validation,
-local photo queue or migration are delivered yet. Legacy BSON CRUD still works.
-Continue with lot 2 in the contract, not TECH-05. Usage-budget and live
-upload/security acceptance remain gates before operational activation.
+PR #36 is merged. Lot 2 is split into reviewable sub-lots: 2a now implements
+the server transport adapter, bounded persisted authorization attempts, signed
+callback recording and cancellation. **Transport and callbacks remain release-locked**,
+even with BLOB_INTENTS_ENABLED=true; no real token or object has been issued.
+Only hermetic tests inject an enabled transport. Legacy BSON CRUD still works.
+Continue with **lot 2b**, not TECH-05: actual byte/PDF verification, current-author
+reauthorization before linking, source consultation and durable cleanup/trigger.
+SDK 2.8.0 presigned `put` also permits multipart; expiry does not prove absence
+of an in-flight upload. Do not release charged tombstones or remove the gate
+without provider lifetime/cleanup evidence and authorized non-production acceptance.
+Explicit callback-origin/public-key configuration and usage budgets also remain
+activation gates. Local photo queue and migration follow, neither is delivered.
 `PILOT-01` remains open independently.
 
 Read the current state in `implementation/10_BACKLOG.md`, then the relevant

@@ -13,6 +13,14 @@ export async function readUploadIntentRequest(
     request.headers.get("sec-fetch-site") === "cross-site"
   )
     throw new StoreAccessDeniedError();
+  return readBoundedUploadJson(request, uploadIntentMaxBodyBytes);
+}
+
+// Provider callbacks have a distinct signature boundary, not browser Origin.
+export async function readBoundedUploadJson(
+  request: Request,
+  maxBytes: number,
+): Promise<unknown> {
   if (
     request.headers.get("content-type")?.split(";")[0].trim() !==
     "application/json"
@@ -33,7 +41,7 @@ export async function readUploadIntentRequest(
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > uploadIntentMaxBodyBytes)
+      if (total > maxBytes)
         throw new PhotoValidationError("Métadonnées trop volumineuses");
       text += decoder.decode(value, { stream: true });
     }
