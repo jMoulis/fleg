@@ -395,6 +395,18 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { organizationId: 1, storeId: 1, createdAt: -1 },
       { name: "attachment_objects_scope_created" },
     ),
+    db.collection("uploadIntents").createIndex(
+      { organizationId: 1, storeId: 1, idempotencyKey: 1 },
+      { unique: true, name: "upload_intents_scope_key_unique" },
+    ),
+    db.collection("uploadIntents").createIndex(
+      { organizationId: 1, storeId: 1, targetKey: 1, kind: 1, budgetHeld: 1, state: 1 },
+      { name: "upload_intents_target_budget" },
+    ),
+    db.collection("uploadIntents").createIndex(
+      { "storage.storeId": 1, "storage.namespace": 1, state: 1, reconcileAfter: 1, _id: 1 },
+      { name: "upload_intents_reconcile" },
+    ),
     db.collection("attachmentCommands").createIndex(
       { organizationId: 1, storeId: 1, idempotencyKey: 1 },
       {

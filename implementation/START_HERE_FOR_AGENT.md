@@ -34,8 +34,12 @@ the infrastructure record. After explicit approval, two private Paris Blob store
 are configured: `fleg-blob-dev` for Development/Preview and `fleg-blob-prod` for
 Production. The former `fleg-blob` remains intact and disconnected. Local Blob
 variables now point only to development; do not print or commit their tokens.
-No application upload capability, SDK dependency, migration or deployment was
-added. Continue with implementation and isolated tests; usage-budget and live
+After PR #35, TECH-04 lot 1 implements strict upload-intent metadata, atomic
+quotas, shared photo admission locks and a private/hybrid reader with pinned
+`@vercel/blob` 2.8.0. It is disabled by default (`BLOB_INTENTS_ENABLED=false`).
+No tokens, direct uploads, callbacks, remote deletion worker, PDF validation,
+local photo queue or migration are delivered yet. Legacy BSON CRUD still works.
+Continue with lot 2 in the contract, not TECH-05. Usage-budget and live
 upload/security acceptance remain gates before operational activation.
 `PILOT-01` remains open independently.
 

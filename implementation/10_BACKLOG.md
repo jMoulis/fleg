@@ -38,8 +38,12 @@ prove unreported device/isolation scenarios.
 The [execution contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md) now records two
 private Paris Blob stores, configured after explicit approval: Development/Preview
 separate from Production. The local Blob configuration points to development;
-the original store remains intact and disconnected. Application uploads are
-not implemented; usage budget and upload/security acceptance remain open. The subsequent
+the original store remains intact and disconnected. Lot 1 now implements
+disabled-by-default metadata intents, atomic quotas and hybrid private reads;
+the existing BSON photo workflow remains available. **Continue TECH-04 lot 2**:
+direct transport, content validation, linking and durable deletion/reconciliation.
+No Blob upload is available yet; local photo queuing and migration follow.
+Usage budget and upload/security acceptance remain open. The subsequent
 order remains TECH-05, then V4-01 after its own gates, then TECH-06; do not skip
 from storage directly to vectorization or coaching.
 

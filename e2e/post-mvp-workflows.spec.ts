@@ -712,6 +712,19 @@ test("REL-06 sécurise les photos manuelles sans modifier le plan", async ({
   const marker = recipeMarker(testInfo.project.name);
   const { storeBaseUrl, storeId } = await signInToStore(page);
   const stores = await getDemoStorePair(page);
+  // TECH-04 foundation is dark: existing photos work, but no Blob intent or
+  // credential can be issued by the deployed E2E application.
+  const intentResponse = await page.request.post(
+    `/api/stores/${storeId}/attachments/upload-intents`,
+    { data: {}, headers: { Origin: new URL(page.url()).origin } },
+  );
+  expect(intentResponse.status()).toBe(503);
+  expect(await intentResponse.json()).toMatchObject({ code: "STORAGE_DISABLED" });
+  expect(intentResponse.headers()["cache-control"]).toBe("private, no-store");
+  const intentStatus = await page.request.get(
+    `/api/stores/${storeId}/attachments/upload-intents/${crypto.randomUUID()}`,
+  );
+  expect(intentStatus.status()).toBe(503);
   await importProjectFixture({
     page,
     projectName: testInfo.project.name,
@@ -824,6 +837,8 @@ test("REL-06 sécurise les photos manuelles sans modifier le plan", async ({
     const contentResponse = await page.request.get(attachment.contentUrl);
     expect(contentResponse.status()).toBe(200);
     expect(contentResponse.headers()["content-type"]).toBe("image/png");
+    expect(contentResponse.headers()["cache-control"]).toBe("private, no-store");
+    expect(contentResponse.headers()["x-content-type-options"]).toBe("nosniff");
     expect((await contentResponse.body()).subarray(0, 8)).toEqual(
       onePixelPng.subarray(0, 8),
     );

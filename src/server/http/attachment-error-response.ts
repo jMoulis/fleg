@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as z from "zod";
 
 import { PhotoValidationError } from "@/domain/attachments/photo-validation";
+import { PrivateStorageError } from "@/domain/attachments/private-storage";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 import { AuthenticationRequiredError } from "@/server/auth/session";
@@ -19,6 +20,26 @@ export function attachmentErrorResponse(input: {
   route: string;
   method: "GET" | "POST" | "DELETE";
 }) {
+  if (input.error instanceof PrivateStorageError) {
+    const status =
+      input.error.code === "UPLOAD_NOT_FOUND"
+        ? 404
+        : input.error.code === "UPLOAD_CONFLICT" ||
+            input.error.code === "UPLOAD_QUOTA"
+          ? 409
+          : 503;
+    return NextResponse.json(
+      apiErrorSchema.parse({
+        code: input.error.code,
+        message: input.error.message,
+        requestId: input.requestId,
+      }),
+      {
+        status,
+        headers: { "Cache-Control": "private, no-store" },
+      },
+    );
+  }
   const unauthorized =
     input.error instanceof AuthenticationRequiredError ||
     input.error instanceof StoreAccessDeniedError;
@@ -68,7 +89,9 @@ export function attachmentErrorResponse(input: {
       requestId: input.requestId,
     }),
     {
-      status: unauthorized || notFound ? 404 : invalid ? 400 : conflict ? 409 : 503,
+      status:
+        unauthorized || notFound ? 404 : invalid ? 400 : conflict ? 409 : 503,
+      headers: { "Cache-Control": "private, no-store" },
     },
   );
 }
