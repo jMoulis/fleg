@@ -507,8 +507,10 @@ PR #38 fusionnée (`c6b4ca3`), contrôles Quality/build, E2E et Vercel réussis.
 La branche `codex/tech-04-storage-acceptance` prépare le premier contrôle réel
 du fournisseur **sans ouvrir les routes de l’application**. Ce n’est pas une
 recette complète déployée ni un nouveau ticket. L’accord pour les écritures
-synthétiques ci-dessous a été demandé ; il reste à recevoir. Aucun appel Blob
-réel, envoi de fichier, changement de variables ou de ressource effectué ici.
+synthétiques ci-dessous était alors demandé, pas encore reçu. Aucun appel Blob
+réel, envoi de fichier, changement de variables ou de ressource n’avait été
+effectué pendant cette préparation. L’autorisation et la première exécution
+ultérieures sont consignées dans la section de preuve ci-dessous.
 
 #### Simulation et autorisation séparée
 
@@ -611,6 +613,75 @@ Vérifications de cette préparation : `npm run check` réussi, **455 tests dans
 parseur sur le PDF synthétique de 25 Mio. Build de production et **REL-06
 mobile/desktop : 2 tests réussis**, MongoDB local jetable, credentials Blob/OpenAI
 neutralisés. La suite E2E complète n’a pas été rejouée pour cet outillage seul.
+
+### Première recette réelle autorisée — 2026-09-12
+
+PR #39 fusionnée sur master (`23926ad`), Quality/build, E2E et Vercel réussis.
+Après la demande précise « développement uniquement, 3 fichiers synthétiques
+maximum, 30 Mio envoyés, 100 opérations, nettoyage compris », le manager a
+répondu **« Oui vas-y »**. Cet accord ne constitue ni un budget mensuel ni une
+autorisation de production, de migration ou d’ouverture des uploads applicatifs.
+
+Commande exécutée avec le SDK 2.8.0 et le code `bf27d78` :
+
+```bash
+npm run verify:storage -- --execute --run-id=ad4be0a6-20c6-467a-91cb-53732b9d34d4 --confirm-store=store_5MOJSflf0L273Hz3
+```
+
+Manifeste local conservé et ignoré par Git :
+`.local-backups/blob-acceptance/ad4be0a6-20c6-467a-91cb-53732b9d34d4/report.json`.
+Création : `2026-09-12T15:18:38.835Z` (17:18, Paris).
+Le fichier ne contient ni token RW, ni clé de signature, ni URL signée.
+SHA-256 du manifeste après cette exécution :
+`37381849aa310168776b0630cb71494c1c56882615a45817e127f65f2e6de60d`.
+
+Résultat **`failed`, `releaseReady: false`**, sortie CLI 1 :
+
+- Les trois chemins exacts étaient absents avant émission de capacité.
+- Une autorisation PNG, limitée au chemin et à 68 octets / `image/png`, a été
+  obtenue ; échéance enregistrée : `2026-09-12T15:28:39.150Z`.
+- Le contrôle `mime_refused` envoie les 68 octets du PNG sous
+  `Content-Type: text/plain`. Réponse observée : **HTTP 200**, au lieu d’un refus.
+- Arrêt immédiat, sans passer aux autres contrôles. Le PDF de 25 Mio **n’a pas
+  été envoyé** ; taille excessive, chemin forgé, réécriture, accès anonyme,
+  lecture privée positive et validation PDF distante restent non testés.
+- **11 opérations réservées**, **68 octets de corps de fichier** : sous les
+  plafonds autorisés, sans assimiler ces compteurs à une mesure de facturation.
+- Nettoyage exécuté sur les trois seuls chemins du manifeste : DELETE puis GET
+  privé sans cache. Tous sont `absence_observed`, aucun `pending`. Le manifeste
+  reste conservé ; cela n’établit pas une borne universelle de transfert tardif.
+
+**Ce que ce résultat ne prouve pas :** le probe a annulé la lecture du corps de
+réponse HTTP et n’a pas relu les métadonnées de l’objet avant nettoyage. Il ne
+permet donc pas d’affirmer quel MIME a été effectivement stocké, ni même de
+confondre le seul HTTP 200 avec une liaison de source FLEG. Aucune source ni
+métadonnée métier n’a été écrite dans MongoDB.
+
+Investigation en lecture seule après cet écart :
+
+- La [documentation des URL signées](https://vercel.com/docs/vercel-blob/vercel-signed-urls#put---upload-a-blob)
+  décrit le refus via `Content-Type` et montre un PUT avec cet en-tête.
+- Dans le SDK installé 2.8.0, `putOptionHeaderMap.contentType` vaut
+  **`x-content-type`** (`dist/chunk-YYMLUMXS.js`, fonction `createPutHeaders`).
+  La [documentation du SDK](https://vercel.com/docs/vercel-blob/using-blob-sdk#put)
+  décrit aussi le type stocké déduit de l’extension lorsque `contentType` n’est
+  pas fourni. Le probe avait un chemin `.png` et des octets réellement PNG.
+- Cette différence est une **hypothèse explicative**, pas une preuve du
+  comportement serveur observé ni une vulnérabilité fournisseur confirmée.
+  Aucun appel supplémentaire, émission de capacité ou relance n’a été effectué.
+
+Suite : compléter l’observation bornée/sans secrets des métadonnées effectives,
+tester séparément les en-têtes HTTP et le type stocké déclaré par le SDK, puis
+cadrer une nouvelle recette avec ses compteurs/chemins explicites. Conserver
+l’échec initial ; ne pas rendre le test vert en acceptant simplement HTTP 200,
+ne pas réinitialiser ce manifeste ni contourner le refus de rejouer un run.
+Les 68 octets / 11 opérations déjà réservés ne redeviennent pas disponibles
+dans le plafond global de l’autorisation initiale par création d’un nouveau UUID.
+
+Cette exécution n’a changé ni les variables locales/Vercel, ni les ressources,
+ni les routes applicatives, ni les quotas/tombstones métier. Aucune donnée
+utilisateur ou OpenAI utilisée. Aucune demande envoyée au support fournisseur.
+L’ouverture des uploads, TECH-05 et PILOT-01 restent non validés.
 
 ## Recette requise avant de déclarer TECH-04 livré
 

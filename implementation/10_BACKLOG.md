@@ -53,10 +53,14 @@ No Blob upload is available yet; local photo queuing and migration follow.
 Usage budget and upload/security acceptance remain open. The subsequent
 order remains TECH-05, then V4-01 after its own gates, then TECH-06; do not skip
 from storage directly to vectorization or coaching.
-An isolated dev-storage operator probe is prepared (`npm run verify:storage`,
+An isolated dev-storage operator probe is merged via PR #39 (`npm run verify:storage`,
 dry-run by default); its runbook separates provider checks from local parser
-proof and deployed-function/callback acceptance. No live execution authorized
-or performed yet, no production toggle changed, no additional feature opened.
+proof and deployed-function/callback acceptance. The explicitly authorized live
+recipe on 2026-09-12 failed its MIME refusal check (HTTP 200): 68 payload bytes,
+11 reserved operations, exact-path cleanup with fresh absence observed on all
+three paths. The PDF and subsequent checks did not run. Clarify the wire-level
+MIME contract before a new recipe; see evidence in the contract. No production
+toggle changed, no application upload opened, no provider vulnerability inferred.
 
 Follow [the technical sequence](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md) and
 [the coach delivery gates](./32_OPERATIONAL_COACH_ROADMAP.md). Preserve existing
