@@ -738,6 +738,26 @@ test("REL-06 sécurise les photos manuelles sans modifier le plan", async ({
   expect(callback.status()).toBe(503);
   expect(await callback.json()).toMatchObject({ code: "STORAGE_DISABLED" });
   expect(callback.headers()["cache-control"]).toBe("private, no-store");
+  const maintenance = await page.request.post(
+    `/api/stores/${storeId}/attachments/maintenance`,
+    {
+      data: {},
+      headers: { Origin: new URL(page.url()).origin },
+    },
+  );
+  expect(maintenance.status()).toBe(503);
+  expect(await maintenance.json()).toMatchObject({
+    code: "STORAGE_CONFIGURATION",
+  });
+  const documents = await page.request.get(
+    `/api/stores/${storeId}/attachments/documents`,
+  );
+  expect(documents.status()).toBe(200);
+  expect(await documents.json()).toMatchObject({
+    sources: [],
+    nextCursor: null,
+  });
+  expect(documents.headers()["cache-control"]).toBe("private, no-store");
   await importProjectFixture({
     page,
     projectName: testInfo.project.name,

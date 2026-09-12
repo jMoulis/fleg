@@ -42,8 +42,14 @@ the server transport adapter, bounded persisted authorization attempts, signed
 callback recording and cancellation. **Transport and callbacks remain release-locked**,
 even with BLOB_INTENTS_ENABLED=true; no real token or object has been issued.
 Only hermetic tests inject an enabled transport. Legacy BSON CRUD still works.
-Continue with **lot 2b**, not TECH-05: actual byte/PDF verification, current-author
-reauthorization before linking, source consultation and durable cleanup/trigger.
+PR #37 is merged. **Lot 2b is implemented, still gated**: bounded object reads,
+real PDFium WASM validation in a worker (60 pages, 10s, 256 MiB linear memory),
+live-author reauthorization and transactional linking, private document APIs,
+source removal and one-item scoped maintenance with recoverable leases.
+See the lot 2b operational runbook in the contract. Maintenance remains usable
+when new reservations are disabled, provided its private config is valid.
+Only never-authorized reservations release quotas; issued objects stay charged
+even after observed absence. The Blob photo UI/queue is still lot 3.
 SDK 2.8.0 presigned `put` also permits multipart; expiry does not prove absence
 of an in-flight upload. Do not release charged tombstones or remove the gate
 without provider lifetime/cleanup evidence and authorized non-production acceptance.
@@ -63,6 +69,7 @@ source-data and authorization gates.
 For a fresh rebuild, build only the P0 vertical slice first. Do not start Space Planner, TG or AI before `E2E-01` passes.
 
 Read in this order:
+
 1. `/AGENTS.md`
 2. `/implementation/00_IMPLEMENTATION_BLUEPRINT.md`
 3. `/implementation/02_AUTHORIZATION_AND_CONTEXT.md`

@@ -42,9 +42,11 @@ the original store remains intact and disconnected. Lot 1 now implements
 disabled-by-default metadata intents, atomic quotas and hybrid private reads;
 the existing BSON photo workflow remains available. Lot 2a adds persisted bounded
 authorizations, a presigned transport adapter, signed callback recording and
-cancellation, all behind a non-configurable transport release gate. **Continue
-TECH-04 lot 2b**: content/PDF validation, current-author reauthorization, linking,
-source consultation and durable deletion/reconciliation with its operational trigger.
+cancellation, all behind a non-configurable transport release gate (PR #37 merged).
+Lot 2b implements bounded byte/PDF validation, current-author reauthorization,
+transactional linking, private source APIs and durable scoped maintenance/deletion.
+Read its runbook in the contract. **Continue the TECH-04 lot 2 release gates**:
+provider evidence, budget and explicitly authorized non-production acceptance.
 Presigned `put` also covers multipart: provider lifetime/cleanup evidence is
 required before releasing quotas or opening the transport.
 No Blob upload is available yet; local photo queuing and migration follow.

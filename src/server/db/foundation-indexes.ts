@@ -407,6 +407,37 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { "storage.storeId": 1, "storage.namespace": 1, state: 1, reconcileAfter: 1, _id: 1 },
       { name: "upload_intents_reconcile" },
     ),
+    db.collection("uploadIntents").createIndex(
+      {
+        organizationId: 1,
+        storeId: 1,
+        "storage.storeId": 1,
+        "storage.namespace": 1,
+        reconcileAfter: 1,
+        _id: 1,
+      },
+      { name: "upload_intents_scoped_maintenance" },
+    ),
+    db.collection("uploadIntents").createIndex(
+      { organizationId: 1, storeId: 1, sourceId: 1 },
+      {
+        name: "upload_intents_source",
+        unique: true,
+        partialFilterExpression: { sourceId: { $type: "objectId" } },
+      },
+    ),
+    db
+      .collection("documentSources")
+      .createIndex(
+        { organizationId: 1, storeId: 1, storageState: 1, _id: -1 },
+        { name: "document_sources_scope_page" },
+      ),
+    db
+      .collection("documentSources")
+      .createIndex(
+        { organizationId: 1, storeId: 1, uploadIntentId: 1 },
+        { name: "document_sources_intent_unique", unique: true },
+      ),
     db.collection("attachmentCommands").createIndex(
       { organizationId: 1, storeId: 1, idempotencyKey: 1 },
       {
