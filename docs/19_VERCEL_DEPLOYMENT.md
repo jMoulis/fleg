@@ -66,4 +66,77 @@ L’intégration Atlas du Marketplace Vercel peut automatiser la connexion, mais
 5. Promouvoir seulement le déploiement validé vers Production.
 6. Réexécuter `/api/health` et les contrôles critiques sur le domaine de production.
 
+## Isolation MongoDB Preview — état vérifié le 2026-09-12
+
+Après autorisation du responsable, la configuration des **futurs déploiements
+Preview** a été séparée de la production. Ce changement d’infrastructure ne
+constitue ni une recette applicative déployée ni une ouverture des uploads.
+
+| Élément | Preview | Production |
+| --- | --- | --- |
+| Base métier | `fleg_preview_app` | `fl_cockpit_app`, inchangée |
+| Base Better Auth | `fleg_preview_auth` | `fl_cockpit_auth`, inchangée |
+| Utilisateur MongoDB | `fleg_preview` | compte existant, inchangé |
+| Privilèges Preview | `readWrite` sur les deux bases Preview uniquement | accès refusé au compte Preview |
+| Ressource Atlas | `Cluster0`, projet `fleg`, Paris | même cluster existant |
+| Secret Better Auth | nouveau secret dédié | valeur existante conservée |
+
+Le compte `fleg_preview` est limité à `Cluster0`, sans `readWriteAnyDatabase`
+ni rôle administrateur. Aucun nouveau cluster, abonnement, copie de données
+métier, compte utilisateur applicatif ou seed de production n’a été créé.
+L’isolation est logique et par permissions : stockage, connexions et capacité
+du cluster M0 restent partagés. Les deux bases contiennent uniquement une
+collection de contrôle vide, `_preview_isolation_probe`, à l’issue de la recette.
+
+Sur Vercel, `MONGODB_URI`, `MONGODB_APP_DB`, `MONGODB_AUTH_DB` et
+`BETTER_AUTH_SECRET` ont désormais des entrées **Preview uniquement**, de type
+`sensitive`. Les anciennes entrées partagées conservent leur portée Production,
+sans modification de leur valeur. `MONGODB_USER` et `MONGODB_PASSWORD`, non
+consommés par l’application, ne sont plus fournis aux nouvelles Previews ;
+ils sont conservés en Production. Aucun override de branche sur ces six clés
+n’était présent. `.env.local`, les variables Blob et les autres réglages
+Vercel n’ont pas été modifiés par cette opération.
+
+### Preuves et limites
+
+- Rôles et restriction de cluster relus après création via Atlas CLI 1.58.3,
+  utilisée temporairement ; installation globale non remplacée.
+- Lecture/écriture réelles avec le nouveau compte dans chaque base Preview,
+  sur un document synthétique identifié, puis suppression et absence vérifiée.
+- Tentatives de lecture sur les deux bases de production refusées explicitement
+  par Atlas (`8000`, message d’autorisation refusée). Aucune écriture de test
+  n’a été tentée en production, aucun contenu métier n’a été récupéré.
+- Inventaire Vercel avant/après : identifiants, types et empreintes des valeurs
+  retournées pour les entrées Production inchangés. Aucune valeur secrète n’est
+  consignée ici. Rapports et matériel opérateur privés conservés sous
+  `.local-backups/preview-isolation-20260912/`, ignorés par Git.
+- Aucun test E2E n’a été lancé sur Atlas : la CI et les E2E locaux gardent leur
+  MongoDB jetable. Aucun code applicatif n’a été modifié par ce lot.
+
+### Suite obligatoire avant la recette déployée
+
+1. Définir l’origine HTTPS de la Preview de recette dans `BETTER_AUTH_URL`,
+   préparer ses index et un compte/organisation/magasin **synthétiques**, puis
+   redéployer avec les nouvelles variables. Vérifier connexion, droits et santé
+   sur ce déploiement précis ; ne pas utiliser les identifiants applicatifs de
+   production. Cette étape n’est pas encore réalisée par l’isolation ci-dessus.
+2. Les anciens déploiements conservent leur configuration d’origine : modifier
+   les variables du projet ne révoque pas leurs anciens credentials. Inventorier
+   ceux qui restent accessibles et coordonner leur retrait ou le remplacement
+   du compte partagé avant de déclarer toutes les Previews assainies.
+3. Le mot de passe MongoDB local précédemment affiché accidentellement dans une
+   sortie de diagnostic reste à renouveler de façon coordonnée. Le compte
+   historique dispose de `readWriteAnyDatabase` ; remplacement à moindre
+   privilège et retrait de l’ancien accès exigent une bascule Production/local
+   vérifiée. Ni rotation ni retrait de cet accès n’ont été effectués ici.
+4. Development et Preview partagent Blob dev mais utilisent des bases MongoDB
+   distinctes : leurs compteurs `objectStorageQuotas` ne forment pas un budget
+   global atomique commun. Borner l’usage cumulé de la recette et résoudre cette
+   coordination avant toute promesse de plafond global multi-environnement.
+   Les uploads distants restent désactivés et les tombstones facturés conservés.
+
+Références : [rôles des utilisateurs Atlas](https://www.mongodb.com/docs/atlas/security-add-mongodb-users/),
+[portées des variables Vercel](https://vercel.com/docs/environment-variables/manage-across-environments)
+et [prise en compte après redéploiement](https://vercel.com/docs/environment-variables).
+
 Références : [déploiement Next.js sur Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs), [versions Node.js](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions), [gestion des pools](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#database-connection-pool-management), [régions](https://vercel.com/docs/functions/configuring-functions/region), [variables d’environnement](https://vercel.com/docs/environment-variables) et [intégration Atlas](https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel/).
