@@ -40,7 +40,7 @@ quotas, shared photo admission locks and a private/hybrid reader with pinned
 PR #36 is merged. Lot 2 is split into reviewable sub-lots: 2a now implements
 the server transport adapter, bounded persisted authorization attempts, signed
 callback recording and cancellation. **Transport and callbacks remain release-locked**,
-even with BLOB_INTENTS_ENABLED=true; no real token or object has been issued.
+even with BLOB_INTENTS_ENABLED=true; no application route can issue an upload.
 Only hermetic tests inject an enabled transport. Legacy BSON CRUD still works.
 PR #37 and #38 are merged. **Lot 2b is implemented, still gated**: bounded object reads,
 real PDFium WASM validation in a worker (60 pages, 10s, 256 MiB linear memory),
@@ -55,12 +55,21 @@ of an in-flight upload. Do not release charged tombstones or remove the gate
 without provider lifetime/cleanup evidence and authorized non-production acceptance.
 Explicit callback-origin/public-key configuration and usage budgets also remain
 activation gates. Local photo queue and migration follow, neither is delivered.
-The isolated `npm run verify:storage` operator probe is prepared on
-`codex/tech-04-storage-acceptance`: dry-run by default, pinned to the dev store,
+The isolated `npm run verify:storage` operator probe is merged via PR #39:
+dry-run by default, pinned to the dev store,
 synthetic fixtures only, explicit execution/store confirmation, durable local
 manifest and exact-path cleanup. Read its runbook in the TECH-04 contract.
-Live execution has been requested but is not yet authorized or performed; do
-not infer approval or provider lifetime guarantees from its hermetic tests.
+The manager explicitly authorized the bounded dev recipe on 2026-09-12.
+Run `ad4be0a6-20c6-467a-91cb-53732b9d34d4` stopped at `mime_refused`: HTTP 200
+instead of refusal, after issuing a scoped PNG authorization. Only 68 payload
+bytes / 11 reserved operations were used; cleanup observed all three exact paths
+absent. No PDF or subsequent security check ran. The local manifest is retained.
+Read the live evidence section in the contract: the probe uses `Content-Type`,
+whereas SDK 2.8.0 maps stored MIME to `x-content-type`. Effective stored MIME
+was not captured before cleanup, so do not claim a proven provider vulnerability
+or silently turn the failed check into a pass. Next: clarify/test the wire-level
+MIME contract and record effective metadata before an explicitly framed rerun.
+Do not reset this run, reuse its budget as if unused, or bypass its replay guard.
 It does not validate deployed callbacks, the Vercel PDF worker or photo UI.
 `PILOT-01` remains open independently.
 
