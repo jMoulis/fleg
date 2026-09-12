@@ -7,9 +7,13 @@ describe("Next.js hardening", () => {
     expect(nextConfig.poweredByHeader).toBe(false);
     expect(nextConfig.compress).toBe(true);
     expect(nextConfig.outputFileTracingIncludes).toEqual({
-      "/\\[organizationSlug\\]/stores/\\[storeId\\]/help": [
-        "./docs/user/*.md",
+      "/api/stores/\\[storeId\\]/attachments/maintenance": [
+        "./src/server/storage/*.mjs",
+        "./node_modules/@hyzyla/pdfium/dist/index.cjs",
+        "./node_modules/@hyzyla/pdfium/dist/pdfium.wasm",
+        "./node_modules/@hyzyla/pdfium/package.json",
       ],
+      "/\\[organizationSlug\\]/stores/\\[storeId\\]/help": ["./docs/user/*.md"],
       "/\\[organizationSlug\\]/stores/\\[storeId\\]/help/\\[section\\]": [
         "./docs/user/*.md",
       ],

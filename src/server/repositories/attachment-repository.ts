@@ -189,6 +189,11 @@ export class AttachmentRepository {
       );
       if (attachmentDocument.storageState !== "linked")
         throw new AttachmentNotFoundError();
+      await assertAttachmentTargetExists(
+        this.db,
+        input.context,
+        attachment.target,
+      );
       if (!this.privateReader)
         throw new PrivateStorageError(
           "STORAGE_UNAVAILABLE",
@@ -206,11 +211,19 @@ export class AttachmentRepository {
           organizationId: scope.organizationId,
           storeId,
           storageState: "linked",
-          storage: reference,
+          "storage.backend": "vercel_blob",
+          "storage.pathname": reference.pathname,
+          "storage.storeId": reference.storeId,
+          "storage.namespace": reference.namespace,
         },
         { projection: { _id: 1 } },
       );
       if (!stillVisible) throw new AttachmentNotFoundError();
+      await assertAttachmentTargetExists(
+        this.db,
+        input.context,
+        attachment.target,
+      );
       return { attachment, bytes };
     }
     const objectDocument = await this.attachmentObjects.findOne({

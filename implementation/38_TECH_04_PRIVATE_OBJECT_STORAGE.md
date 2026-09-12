@@ -3,8 +3,8 @@
 ## Statut et reprise du plan
 
 Contrat de réalisation préparé le 2026-09-12. **Infrastructure configurée après
-accord explicite ; lot 1 fusionné via PR #36 et lot 2a implémenté derrière un
-verrou de livraison non configurable. TECH-04
+accord explicite ; lot 1 fusionné via PR #36, lot 2a fusionné via PR #37 et
+lot 2b implémenté derrière le verrou de livraison du transport. TECH-04
 reste ouvert : aucun envoi direct Blob n’est encore disponible.**
 Il précise TECH-04 de la [PR #26](https://github.com/jMoulis/fleg/pull/26), sans
 nouvel identifiant ni extension de la feuille de route.
@@ -386,6 +386,120 @@ par une copie tardive. Supprimer le BSON après bascule vérifiée et autorisée
 Garder les lecteurs des deux backends lors d’un rollback, pas un retour vers une
 ancienne version incapable de lire Blob. Une migration non exécutée n’est pas
 une économie d’espace déjà obtenue.
+
+### Lot 2b — vérification et cycle de vie privé (2026-09-12)
+
+Branche `codex/tech-04-private-file-verification`. Le code de validation, de
+liaison et de récupération est implémenté ; **ce n’est pas une ouverture des
+uploads ni une clôture de TECH-04**. Le verrou inconditionnel d’autorisation et
+de callback reste intact. Aucune variable locale/Vercel modifiée, aucun objet
+envoyé à Blob, aucune migration ni donnée transmise à OpenAI.
+
+- Adaptateur privé pour lire uniquement la référence persistée : taille annoncée
+  bornée (4 Mio photo / 25 Mio PDF), MIME, chemin exact, octets limités et SHA-256.
+  Une absence explicite du fournisseur est distincte d’un timeout, 304 ou 5xx.
+- Parseur `@hyzyla/pdfium` **2.1.13** verrouillé, exécuté dans un worker Node
+  jetable sans variables d’environnement. Signature PDF, table de références
+  valide sans réparation, absence de chiffrement (même mot de passe utilisateur
+  vide), 1–60 pages et chargement de chaque page exigés. Aucun rendu, OCR,
+  formulaire ou JavaScript PDF exécuté. Ce n’est pas un antivirus ni une
+  validation commerciale du brief.
+- Budgets du parseur : 10 secondes, un parseur simultané par processus, heap JS
+  ancien 96 Mio / jeune 16 Mio / pile 4 Mio, mémoire linéaire WASM 256 Mio.
+  `worker.resourceLimits` ne borne pas les ArrayBuffers : le helper
+  `pdf-memory.mjs` réduit donc **la déclaration mémoire du binaire WASM épinglé**
+  avant compilation, sans modifier son code ni analyser la syntaxe PDF.
+  Un seul espace mémoire 32 bits borné, non partagé, sans mémoire importée est
+  accepté ; une disposition inattendue échoue. Le moteur WASM refuse ensuite
+  toute croissance au-delà du plafond. Les buffers d’entrée/copie restent bornés
+  à 25 Mio, le binaire chargé a une taille fixe ; ces budgets distincts ne sont
+  pas présentés comme une limite RSS totale du processus Next.
+  Chaque mise à jour du moteur exige de rejouer les tests de déclaration,
+  compilation et croissance. Le worker et son binaire sont inclus explicitement
+  dans la trace de déploiement de la route de maintenance.
+- Reconstitution des droits actuels de l’auteur depuis `user`, `organization`
+  et `member` Better Auth, puis magasin actif et `storeMemberships`. Contrôle
+  avant lecture et à nouveau dans la transaction finale, avec la cible/version.
+  La callback ne fournit aucun rôle utilisable comme autorisation.
+- Liaison atomique : métadonnées photo existantes ou `documentSources`, preuve
+  de vérification/version, source dans le reçu, état `linked`, artefact original
+  et audit compact. Ni PDF, base64, URL signée ni token dans MongoDB. La réservation
+  photo est transférée sans compter deux fois la vingtième place.
+- Rapprochement indexé et relançable : un dossier éligible par appel, lease de
+  2 minutes, nouvelle tentative après 5 minutes sur indisponibilité. Après
+  expiration du lease, un autre appel peut reprendre. Une annulation invalide
+  le lease ; un ancien worker ne peut pas rétablir une liaison.
+  Sans callback, le serveur relit le chemin prévu après l’échéance de l’autorisation.
+  Une absence non confirmée reste à reprendre, pas déclarée supprimée.
+- Consultation API paginée de 20 sources, téléchargement PDF privé en flux
+  **après vérification complète**, `Content-Disposition: attachment`, `nosniff`,
+  `private, no-store`, sans URL fournisseur. Recontrôle de visibilité et droits
+  avant réponse. Le lecteur photo hybride conserve BSON et recontrôle aussi la
+  cible pour Blob. Aucun cache privé ajouté au service worker.
+- Suppression explicite par identifiant de source : accès retiré immédiatement,
+  état `deleting`, liste d’artefacts et audit transactionnels. Le worker supprime
+  le chemin original et vérifie une absence fraîche ; erreur = reprise durable.
+  Aucun nouvel aperçu, texte ou index n’existe encore. Leur registre devra être
+  étendu avec TECH-05/06, sans prétendre les nettoyer aujourd’hui.
+
+**Limite conservatrice importante :** une intention ayant eu une autorisation
+reste facturée dans les quotas applicatifs, y compris après suppression physique
+et absence observée. État/artefact/tombstone restent conservés avec
+`AWAITING_TRANSPORT_PROOF`, sans TTL. Une callback tardive réarme le nettoyage.
+Seule une réservation **jamais autorisée** et annulée/abandonnée peut être
+finalisée et libérée, transactionnellement et une seule fois, sans appel Blob.
+Cette protection n’est pas une solution d’exploitation définitive : elle peut
+épuiser le budget et bloque toujours l’activation tant que les garanties de durée
+des transferts/multipart ne sont pas obtenues (ou le transport remplacé).
+
+#### Déclenchement et procédure de reprise
+
+Routes de ce lot, sous `/api/stores/:storeId/attachments` :
+
+- `POST /maintenance`, corps strict `{}` : une passe ; session actuelle avec
+  `attachments.write`, origine exacte et configuration privée approuvée requises.
+  **Indépendant de `BLOB_INTENTS_ENABLED`** : couper les nouvelles réservations
+  ne doit pas empêcher le nettoyage. Aucun cron global, scan de bucket ni
+  déclenchement fournisseur non authentifié n’est ajouté.
+- `GET /documents?cursor=…` : liste bornée avec curseur d’identifiant FLEG.
+- `GET /documents/:sourceId/content` : téléchargement privé ; lecture seule
+  autorisée via `stores.read`, jamais de redirection vers Blob.
+- `POST /sources/:sourceId/remove`, corps strict `{}` : HTTP 202,
+  `{ state: "deleting", deletionComplete: false }`. Rejouable sans réexposer le
+  fichier. Cette route couvre les nouvelles photos/PDF ; l’ancien DELETE BSON
+  reste inchangé et refuse encore les références Blob. Le branchement des
+  contrôles de la photothèque à cette route reste le lot 3.
+
+Avant une activation, affecter un responsable de cette procédure et mesurer le
+coût de lecture/suppression. Depuis une session autorisée sur le bon environnement,
+déclencher **une** passe de maintenance, lire sa réponse, puis répéter seulement
+pour les dossiers suivants éligibles. `processed: false` signifie « aucun travail
+éligible maintenant », **pas** « tous les fichiers sont supprimés ». `retry` ou
+`waiting` exige d’attendre l’échéance durable (ou le lease expiré), pas une boucle
+serrée. `cleanup_pending` exige de conserver le tombstone et son quota ; ne pas
+forcer `deleted` ni décrémenter les compteurs à la main. Une erreur de connexion
+après un appel se résout en relançant la même procédure, pas par un nouvel upload.
+Pour l’investigation, consulter uniquement les intentions du magasin/namespace
+autorisé : état, lease, `reconcileAfter`, `lastMaintenanceCode`, artefacts et audit.
+Ne jamais copier les credentials, URL d’envoi ou contenu dans un compte rendu.
+
+Les tests hermétiques couvrent le parseur réel, son arrêt/mémoire, les frontières
+HTTP, les callbacks perdues/tardives, concurrence, droits/cible retirés, annulation,
+pagination, suppression pendant lecture, erreurs fournisseur et quotas sur MongoDB
+local jetable. La CI exécute explicitement la nouvelle suite transactionnelle.
+`npm run check` : **444 tests / 101 fichiers** réussis avec MongoDB local.
+Build de production et recette E2E complète : **66 réussis, 4 tests OpenAI réels
+volontairement ignorés**. Après les derniers ajustements de maintenance/streaming,
+le build et REL-06 mobile/desktop sont rejoués : **2 réussis**. La trace Next
+contient bien le worker, son helper et le binaire WASM. Cela ne prouve pas encore
+l’exécution de cette chaîne sur une fonction Vercel déployée.
+La recette Vercel privée, notamment PDF représentatif/25 Mio, coût mémoire/durée,
+téléchargement streaming et restrictions réelles du transport, reste **à autoriser
+et réaliser**, pas déduite des mocks ou du build local.
+
+Prochain travail : lever ces preuves fournisseur/budget/recette du lot 2 avant
+activation ; puis lot 3 (photothèque et file locale), lot 4 (outillage de migration).
+Pas de TECH-05/V4-01 anticipé. PILOT-01 reste ouvert.
 
 ## Recette requise avant de déclarer TECH-04 livré
 

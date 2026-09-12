@@ -35,7 +35,7 @@ import {
   type UploadGrant,
 } from "@/domain/attachments/upload-transport";
 
-interface IntentDocument {
+export interface IntentDocument {
   _id: string;
   organizationId: string;
   storeId: ObjectId;
@@ -60,6 +60,19 @@ interface IntentDocument {
   cancelledAt?: Date;
   lateUploadReceivedAt?: Date;
   cleanupRequired?: boolean;
+  lease?: { token: string; until: Date };
+  sourceId?: ObjectId;
+  verification?: {
+    pageCount?: number;
+    parserVersion: string;
+    verifiedAt: Date;
+  };
+  artifacts?: {
+    kind: "original";
+    storage: PrivateBlobReference;
+    absenceObservedAt?: Date;
+  }[];
+  lastMaintenanceCode?: "RETRY" | "REJECTED" | "AWAITING_TRANSPORT_PROOF";
 }
 interface QuotaDocument {
   _id: string;
@@ -78,6 +91,7 @@ function receipt(document: IntentDocument): UploadIntentReceipt {
     createdAt: document.createdAt.toISOString(),
     reconcileAfter: document.reconcileAfter.toISOString(),
     uploadAvailable: false,
+    ...(document.sourceId ? { sourceId: document.sourceId.toHexString() } : {}),
   });
 }
 
@@ -283,6 +297,7 @@ export class UploadIntentRepository {
               reconcileAfter: document.reconcileAfter,
               cleanupRequired: true,
             },
+            $unset: { lease: "" },
           },
           { session },
         );

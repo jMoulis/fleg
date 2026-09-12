@@ -115,7 +115,7 @@ jobs:
       - name: Verify storage persistence against real MongoDB
         env:
           STORAGE_TEST_MONGODB_URI: "mongodb://127.0.0.1:27017/?directConnection=true&replicaSet=rs0"
-        run: npm run test -- src/test/integration/storage-persistence.test.ts src/test/integration/inventory-sync-persistence.test.ts src/test/integration/private-storage-persistence.test.ts
+        run: npm run test -- src/test/integration/storage-persistence.test.ts src/test/integration/inventory-sync-persistence.test.ts src/test/integration/private-storage-persistence.test.ts src/test/integration/upload-lifecycle-persistence.test.ts
 
       - name: Run browser acceptance tests
         run: npm run test:e2e
