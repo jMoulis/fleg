@@ -1,6 +1,12 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
-import { Db, MongoClient, MongoServerError, ObjectId } from "mongodb";
+import {
+  Db,
+  MongoClient,
+  MongoServerError,
+  ObjectId,
+  type ClientSession,
+} from "mongodb";
 import { normalizePhotoFileName } from "@/domain/attachments/photo-validation";
 import {
   PrivateStorageError,
@@ -21,6 +27,13 @@ import {
 } from "@/server/repositories/attachment-target";
 import type { UploadIntentConfig } from "@/server/storage/config";
 import { scopedObjectPrefix } from "@/server/storage/private-object-reader";
+import {
+  uploadAuthorizationLifetimeMs,
+  uploadAuthorizationMaxIssuances,
+  uploadGrantSchema,
+  type ProviderCompletion,
+  type UploadGrant,
+} from "@/domain/attachments/upload-transport";
 
 interface IntentDocument {
   _id: string;
@@ -37,6 +50,16 @@ interface IntentDocument {
   budgetHeld: boolean;
   createdAt: Date;
   reconcileAfter: Date;
+  authorization?: {
+    attemptId: string;
+    issuedAt: Date;
+    validUntil: Date;
+    issueCount: number;
+  };
+  callbackReceivedAt?: Date;
+  cancelledAt?: Date;
+  lateUploadReceivedAt?: Date;
+  cleanupRequired?: boolean;
 }
 interface QuotaDocument {
   _id: string;
@@ -65,6 +88,320 @@ export class UploadIntentRepository {
     private readonly config: UploadIntentConfig,
   ) {}
 
+  private ownerFilter(context: AuthorizedStoreContext, id: string) {
+    requireWriter(context);
+    return {
+      _id: id,
+      organizationId: context.organizationId,
+      storeId: new ObjectId(context.storeId),
+      ownerId: context.userId,
+      "storage.storeId": this.config.storeId,
+      "storage.namespace": this.config.namespace,
+    };
+  }
+
+  private async audit(
+    document: IntentDocument,
+    action: string,
+    actorId: string,
+    requestId: string,
+    session: ClientSession,
+  ) {
+    const timestamp = new Date();
+    await this.db.collection("auditLogs").insertOne(
+      {
+        organizationId: document.organizationId,
+        storeId: document.storeId,
+        actorId,
+        action,
+        entityType: "upload_intent",
+        entityId: document._id,
+        before: null,
+        after: {
+          state: document.state,
+          kind: document.kind,
+          budgetHeld: document.budgetHeld,
+        },
+        requestId,
+        timestamp,
+        createdAt: timestamp,
+      },
+      { session },
+    );
+  }
+
+  // Commit the capability ceiling BEFORE calling Blob. A timeout after issuance
+  // must leave durable evidence of a possibly usable authorization.
+  async beginAuthorization(
+    context: AuthorizedStoreContext,
+    id: string,
+    requestId: string,
+  ): Promise<UploadGrant> {
+    const filter = this.ownerFilter(context, id);
+    const session = this.client.startSession();
+    try {
+      const result = await session.withTransaction(async () => {
+        const document = await this.db
+          .collection<IntentDocument>("uploadIntents")
+          .findOne(filter, { session });
+        if (!document)
+          throw new PrivateStorageError(
+            "UPLOAD_NOT_FOUND",
+            "Intention introuvable ou accès refusé",
+          );
+        const now = new Date();
+        if (
+          document.state !== "reserved" ||
+          !document.budgetHeld ||
+          now.getTime() >=
+            (
+              document.authorization?.validUntil ?? document.reconcileAfter
+            ).getTime()
+        )
+          throw new PrivateStorageError(
+            "UPLOAD_CONFLICT",
+            "Cette intention n’autorise plus d’envoi",
+          );
+        await assertAttachmentTargetExists(
+          this.db,
+          context,
+          document.input.target,
+          session,
+        );
+        const firstIssuance = !document.authorization;
+        if (!document.authorization) {
+          document.authorization = {
+            attemptId: randomUUID(),
+            issuedAt: now,
+            issueCount: 0,
+            validUntil: new Date(now.getTime() + uploadAuthorizationLifetimeMs),
+          };
+          // The original 24h abandonment ceiling is not evidence of remote absence.
+          document.reconcileAfter = document.authorization.validUntil;
+        }
+        if (
+          document.authorization.issueCount >= uploadAuthorizationMaxIssuances
+        )
+          throw new PrivateStorageError(
+            "UPLOAD_CONFLICT",
+            "Le nombre de tentatives d’envoi est atteint",
+          );
+        document.authorization.issueCount++;
+        await this.db.collection<IntentDocument>("uploadIntents").updateOne(
+          filter,
+          {
+            $set: {
+              authorization: document.authorization,
+              reconcileAfter: document.reconcileAfter,
+            },
+          },
+          { session },
+        );
+        if (firstIssuance)
+          await this.audit(
+            document,
+            "attachment.upload_authorized",
+            context.userId,
+            requestId,
+            session,
+          );
+        return uploadGrantSchema.parse({
+          intentId: document._id,
+          attemptId: document.authorization.attemptId,
+          storage: document.storage,
+          input: document.input,
+          issuedAt: document.authorization.issuedAt.toISOString(),
+          validUntil: document.authorization.validUntil.toISOString(),
+        });
+      });
+      if (!result) throw new Error("Autorisation non enregistrée");
+      return result;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  // Recheck after slow provider work. Cancellation cannot revoke an already
+  // minted URL, but we must not knowingly return it after cancellation.
+  async assertAuthorizationCurrent(
+    context: AuthorizedStoreContext,
+    grant: UploadGrant,
+  ): Promise<void> {
+    const document = await this.db
+      .collection<IntentDocument>("uploadIntents")
+      .findOne({
+        ...this.ownerFilter(context, grant.intentId),
+        state: "reserved",
+        budgetHeld: true,
+        "authorization.attemptId": grant.attemptId,
+        "authorization.validUntil": { $gt: new Date() },
+      });
+    if (!document)
+      throw new PrivateStorageError(
+        "UPLOAD_CONFLICT",
+        "L’autorisation d’envoi n’est plus active",
+      );
+    await assertAttachmentTargetExists(this.db, context, document.input.target);
+  }
+
+  async cancel(
+    context: AuthorizedStoreContext,
+    id: string,
+    requestId: string,
+  ): Promise<UploadIntentReceipt> {
+    const filter = this.ownerFilter(context, id);
+    const session = this.client.startSession();
+    try {
+      const result = await session.withTransaction(async () => {
+        const document = await this.db
+          .collection<IntentDocument>("uploadIntents")
+          .findOne(filter, { session });
+        if (!document)
+          throw new PrivateStorageError(
+            "UPLOAD_NOT_FOUND",
+            "Intention introuvable ou accès refusé",
+          );
+        if (document.state === "cancelled") return receipt(document);
+        if (!["reserved", "uploaded"].includes(document.state))
+          throw new PrivateStorageError(
+            "UPLOAD_CONFLICT",
+            "Cette intention ne peut plus être annulée",
+          );
+        document.state = "cancelled";
+        document.cancelledAt = new Date();
+        document.reconcileAfter = document.cancelledAt;
+        document.cleanupRequired = true;
+        // Do not release a quota, remove a tombstone or call del() here. Even a
+        // timed-out signer may have issued a token; late/multipart uploads remain
+        // possible. Lot 2b will prove absence and finalize the physical cleanup.
+        await this.db.collection<IntentDocument>("uploadIntents").updateOne(
+          filter,
+          {
+            $set: {
+              state: document.state,
+              cancelledAt: document.cancelledAt,
+              reconcileAfter: document.reconcileAfter,
+              cleanupRequired: true,
+            },
+          },
+          { session },
+        );
+        await this.audit(
+          document,
+          "attachment.upload_cancelled",
+          context.userId,
+          requestId,
+          session,
+        );
+        return receipt(document);
+      });
+      if (!result) throw new Error("Annulation non enregistrée");
+      return result;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  // Infrastructure entry point, ONLY after provider signature verification.
+  // Never grants business access or links a source. The future verification
+  // worker must reconstruct and reauthorize the persisted author/store scope.
+  async recordCompletion(
+    completion: ProviderCompletion,
+    requestId: string,
+  ): Promise<void> {
+    const session = this.client.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const intents = this.db.collection<IntentDocument>("uploadIntents");
+        const document = await intents.findOne(
+          {
+            _id: completion.intentId,
+            "storage.storeId": this.config.storeId,
+            "storage.namespace": this.config.namespace,
+            "storage.pathname": completion.pathname,
+            "authorization.attemptId": completion.attemptId,
+          },
+          { session },
+        );
+        const expectedUrl = document
+          ? `https://${this.config.storeId.slice(6).toLowerCase()}.private.blob.vercel-storage.com/${document.storage.pathname}`
+          : null;
+        if (
+          !document ||
+          completion.url !== expectedUrl ||
+          completion.contentType !== document.input.mimeType
+        )
+          throw new PrivateStorageError(
+            "UPLOAD_CALLBACK_INVALID",
+            "Notification d’envoi invalide",
+          );
+        const late = ["cancelled", "rejected", "deleting", "deleted"].includes(
+          document.state,
+        );
+        if (
+          late &&
+          document.lateUploadReceivedAt &&
+          !document.cleanupRequired
+        ) {
+          // A previous cleanup pass may have run between two deliveries of a
+          // callback. Re-arm reconciliation without restoring visibility or
+          // duplicating the audit/inbox; a replay is not proof of remote absence.
+          await intents.updateOne(
+            {
+              _id: document._id,
+              organizationId: document.organizationId,
+              storeId: document.storeId,
+            },
+            { $set: { cleanupRequired: true, reconcileAfter: new Date() } },
+            { session },
+          );
+          return;
+        }
+        if (late ? document.lateUploadReceivedAt : document.callbackReceivedAt)
+          return;
+        const now = new Date();
+        // Persist only the first observation: duplicate callbacks cannot grow an
+        // inbox or duplicate audits. Neither the URL nor its query is retained.
+        if (late) {
+          document.lateUploadReceivedAt = now;
+          document.cleanupRequired = true;
+        } else {
+          document.callbackReceivedAt = now;
+          if (document.state === "reserved") document.state = "uploaded";
+        }
+        document.reconcileAfter = now;
+        await intents.updateOne(
+          {
+            _id: document._id,
+            organizationId: document.organizationId,
+            storeId: document.storeId,
+          },
+          {
+            $set: {
+              state: document.state,
+              reconcileAfter: now,
+              ...(late
+                ? { lateUploadReceivedAt: now, cleanupRequired: true }
+                : { callbackReceivedAt: now }),
+            },
+          },
+          { session },
+        );
+        await this.audit(
+          document,
+          late
+            ? "attachment.upload_received_after_cancellation"
+            : "attachment.upload_received",
+          "system:blob-callback",
+          requestId,
+          session,
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+  }
+
   async get(
     context: AuthorizedStoreContext,
     id: string,
@@ -72,14 +409,7 @@ export class UploadIntentRepository {
     requireWriter(context);
     const document = await this.db
       .collection<IntentDocument>("uploadIntents")
-      .findOne({
-        _id: id,
-        organizationId: context.organizationId,
-        storeId: new ObjectId(context.storeId),
-        ownerId: context.userId,
-        "storage.storeId": this.config.storeId,
-        "storage.namespace": this.config.namespace,
-      });
+      .findOne(this.ownerFilter(context, id));
     if (!document)
       throw new PrivateStorageError(
         "UPLOAD_NOT_FOUND",

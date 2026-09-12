@@ -40,8 +40,13 @@ private Paris Blob stores, configured after explicit approval: Development/Previ
 separate from Production. The local Blob configuration points to development;
 the original store remains intact and disconnected. Lot 1 now implements
 disabled-by-default metadata intents, atomic quotas and hybrid private reads;
-the existing BSON photo workflow remains available. **Continue TECH-04 lot 2**:
-direct transport, content validation, linking and durable deletion/reconciliation.
+the existing BSON photo workflow remains available. Lot 2a adds persisted bounded
+authorizations, a presigned transport adapter, signed callback recording and
+cancellation, all behind a non-configurable transport release gate. **Continue
+TECH-04 lot 2b**: content/PDF validation, current-author reauthorization, linking,
+source consultation and durable deletion/reconciliation with its operational trigger.
+Presigned `put` also covers multipart: provider lifetime/cleanup evidence is
+required before releasing quotas or opening the transport.
 No Blob upload is available yet; local photo queuing and migration follow.
 Usage budget and upload/security acceptance remain open. The subsequent
 order remains TECH-05, then V4-01 after its own gates, then TECH-06; do not skip

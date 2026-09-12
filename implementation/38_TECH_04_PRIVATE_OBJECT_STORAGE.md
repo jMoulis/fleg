@@ -3,7 +3,8 @@
 ## Statut et reprise du plan
 
 Contrat de réalisation préparé le 2026-09-12. **Infrastructure configurée après
-accord explicite ; lot 1 applicatif implémenté, désactivé par défaut. TECH-04
+accord explicite ; lot 1 fusionné via PR #36 et lot 2a implémenté derrière un
+verrou de livraison non configurable. TECH-04
 reste ouvert : aucun envoi direct Blob n’est encore disponible.**
 Il précise TECH-04 de la [PR #26](https://github.com/jMoulis/fleg/pull/26), sans
 nouvel identifiant ni extension de la feuille de route.
@@ -304,9 +305,80 @@ le build de production et le parcours REL-06 sont revérifiés séparément :
 2 tests mobile/desktop réussis.
 Pas de recette Blob réel, de fichier transmis, de migration ou d’activation.
 
-Suite immédiate : lot 2 (transport direct, vérification effective, liaison,
-suppression durable et rapprochement). Puis lot 3 (photothèque/file locale),
-lot 4 (outillage de migration). Ne pas avancer à TECH-05 sur ce seul lot 1.
+### Lot 2a — autorisations et retours durables (2026-09-12)
+
+Le lot 2 est subdivisé pour garder des PR relisibles. Cette première sous-partie
+ne rend **aucun upload Blob utilisable**. `requireUploadTransportConfig()` refuse
+inconditionnellement les routes d’autorisation et de callback, y compris avec
+`BLOB_INTENTS_ENABLED=true`. Aucun sélecteur de faux stockage ou bypass de test
+n’est livré. La configuration effective sera ajoutée seulement avec la chaîne
+de vérification/nettoyage et ses preuves, au lot 2b.
+
+Périmètre implémenté :
+
+- Commande d’autorisation sans données de cible, URL, taille ou multipart : tout
+  provient de l’intention autorisée, pour son propriétaire et son magasin.
+  Recontrôle de session/droits/cible après l’appel fournisseur avant retour de l’URL.
+- Plafond d’autorisation figé de 10 minutes, persisté **avant** l’appel fournisseur.
+  Six émissions maximum par intention (première tentative + cinq reprises),
+  même identifiant de corrélation et échéance inchangée. Une réponse perdue ne
+  renouvelle ni quota ni durée. Après épuisement/expiration, pas de renouvellement
+  automatique ; le parcours manuel et son backoff restent à intégrer au lot 3.
+- Adaptateur `issueSignedToken` puis `presignUrl`, toujours avec le RW explicite
+  correspondant à la ressource approuvée. Chemin exact, MIME, taille, expiration,
+  absence d’écrasement/suffixe et destination de callback inclus dans les options
+  signées. Clé de signature gardée serveur ; seule l’URL d’écriture pourrait être
+  remise au client après levée du verrou. Pas de token ni URL dans Mongo/audit.
+- Choix presigned par rapport à `handleUpload` RW : pas de clé permettant au
+  client de signer d’autres opérations ; callbacks Ed25519 via clé publique
+  distincte. L’authentification serveur OIDC est compatible avec ce SDK mais pas
+  adoptée implicitement : la liaison des ressources approuvées reste explicite.
+- Callback JSON bornée à 16 Kio / 5 secondes, signature vérifiée par le SDK sur
+  le corps original sans réordonner/retirer ses propriétés. Corrélation serveur
+  intention/tentative, ressource/namespace, chemin, URL privée exacte et MIME
+  vérifiés avant persistance ; aucune URL reçue n’est téléchargée.
+- Transaction MongoDB pour état `uploaded`, signal de rapprochement et audit,
+  ACK seulement après succès. `uploaded` signifie **retour fournisseur reçu**,
+  pas octets vérifiés : aucun lien photo/source/PDF n’est créé. Une notification
+  n’établit ni les droits actuels de l’auteur ni la validité du contenu.
+- Doublons compacts, annulation idempotente et prioritaire face aux callbacks
+  concurrentes/tardives. Pas de suppression physique ni libération de quota :
+  l’intention, son chemin et `cleanupRequired` restent durables, y compris sans
+  callback. L’API d’annulation est réservée aux intentions autorisées par le
+  commutateur existant ; la photothèque BSON reste inchangée.
+
+**Limite fournisseur vérifiée, à ne pas contourner par une hypothèse :** dans
+le SDK installé 2.8.0, l’opération signée `put` couvre le PUT et le multipart
+`POST /mpu`. La signature porte `operation=put`, le chemin et les contraintes,
+pas une interdiction distincte du multipart. Une URL n’est donc pas une capacité
+« mono-envoi », même si le futur navigateur utilise un PUT simple.
+[Contrat des URL signées Vercel](https://vercel.com/docs/vercel-blob/vercel-signed-urls).
+L’analyse SDK n’établit pas la durée maximale d’un transfert déjà commencé,
+la finalisation après expiration ni le nettoyage des parties multipart.
+Ces points nécessitent une preuve fournisseur et une recette non productive
+autorisée avant activation ; ne jamais assimiler « 10 minutes écoulées » ou
+« pas de callback » à une preuve d’absence. Le nettoyage du lot 2b doit également
+reconsidérer les nouveaux retours après une première tentative de nettoyage.
+
+Recette hermétique : signature Ed25519 réellement vérifiée par le SDK avec une
+clé de test, options signées par le SDK sans appeler son API, tests de frontières
+HTTP et transactions/concurrence sur MongoDB local jetable. La recette navigateur
+vérifie le verrou et la non-régression du CRUD BSON, pas un upload Blob réel.
+`npm run check` passe : 410 tests dans 96 fichiers. Le build de production E2E
+et la recette mobile/desktop passent : 66 réussis, 4 tests OpenAI réels
+volontairement ignorés. Les résultats et limites sont consignés dans la PR du lot 2a.
+Après le dernier ajustement de réarmement du nettoyage, le build et REL-06 sont
+revérifiés : 2 tests mobile/desktop réussis.
+Aucune variable locale/Vercel modifiée, aucun fichier envoyé, aucune migration.
+
+Suite immédiate : **lot 2b** (lecture bornée et hash/signature des octets, parseur
+PDF borné, réautorisation serveur de l’auteur avant liaison, consultation privée,
+artefacts, suppression/réconciliation relançable et déclenchement opérationnel).
+Définir explicitement la clé publique et l’origine de callback côté serveur,
+sans les déduire d’un `Host` arbitraire. Ne pas ouvrir les routes tant que les
+conditions ci-dessus et les budgets/recettes ne sont pas satisfaits.
+Puis lot 3 (photothèque/file locale), lot 4 (outillage de migration).
+Ne pas avancer à TECH-05 sur ce seul lot 2a.
 
 La migration copie et relit chaque objet pour vérifier taille/hash avant un CAS
 de la référence. Une suppression concurrente gagne ; elle ne peut être annulée

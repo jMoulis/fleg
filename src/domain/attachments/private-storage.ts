@@ -87,7 +87,8 @@ export class PrivateStorageError extends Error {
       | "STORAGE_INTEGRITY"
       | "UPLOAD_CONFLICT"
       | "UPLOAD_NOT_FOUND"
-      | "UPLOAD_QUOTA",
+      | "UPLOAD_QUOTA"
+      | "UPLOAD_CALLBACK_INVALID",
     message: string,
   ) {
     super(message);
