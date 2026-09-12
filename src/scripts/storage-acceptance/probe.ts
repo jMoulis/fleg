@@ -6,6 +6,16 @@ import {
   type UploadIntentInput,
 } from "@/domain/attachments/private-storage";
 import type { AuthorizedStoreContext } from "@/domain/stores/schemas";
+import {
+  httpEvidenceSchema,
+  mimeHeaderSchema,
+  objectObservationSchema,
+  uploadEvidenceSchema,
+  uploadHeaders,
+  type HttpEvidence,
+  type MimeHeader,
+  type UploadHeaders,
+} from "./evidence";
 
 export const acceptanceStoreId = "store_5MOJSflf0L273Hz3";
 export const acceptanceLimits = {
@@ -36,7 +46,7 @@ const checkNames = [
   "pdf_private_read",
   "pdf_parsed_locally",
 ] as const;
-const reportSchema = z
+const legacyReportSchema = z
   .object({
     version: z.literal(1),
     runId: z.uuid(),
@@ -80,6 +90,19 @@ const reportSchema = z
       .length(acceptanceLimits.paths),
   })
   .strict();
+const checkSchema = legacyReportSchema.shape.checks.element.extend({
+  responseContentType: httpEvidenceSchema.shape.responseContentType.optional(),
+  uploadEvidence: uploadEvidenceSchema.optional(),
+});
+const currentReportSchema = legacyReportSchema.extend({
+  version: z.literal(2),
+  mimeHeader: mimeHeaderSchema,
+  checks: z.array(checkSchema).max(checkNames.length),
+});
+const reportSchema = z.discriminatedUnion("version", [
+  legacyReportSchema,
+  currentReportSchema,
+]);
 export type AcceptanceReport = z.infer<typeof reportSchema>;
 type CheckName = (typeof checkNames)[number];
 
@@ -163,9 +186,13 @@ export function acceptanceFixtures(runId: string) {
   }));
 }
 
-export function prepareAcceptance(runId: string): AcceptanceReport {
+export function prepareAcceptance(
+  runId: string,
+  mimeHeader: MimeHeader = "content-type",
+): z.infer<typeof currentReportSchema> {
   return {
-    version: 1,
+    version: 2,
+    mimeHeader,
     runId,
     storeId: acceptanceStoreId,
     createdAt: new Date().toISOString(),
@@ -211,8 +238,15 @@ export interface AcceptancePort {
   ): Promise<string>;
   request(
     url: string,
-    options: { method: "GET" | "PUT"; bytes?: Uint8Array; mimeType?: string },
-  ): Promise<number>;
+    options: {
+      method: "GET" | "PUT";
+      bytes?: Uint8Array;
+      headers?: UploadHeaders;
+    },
+  ): Promise<HttpEvidence>;
+  observe(
+    reference: PrivateBlobReference,
+  ): Promise<z.infer<typeof objectObservationSchema>>;
   read(
     reference: PrivateBlobReference,
     input: UploadIntentInput,
@@ -271,15 +305,21 @@ export async function runAcceptance(
   port: AcceptancePort,
   save: SaveReport,
 ) {
-  if (report.status !== "prepared" || report.operationsReserved !== 0)
+  if (
+    report.version !== 2 ||
+    report.status !== "prepared" ||
+    report.operationsReserved !== 0
+  )
     throw new Error("An acceptance run cannot be replayed; cleanup only");
+  // Keep the narrowed v2 report in closures; v1 is cleanup-only, never upgraded.
+  const run = report;
   const [png, pdf, forged] = acceptanceFixtures(report.runId);
   if (!png || !pdf || !forged) throw new Error("Missing fixtures");
   report.status = "running";
   let current: CheckName = "empty_paths";
   async function check(
     name: CheckName,
-    action: () => Promise<boolean | number>,
+    action: () => Promise<boolean | HttpEvidence>,
     accepted?: readonly number[],
   ) {
     current = name;
@@ -287,23 +327,80 @@ export async function runAcceptance(
     const passed =
       typeof result === "boolean"
         ? result
-        : accepted?.includes(result) === true;
-    report.checks.push({
+        : accepted?.includes(result.httpStatus) === true;
+    run.checks.push({
       name,
       outcome: passed ? "passed" : "failed",
-      ...(typeof result === "number" ? { httpStatus: result } : {}),
+      ...(typeof result === "object" ? httpEvidenceSchema.parse(result) : {}),
     });
     await save(report);
     if (!passed) throw new Error("Provider check failed");
   }
-  async function request(
+  async function request(url: string) {
+    await reserve(report, save, 1);
+    return port.request(url, { method: "GET" });
+  }
+  async function uploadCheck(
+    name: CheckName,
     url: string,
-    method: "GET" | "PUT",
-    bytes?: Uint8Array,
-    mimeType?: string,
+    fixture: NonNullable<typeof png>,
+    bytes: Uint8Array,
+    mimeType: "image/png" | "application/pdf" | "text/plain",
+    accepted: readonly number[],
+    expected: "absent" | "present",
   ) {
-    await reserve(report, save, 1, bytes?.byteLength ?? 0);
-    return port.request(url, { method, bytes, mimeType });
+    current = name;
+    const headers = uploadHeaders(run.mimeHeader, mimeType);
+    const entry: z.infer<typeof checkSchema> = {
+      name,
+      outcome: "failed",
+      uploadEvidence: { sentHeaders: headers },
+    };
+    run.checks.push(entry);
+    // Reserve PUT + fresh private GET before either call, including when the
+    // PUT response is lost. The six cleanup attempts remain separately held.
+    await reserve(report, save, 2, bytes.byteLength);
+    try {
+      Object.assign(
+        entry,
+        httpEvidenceSchema.parse(
+          await port.request(url, {
+            method: "PUT",
+            bytes,
+            headers,
+          }),
+        ),
+      );
+    } catch {
+      // No raw error, URL or response body. Still observe the owned path.
+    }
+    await save(report); // retain the status even if observation is interrupted
+    let observation: z.infer<typeof objectObservationSchema>;
+    try {
+      observation = objectObservationSchema.parse(
+        await port.observe(fixture.reference),
+      );
+    } catch {
+      observation = { state: "unavailable" };
+    }
+    entry.uploadEvidence = {
+      sentHeaders: headers,
+      observation,
+      observedAt: new Date().toISOString(),
+    };
+    const objectMatches =
+      expected === "absent"
+        ? observation.state === "absent"
+        : observation.state === "present" &&
+          observation.storedContentType === fixture.input.mimeType &&
+          observation.declaredSizeBytes === fixture.input.sizeBytes;
+    const passed =
+      entry.httpStatus !== undefined &&
+      accepted.includes(entry.httpStatus) &&
+      objectMatches;
+    entry.outcome = passed ? "passed" : "failed";
+    await save(report);
+    if (!passed) throw new Error("Provider upload check failed");
   }
   async function authorize(index: number) {
     const fixture = index === 0 ? png! : pdf!;
@@ -333,37 +430,50 @@ export async function runAcceptance(
       url = await authorize(0);
       return true;
     });
-    await check(
+    await uploadCheck(
       "mime_refused",
-      () => request(url, "PUT", png.bytes, "text/plain"),
+      url,
+      png,
+      png.bytes,
+      "text/plain",
       [400, 403, 415],
+      "absent",
     );
-    await check(
+    await uploadCheck(
       "size_refused",
-      () =>
-        request(url, "PUT", new Uint8Array(png.bytes.length + 1), "image/png"),
+      url,
+      png,
+      new Uint8Array(png.bytes.length + 1),
+      "image/png",
       [400, 403, 413],
+      "absent",
     );
-    await check(
+    await uploadCheck(
       "path_refused",
-      () =>
-        request(
-          port.changePath(url, forged.reference),
-          "PUT",
-          png.bytes,
-          "image/png",
-        ),
+      port.changePath(url, forged.reference),
+      forged,
+      png.bytes,
+      "image/png",
       [400, 403],
+      "absent",
     );
-    await check(
+    await uploadCheck(
       "png_uploaded",
-      () => request(url, "PUT", png.bytes, "image/png"),
+      url,
+      png,
+      png.bytes,
+      "image/png",
       [200, 201],
+      "present",
     );
-    await check(
+    await uploadCheck(
       "overwrite_refused",
-      () => request(url, "PUT", png.bytes, "image/png"),
+      url,
+      png,
+      png.bytes,
+      "image/png",
       [400, 403, 409, 412],
+      "present",
     );
     await check("png_private_read", async () => {
       await reserve(report, save, 1);
@@ -371,7 +481,7 @@ export async function runAcceptance(
     });
     await check(
       "anonymous_refused",
-      () => request(port.anonymousUrl(png.reference), "GET"),
+      () => request(port.anonymousUrl(png.reference)),
       [401, 403, 404],
     );
     // Probe the actual private read endpoint, not a malformed GET to the
@@ -382,7 +492,7 @@ export async function runAcceptance(
     }
     await check(
       "get_with_put_signature_refused",
-      () => request(signedRead.toString(), "GET"),
+      () => request(signedRead.toString()),
       [400, 401, 403, 405],
     );
     let pdfUrl = "";
@@ -390,10 +500,14 @@ export async function runAcceptance(
       pdfUrl = await authorize(1);
       return true;
     });
-    await check(
+    await uploadCheck(
       "pdf_uploaded",
-      () => request(pdfUrl, "PUT", pdf.bytes, "application/pdf"),
+      pdfUrl,
+      pdf,
+      pdf.bytes,
+      "application/pdf",
       [200, 201],
+      "present",
     );
     let downloaded: Uint8Array | null = null;
     await check("pdf_private_read", async () => {

@@ -26,6 +26,10 @@ import {
   createAcceptancePort,
 } from "@/scripts/storage-acceptance/provider";
 import { validatePdf } from "@/server/storage/pdf-validator";
+import {
+  classifyMimeType,
+  uploadHeaders,
+} from "@/scripts/storage-acceptance/evidence";
 
 const runId = "986b43b3-9a6e-44d0-bada-d703755463df";
 const secret = "never-print-provider-secrets";
@@ -54,18 +58,35 @@ function harness() {
         `https://vercel.com/api/blob/?pathname=${ref.pathname}&authorized=${ref.pathname}`,
     ),
     request: vi.fn(async (url, options) => {
+      const respond = (httpStatus: number) => ({
+        httpStatus,
+        responseContentType: "application/json" as const,
+      });
       const parsed = new URL(url);
       const path = parsed.searchParams.get("pathname")!;
-      if (options.method === "GET") return 403;
-      if (path !== parsed.searchParams.get("authorized")) return 403;
+      if (options.method === "GET") return respond(403);
+      if (path !== parsed.searchParams.get("authorized")) return respond(403);
       const fixture = fixtures.find(
         (fixture) => fixture.reference.pathname === path,
       )!;
-      if (options.mimeType !== fixture.input.mimeType) return 415;
-      if (options.bytes!.length > fixture.input.sizeBytes) return 413;
-      if (data.has(path)) return 409;
+      const declaredMime =
+        options.headers?.contentType ?? options.headers?.blobContentType;
+      if (declaredMime !== fixture.input.mimeType) return respond(415);
+      if (options.bytes!.length > fixture.input.sizeBytes) return respond(413);
+      if (data.has(path)) return respond(409);
       data.set(path, options.bytes!);
-      return 200;
+      return respond(200);
+    }),
+    observe: vi.fn(async (ref) => {
+      const bytes = data.get(ref.pathname);
+      if (!bytes) return { state: "absent" as const };
+      return {
+        state: "present" as const,
+        storedContentType: fixtures.find(
+          (fixture) => fixture.reference.pathname === ref.pathname,
+        )!.input.mimeType,
+        declaredSizeBytes: bytes.byteLength,
+      };
     }),
     read: vi.fn(async (ref) => data.get(ref.pathname) ?? null),
     remove: vi.fn(async (ref) => {
@@ -108,6 +129,8 @@ describe("TECH-04 operator acceptance, hermetic by default", () => {
     const result = JSON.parse(output);
     expect(result.mode).toBe("dry-run");
     expect(result.report.operationsReserved).toBe(0);
+    expect(result.report.version).toBe(2);
+    expect(result.report.mimeHeader).toBe("content-type");
     expect(result.report.releaseReady).toBe(false);
     expect(output).not.toContain(secret);
     expect(existsSync(directory)).toBe(existed);
@@ -206,7 +229,11 @@ describe("TECH-04 operator acceptance, hermetic by default", () => {
     expect(report.uploadBytesReserved).toBeLessThan(
       acceptanceLimits.uploadedBytes,
     );
-    expect(report.operationsReserved).toBe(21);
+    expect(report.operationsReserved).toBe(27);
+    expect(h.port.observe).toHaveBeenCalledTimes(6);
+    expect(report.checks.filter((check) => check.uploadEvidence)).toHaveLength(
+      6,
+    );
     expect(
       report.objects.every((object) => object.cleanup === "absence_observed"),
     ).toBe(true);
@@ -248,7 +275,7 @@ describe("TECH-04 operator acceptance, hermetic by default", () => {
     const request = h.port.request;
     h.port.request = async (url, options) => {
       const status = await request(url, options);
-      if (status === 200) throw new Error(secret); // server stored it, response lost
+      if (status.httpStatus === 200) throw new Error(secret); // server stored it, response lost
       return status;
     };
     const remove = h.port.remove;
@@ -258,6 +285,14 @@ describe("TECH-04 operator acceptance, hermetic by default", () => {
     const report = prepareAcceptance(runId);
     await runAcceptance(report, h.port, h.save);
     expect(report.status).toBe("failed");
+    expect(
+      report.checks.find((check) => check.name === "png_uploaded"),
+    ).toMatchObject({
+      outcome: "failed",
+      uploadEvidence: {
+        observation: { state: "present", storedContentType: "image/png" },
+      },
+    });
     expect(h.data.size).toBe(1);
     expect(report.objects.every((object) => object.cleanup === "pending")).toBe(
       true,
@@ -343,7 +378,10 @@ describe("TECH-04 operator acceptance, hermetic by default", () => {
     );
     const fetch = vi.fn(async () => new Response("discard", { status: 403 }));
     vi.stubGlobal("fetch", fetch);
-    expect(await port.request(url, { method: "GET" })).toBe(403);
+    expect(await port.request(url, { method: "GET" })).toEqual({
+      httpStatus: 403,
+      responseContentType: "text/plain",
+    });
     expect(fetch).toHaveBeenCalledWith(
       expect.any(URL),
       expect.objectContaining({ redirect: "error", credentials: "omit" }),
@@ -354,10 +392,314 @@ describe("TECH-04 operator acceptance, hermetic by default", () => {
     await expect(
       port.absent({ ...png!.reference, pathname: "foreign.png" }),
     ).rejects.toThrow();
+    await expect(
+      port.observe({ ...png!.reference, pathname: "foreign.png" }),
+    ).rejects.toThrow();
     expect(() =>
       port.remove({ ...png!.reference, storeId: "store_other" }),
     ).toThrow();
     expect(get).not.toHaveBeenCalled();
     expect(del).not.toHaveBeenCalled();
+  });
+
+  it("selects exactly one MIME header per run, including controls; no fallback", async () => {
+    const h = harness();
+    const report = prepareAcceptance(runId, "x-content-type");
+    await runAcceptance(report, h.port, h.save);
+    expect(report.status).toBe("passed");
+    const uploads = vi
+      .mocked(h.port.request)
+      .mock.calls.filter(([, options]) => options.method === "PUT");
+    expect(uploads).toHaveLength(6);
+    expect(uploads.map(([, options]) => options.headers)).toEqual([
+      uploadHeaders("x-content-type", "text/plain"),
+      ...Array.from({ length: 4 }, () =>
+        uploadHeaders("x-content-type", "image/png"),
+      ),
+      uploadHeaders("x-content-type", "application/pdf"),
+    ]);
+    expect(parseAcceptanceReport(report, runId)).toEqual(report);
+  });
+
+  it.each(["image/png", "text/plain"] as const)(
+    "retains unexpected HTTP 200 and stored %s before cleanup, never passes it",
+    async (storedContentType) => {
+      const h = harness();
+      h.port.request = vi.fn<AcceptancePort["request"]>(
+        async (_url, options) => {
+          h.data.set(h.fixtures[0]!.reference.pathname, options.bytes!);
+          return { httpStatus: 200, responseContentType: "application/json" };
+        },
+      );
+      h.port.observe = vi.fn<AcceptancePort["observe"]>(async () => ({
+        state: "present",
+        storedContentType,
+        declaredSizeBytes: 68,
+      }));
+      const report = prepareAcceptance(runId);
+      await runAcceptance(report, h.port, h.save);
+      expect(report.status).toBe("failed");
+      expect(report.checks.at(-1)).toMatchObject({
+        name: "mime_refused",
+        outcome: "failed",
+        httpStatus: 200,
+        responseContentType: "application/json",
+        uploadEvidence: {
+          sentHeaders: { contentType: "text/plain", blobContentType: null },
+          observation: {
+            state: "present",
+            storedContentType,
+            declaredSizeBytes: 68,
+          },
+          observedAt: expect.any(String),
+        },
+      });
+      expect(h.port.request).toHaveBeenCalledTimes(1);
+      expect(h.port.observe).toHaveBeenCalledTimes(1);
+      expect(
+        vi.mocked(h.port.observe).mock.invocationCallOrder[0],
+      ).toBeLessThan(vi.mocked(h.port.remove).mock.invocationCallOrder[0]!);
+      expect(
+        h.snapshots.some(
+          (snapshot) =>
+            snapshot.version === 2 &&
+            snapshot.checks.at(-1)?.httpStatus === 200 &&
+            !snapshot.checks.at(-1)?.uploadEvidence?.observation,
+        ),
+      ).toBe(true);
+      expect(
+        h.snapshots.some(
+          (snapshot) =>
+            snapshot.operationsReserved === 6 &&
+            snapshot.uploadBytesReserved === 68 &&
+            snapshot.checks.at(-1)?.httpStatus === undefined,
+        ),
+      ).toBe(true);
+      expect(report.operationsReserved).toBe(12);
+      expect(h.data.size).toBe(0);
+      expect(parseAcceptanceReport(report, runId)).toEqual(report);
+    },
+  );
+
+  it("does not confuse HTTP 200 HTML without an object with a successful upload", async () => {
+    const h = harness();
+    h.port.request = vi.fn<AcceptancePort["request"]>(async () => ({
+      httpStatus: 200,
+      responseContentType: "text/html",
+    }));
+    const report = prepareAcceptance(runId);
+    await runAcceptance(report, h.port, h.save);
+    expect(report.checks.at(-1)).toMatchObject({
+      outcome: "failed",
+      httpStatus: 200,
+      responseContentType: "text/html",
+      uploadEvidence: { observation: { state: "absent" } },
+    });
+    expect(report.status).toBe("failed");
+  });
+
+  it("fails even with an expected refusal if the object exists or observation is unavailable", async () => {
+    for (const observe of [
+      async () => ({
+        state: "present" as const,
+        storedContentType: "image/png" as const,
+        declaredSizeBytes: 68,
+      }),
+      async () => {
+        throw new Error(secret);
+      },
+    ]) {
+      const h = harness();
+      h.port.observe = observe;
+      const report = prepareAcceptance(runId);
+      await runAcceptance(report, h.port, h.save);
+      expect(report.status).toBe("failed");
+      expect(report.checks.at(-1)).toMatchObject({
+        name: "mime_refused",
+        httpStatus: 415,
+        outcome: "failed",
+      });
+      expect(h.removed).toHaveLength(3);
+      expect(JSON.stringify(report)).not.toContain(secret);
+    }
+  });
+
+  it("reads legacy v1 reports for cleanup without upgrading, resetting counters or replaying", async () => {
+    const { mimeHeader, ...base } = prepareAcceptance(runId);
+    expect(mimeHeader).toBe("content-type");
+    const legacy = {
+      ...base,
+      version: 1,
+      status: "failed",
+      operationsReserved: 11,
+      uploadBytesReserved: 68,
+      checks: [{ name: "mime_refused", httpStatus: 200, outcome: "failed" }],
+      objects: base.objects.map((object) => ({
+        ...object,
+        cleanup: "absence_observed",
+      })),
+    };
+    const report = parseAcceptanceReport(legacy, runId);
+    expect(report).toEqual(legacy);
+    const h = harness();
+    await expect(runAcceptance(report, h.port, h.save)).rejects.toThrow(
+      "cannot be replayed",
+    );
+    await expect(
+      runAcceptance(
+        parseAcceptanceReport(
+          { ...legacy, status: "prepared", operationsReserved: 0 },
+          runId,
+        ),
+        h.port,
+        h.save,
+      ),
+    ).rejects.toThrow("cannot be replayed");
+    await cleanupAcceptance(report, h.port, h.save);
+    expect(report).toEqual({ ...legacy, operationsReserved: 17 });
+    expect(h.port.request).not.toHaveBeenCalled();
+    expect(h.port.observe).not.toHaveBeenCalled();
+    expect(h.port.authorize).not.toHaveBeenCalled();
+  });
+
+  it("rejects MIME variant changes during cleanup and invalid variants before env loading", () => {
+    for (const args of [
+      ["--mime-header=unknown"],
+      [
+        "--execute",
+        "--cleanup",
+        `--run-id=${runId}`,
+        "--mime-header=x-content-type",
+      ],
+    ]) {
+      expect(() =>
+        execFileSync(
+          process.execPath,
+          [
+            "--import",
+            "tsx",
+            "--conditions=react-server",
+            "src/scripts/verify-storage.ts",
+            ...args,
+          ],
+          {
+            stdio: "pipe",
+            env: { ...process.env, BLOB_READ_WRITE_TOKEN: secret },
+          },
+        ),
+      ).toThrow("Storage acceptance stopped (arguments)");
+    }
+  });
+
+  it("sends the exact selected wire header, records classified response MIME and cancels bodies", async () => {
+    vi.stubEnv("VERCEL_BLOB_RETRIES", "0");
+    const port = createAcceptancePort(acceptanceConfig(env, runId));
+    const png = acceptanceFixtures(runId)[0]!;
+    const cancel = vi.fn();
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () =>
+        new Response(new ReadableStream({ cancel }), {
+          status: 200,
+          headers: { "Content-Type": `text/html; secret=${secret}` },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    for (const variant of ["content-type", "x-content-type"] as const) {
+      const result = await port.request(
+        `https://vercel.com/api/blob/?pathname=${png.reference.pathname}`,
+        {
+          method: "PUT",
+          bytes: png.bytes,
+          headers: uploadHeaders(variant, "text/plain"),
+        },
+      );
+      expect(result).toEqual({
+        httpStatus: 200,
+        responseContentType: "text/html",
+      });
+      expect(fetch.mock.lastCall?.[1]).toMatchObject({
+        headers:
+          variant === "content-type"
+            ? { "Content-Type": "text/plain" }
+            : { "x-content-type": "text/plain" },
+        redirect: "error",
+        credentials: "omit",
+      });
+    }
+    expect(cancel).toHaveBeenCalledTimes(2);
+    expect(classifyMimeType(`https://example.test/?token=${secret}`)).toBe(
+      "other",
+    );
+    expect(classifyMimeType(null)).toBe("missing");
+    expect(classifyMimeType("x".repeat(257))).toBe("other");
+  });
+
+  it("observes private metadata without reading a body or masking missing/invalid/provider errors", async () => {
+    vi.stubEnv("VERCEL_BLOB_RETRIES", "0");
+    const port = createAcceptancePort(acceptanceConfig(env, runId));
+    const png = acceptanceFixtures(runId)[0]!;
+    const cancel = vi.fn();
+    for (const [size, pathname, contentType, expected] of [
+      [
+        68,
+        png.reference.pathname,
+        "image/png",
+        {
+          state: "present",
+          storedContentType: "image/png",
+          declaredSizeBytes: 68,
+        },
+      ],
+      [
+        68,
+        png.reference.pathname,
+        secret,
+        { state: "present", storedContentType: "other", declaredSizeBytes: 68 },
+      ],
+      [-1, png.reference.pathname, "image/png", { state: "invalid_metadata" }],
+      [NaN, png.reference.pathname, "image/png", { state: "invalid_metadata" }],
+      [68, "foreign.png", "image/png", { state: "invalid_metadata" }],
+      [
+        25 * 1024 * 1024 + 1,
+        png.reference.pathname,
+        "application/pdf",
+        { state: "size_exceeds_limit" },
+      ],
+    ] as const) {
+      vi.mocked(get).mockResolvedValueOnce({
+        statusCode: 200,
+        stream: new ReadableStream({ cancel }),
+        headers: new Headers({
+          "content-length": String(size),
+          "content-type": contentType,
+        }),
+        blob: {
+          size,
+          pathname,
+          contentType,
+          url: "https://private.example/secret",
+          downloadUrl: "https://private.example/secret",
+          uploadedAt: new Date(),
+          contentDisposition: "",
+          cacheControl: "",
+          etag: secret,
+        },
+      });
+      expect(await port.observe(png.reference)).toEqual(expected);
+    }
+    expect(cancel).toHaveBeenCalledTimes(6);
+    expect(get).toHaveBeenLastCalledWith(
+      png.reference.pathname,
+      expect.objectContaining({
+        access: "private",
+        token: env.BLOB_READ_WRITE_TOKEN,
+        useCache: false,
+        abortSignal: expect.any(AbortSignal),
+      }),
+    );
+    vi.mocked(get).mockResolvedValueOnce(null);
+    expect(await port.observe(png.reference)).toEqual({ state: "absent" });
+    vi.mocked(get).mockRejectedValueOnce(new Error(secret));
+    await expect(port.observe(png.reference)).rejects.toThrow(); // caller records unavailable, never absence
   });
 });

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { loadEnvFile } from "node:process";
 import { parseArgs } from "node:util";
 import * as z from "zod";
+import { mimeHeaderSchema } from "./storage-acceptance/evidence";
 import {
   acceptanceLimits,
   acceptanceStoreId,
@@ -32,13 +33,19 @@ async function main() {
       cleanup: { type: "boolean", default: false },
       "run-id": { type: "string" },
       "confirm-store": { type: "string" },
+      "mime-header": { type: "string" },
     },
     strict: true,
     allowPositionals: false,
   });
   const runId = z.uuid().parse(values["run-id"] ?? randomUUID());
+  const mimeHeader = mimeHeaderSchema.parse(
+    values["mime-header"] ?? "content-type",
+  );
   if (values.cleanup && (!values.execute || !values["run-id"]))
     throw new Error("Cleanup requires execution and the original run id");
+  if (values.cleanup && values["mime-header"] !== undefined)
+    throw new Error("Cleanup cannot change the recorded MIME variant");
   if (!values.execute) {
     // No env load, provider import, network call or file write in dry-run.
     console.log(
@@ -46,7 +53,7 @@ async function main() {
         {
           mode: "dry-run",
           limits: acceptanceLimits,
-          report: prepareAcceptance(runId),
+          report: prepareAcceptance(runId, mimeHeader),
           note: "Synthetic local-to-dev Blob probe only; does not authorize production, callbacks or app uploads.",
         },
         null,
@@ -125,7 +132,7 @@ async function main() {
       phase = "cleanup";
       await cleanupAcceptance(report, port, save);
     } else {
-      report = prepareAcceptance(runId);
+      report = prepareAcceptance(runId, mimeHeader);
       await save(report);
       phase = "probe";
       await runAcceptance(report, port, save);

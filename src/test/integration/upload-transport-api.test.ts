@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   authorize: vi.fn(),
   verify: vi.fn(),
   intentConfig: vi.fn(),
+  get: vi.fn(),
+  reconcile: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/auth/store-context", () => ({
@@ -39,12 +41,17 @@ vi.mock("@/server/storage/upload-transport", () => ({
 }));
 vi.mock("@/server/repositories/upload-intent-repository", () => ({
   UploadIntentRepository: class {
+    get = mocks.get;
     beginAuthorization = mocks.begin;
     assertAuthorizationCurrent = mocks.current;
     cancel = mocks.cancel;
     recordCompletion = mocks.record;
   },
 }));
+vi.mock("@/server/services/upload-lifecycle-service", () => ({
+  getUploadLifecycle: async () => ({ reconcile: mocks.reconcile }),
+}));
+import { POST as verifyUpload } from "@/app/api/stores/[storeId]/attachments/upload-intents/[intentId]/verify/route";
 import { POST as authorize } from "@/app/api/stores/[storeId]/attachments/upload-intents/[intentId]/authorization/route";
 import { POST as cancel } from "@/app/api/stores/[storeId]/attachments/upload-intents/[intentId]/cancel/route";
 import { POST as callback } from "@/app/api/storage/blob/upload-completed/route";
@@ -89,6 +96,7 @@ describe("TECH-04 transport route boundaries (release enabled only by test injec
     mocks.begin.mockResolvedValue({ intentId });
     mocks.authorize.mockResolvedValue(uploaded);
     mocks.current.mockResolvedValue(undefined);
+    mocks.get.mockResolvedValue({ id: intentId, state: "linked" });
     mocks.verify.mockResolvedValue({ intentId });
     mocks.cancel.mockResolvedValue({
       id: intentId,
@@ -100,6 +108,8 @@ describe("TECH-04 transport route boundaries (release enabled only by test injec
     mocks.context.mockRejectedValue(new StoreAccessDeniedError());
     expect((await authorize(request(), route)).status).toBe(404);
     expect((await cancel(request(), route)).status).toBe(404);
+    expect((await verifyUpload(request(), route)).status).toBe(404);
+    expect(mocks.reconcile).not.toHaveBeenCalled();
     expect(mocks.config).not.toHaveBeenCalled();
     expect(mocks.begin).not.toHaveBeenCalled();
     expect(mocks.cancel).not.toHaveBeenCalled();
@@ -122,6 +132,41 @@ describe("TECH-04 transport route boundaries (release enabled only by test injec
     expect(mocks.begin).not.toHaveBeenCalled();
     expect(mocks.authorize).not.toHaveBeenCalled();
     expect(mocks.db).not.toHaveBeenCalled();
+  });
+  it("verifies only the current owner's intent with an empty origin-checked command", async () => {
+    for (const req of [
+      request({}, null),
+      request({}, "https://foreign.test"),
+      request({ received: true }),
+    ])
+      expect([400, 404]).toContain((await verifyUpload(req, route)).status);
+    expect(mocks.reconcile).not.toHaveBeenCalled();
+    mocks.get.mockRejectedValueOnce(
+      new PrivateStorageError("UPLOAD_NOT_FOUND", "Introuvable"),
+    );
+    expect((await verifyUpload(request(), route)).status).toBe(404);
+    expect(mocks.reconcile).not.toHaveBeenCalled();
+    const response = await verifyUpload(request(), route);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(mocks.reconcile).toHaveBeenCalledWith(
+      context,
+      expect.any(String),
+      intentId,
+    );
+    mocks.get.mockResolvedValue({ id: intentId, state: "reserved" });
+    expect((await verifyUpload(request(), route)).status).toBe(202);
+  });
+  it("does not verify with the dev gate disabled, or return a receipt after access revocation", async () => {
+    mocks.config.mockImplementationOnce(() => {
+      throw new PrivateStorageError("STORAGE_DISABLED", "Indisponible");
+    });
+    expect((await verifyUpload(request(), route)).status).toBe(503);
+    expect(mocks.reconcile).not.toHaveBeenCalled();
+    mocks.context
+      .mockResolvedValueOnce(context)
+      .mockRejectedValueOnce(new StoreAccessDeniedError());
+    expect((await verifyUpload(request(), route)).status).toBe(404);
   });
   it("refuses disabled transport and callbacks without DB/provider calls", async () => {
     mocks.config.mockImplementation(() => {

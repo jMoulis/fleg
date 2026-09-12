@@ -6,6 +6,7 @@ import { attachmentErrorResponse } from "@/server/http/attachment-error-response
 import { readUploadIntentRequest } from "@/server/http/upload-intent-request";
 import { UploadIntentRepository } from "@/server/repositories/upload-intent-repository";
 import { requireUploadIntentConfig } from "@/server/storage/config";
+import { privateUploadsAvailable } from "@/server/storage/upload-transport";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +34,14 @@ export async function POST(
       requestId,
     );
     return NextResponse.json(
-      { intent, requestId },
+      {
+        intent: {
+          ...intent,
+          uploadAvailable:
+            intent.state === "reserved" && privateUploadsAvailable(),
+        },
+        requestId,
+      },
       { status: 201, headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {

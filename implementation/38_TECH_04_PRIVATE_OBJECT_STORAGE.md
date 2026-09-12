@@ -2,12 +2,111 @@
 
 ## Statut et reprise du plan
 
+### Autorisation de mise au point — 2026-09-12
+
+Le responsable demande maintenant explicitement de débloquer l’upload et
+autorise les tests nécessaires sur **le Blob Vercel dev**. Cet accord remplace
+la demande de reconfirmation pour chaque recette de développement ci-dessous.
+Il ne vaut ni activation en production, ni migration, ni budget mensuel illimité.
+Les essais utilisent des chemins synthétiques dédiés avec nettoyage exact et
+rapports conservés ; les plafonds du CLI restent 3 chemins / 30 Mio / 100
+opérations par essai. Première série de diagnostic : au plus trois essais,
+90 Mio envoyés / 300 opérations, en examinant chaque résultat avant le suivant.
+Ne pas modifier les rapports historiques ni utiliser les fichiers utilisateur.
+Les contraintes techniques de sécurité restent à vérifier ; une autorisation
+ne prouve pas les garanties du fournisseur. La PR #41 est encore ouverte avec
+ses contrôles verts au début de cette reprise.
+
 Contrat de réalisation préparé le 2026-09-12. **Infrastructure configurée après
 accord explicite ; lot 1 fusionné via PR #36, lot 2a fusionné via PR #37 et
-lot 2b implémenté derrière le verrou de livraison du transport. TECH-04
-reste ouvert : aucun envoi direct Blob n’est encore disponible.**
+lot 2b fusionné via PR #38. Le présent lot ouvre les PDF connectés en développement,
+sans ouverture en production. TECH-04 reste ouvert.** Les sections des lots
+précédents conservent leur état historique ; le bloc suivant fait foi pour
+l’activation dev actuelle.
 Il précise TECH-04 de la [PR #26](https://github.com/jMoulis/fleg/pull/26), sans
 nouvel identifiant ni extension de la feuille de route.
+
+### Livraison actuelle — Documents PDF connectés sur Blob dev
+
+- Page `/{organizationSlug}/stores/{storeId}/documents`, navigation mobile et
+  desktop, liste paginée de 20 sources, téléchargement privé et retrait confirmé.
+- Ajout PDF : 25 Mio / 60 pages maximum, description facultative ; aucune analyse
+  IA, OCR ou extraction promotionnelle ne se déclenche.
+- `BLOB_DEV_UPLOADS_ENABLED=true` et `BLOB_INTENTS_ENABLED=true` sont tous deux
+  requis, avec ressource dev épinglée, namespace et quatre plafonds explicites.
+  `VERCEL_ENV=production` refuse toujours le transport, même avec ces flags.
+  `.env.example` et la CI restent désactivés, sans identifiants Blob utilisables.
+- `.env.local` est activé sur `local-development`, 104857600 octets et 20 objets
+  par magasin **et** ressource (plafonds conservateurs de test, pas budget mensuel).
+  Aucun secret ni fichier utilisateur n’est versionné. Aucune variable Production
+  ou Preview distante n’a été modifiée par cette reprise.
+- Le navigateur envoie `x-content-type` selon le protocole SDK constaté, à une
+  URL HTTPS `vercel.com/api/blob[/]`, sans cookies ni referrer, sans redirection.
+  Une réponse PUT perdue ne déclenche jamais un second PUT automatique.
+- La commande `POST .../upload-intents/{intentId}/verify` accepte uniquement `{}`,
+  même origine, auteur courant autorisé pour le magasin. Elle lit les octets privés,
+  vérifie MIME/taille/SHA-256/PDFium, revalide les droits et lie transactionnellement.
+  Aucun reçu client n’est une preuve. Elle n’attend pas l’expiration de l’autorisation
+  pour **vérifier**, mais l’attente reste obligatoire avant **nettoyage**.
+- La reprise conserve seulement l’UUID de suivi en `sessionStorage`, par compte et
+  magasin, avant toute autorisation/PUT. Aucun fichier, token ou URL signée n’y est
+  conservé. Recharger le même onglet retrouve « Vérifier la réception » ou
+  « Abandonner l’envoi ». Ce n’est pas une file offline, ni une promesse de reprise
+  après fermeture définitive de l’onglet. Les traces serveur restent récupérables.
+- Une vérification manquante/occupée expose la date de reprise ; le backoff de
+  cinq minutes et les leases limitent les relectures concurrentes. Suppression et
+  annulation ne promettent pas l’effacement distant immédiat.
+- Le suivi dev ne dépend pas d’une callback publique inaccessible sur localhost.
+  Les callbacks déployées ne sont pas déclarées validées. Les intentions déjà
+  autorisées gardent leur quota et leurs tombstones, même après absence observée.
+  Utiliser la maintenance documentée plus bas ; aucune libération administrative
+  aveugle, migration ou tâche automatique nouvelle n’est ajoutée.
+- Les photos existantes continuent leur CRUD BSON. La file de photos Blob offline,
+  le traitement durable TECH-05 et l’extraction V4-01 restent des lots suivants.
+
+### Preuves réelles de cette reprise
+
+Deux recettes v2 dédiées, sur `store_5MOJSflf0L273Hz3`, rapports locaux préservés :
+
+| Run | Variante | Résultat | Usage réservé / envoyé | Nettoyage |
+| --- | --- | --- | --- | --- |
+| `fb071414-2170-431e-b938-318bde88d3f9` | `content-type` | refus MIME échoué (HTTP 200), objet effectif `image/png`, 68 octets | 12 opérations / 68 octets | 3 chemins absents |
+| `69651328-5c01-4fb8-b022-a43f8101b988` | `x-content-type` | 14 contrôles réussis, dont PDF de 25 Mio lu et parsé | 27 opérations / 26214741 octets | 3 chemins absents |
+
+Ces essais expliquent l’échec initial : le MIME stocké n’était pas piloté par le
+seul `Content-Type` HTTP. Ils ne démontrent pas une faille générique fournisseur.
+Le rapport v1 original n’a été ni réécrit ni rejoué. Total de cette série CLI :
+39 opérations réservées / 26214809 octets envoyés ; `releaseReady` reste faux.
+
+Recette applicative séparée : navigateur isolé sur `localhost:3101`, MongoDB
+replica set local jetable (aucun Atlas), namespace `local-acceptance-20260912`.
+Premier contrôle : URL SDK avec slash terminal rejetée avant PUT par le nouveau
+client ; validation du chemin corrigée et couverte en test, intention abandonnée.
+Second essai : un seul PDF synthétique de **329 octets**, vérification réseau
+volontairement interrompue, rechargement en viewport 390, puis vérification réussie
+sans réupload. Intention `7265b95e-a823-401e-9b89-8521e56f5cda`, un seul audit
+`attachment.upload_linked`, PDFium confirme une page. SHA-256 de l’original et du
+téléchargement : `3c3af9de8305435655c2266e22f4e1ef6abd1479f1d4061dfbf94013cb0f49ff`.
+Retrait par l’interface confirmé et téléchargement ensuite refusé (404).
+Pas de débordement mobile ni overlay d’erreur. Rapports et fixtures synthétiques
+sous `.local-backups/`, hors Git. Le PDF `assets/F&L-Promo.pdf` est resté intact.
+
+Nettoyage applicatif terminé le **2026-09-12 à 16:49:15 UTC**, après expiration
+des deux autorisations : suppression exacte et absence fraîche constatée pour
+les deux chemins, consignée dans `.local-backups/upload-dev-cleanup.json`.
+Les intentions restent volontairement `cleanup_pending` / `budgetHeld=true`
+(`AWAITING_TRANSPORT_PROOF`) : absence observée ne signifie pas libération de
+quota. La base locale et les fichiers de preuve sont conservés, pas purgés.
+
+Vérifications finales : `npm run check` avec MongoDB local, **478 tests / 104
+fichiers**, lint/types/Knip réussis. Build production et **68 E2E mobile/desktop
+réussis**, quatre tests live IA explicitement désactivés ; suite complète rejouée
+sur la version finale. Blob/OpenAI restent neutralisés dans cette CI. Le worker
+PDFium et son WASM sont présents dans les traces de la nouvelle route `verify`.
+
+Critères de ce sous-lot : envoi dev réel, reprise, rattachement unique, lecture
+privée, retrait, frontières d’autorisation et non-régression. Ils ne clôturent ni
+TECH-04 complet, ni PILOT-01, ni une recette de déploiement du worker PDF.
 
 Les PR #33/#34 ont livré le comptage unique. Le responsable rapporte l’avoir
 testé et demande de reprendre le plan. Le détail appareil/scénarios est demandé ;
@@ -523,8 +622,9 @@ Avant l’exécution, obtenir l’accord explicite de l’opérateur : uniquemen
 `fleg-blob-dev` / `store_5MOJSflf0L273Hz3`, au plus **3 chemins**, **30 Mio de
 corps de fichiers envoyés**, **100 tentatives d’opérations** par manifeste,
 nettoyage compris. Cette limite technique ne remplace pas un budget mensuel
-Vercel approuvé. La suite nominale réserve 21 opérations et environ 25 Mio
-d’envoi ; les lectures privées et le trafic associé consomment aussi de l’usage.
+Vercel approuvé. La suite nominale initiale (rapport v1) réserve 21 opérations et
+environ 25 Mio d’envoi ; la v2 décrite plus bas en réserve 27, avec le même budget
+d’envoi. Les lectures privées et le trafic associé consomment aussi de l’usage.
 Les compteurs réservés sont conservateurs, pas des relevés de facturation.
 
 Après accord, depuis la racine du dépôt local avec Node 24, reprendre le UUID
@@ -683,6 +783,86 @@ ni les routes applicatives, ni les quotas/tombstones métier. Aucune donnée
 utilisateur ou OpenAI utilisée. Aucune demande envoyée au support fournisseur.
 L’ouverture des uploads, TECH-05 et PILOT-01 restent non validés.
 
+### Observation MIME v2 — préparation sans nouvel appel réel
+
+Après fusion des PR #39 et #40 (`73045ff`), la branche
+`codex/tech-04-mime-probe-evidence` améliore uniquement le CLI de recette et ses
+tests. **L’échec réel ci-dessus reste inchangé.** Aucun nouveau run Blob, capacité,
+nettoyage distant, changement de variables ou upload utilisateur n’est exécuté
+par cette préparation. Le PDF présent dans `assets` n’est pas utilisé.
+
+**Ce qui est vérifié localement :** le vrai `put()` du SDK 2.8.0 transmet son
+option `contentType` dans `x-content-type`, pas dans l’en-tête HTTP
+`Content-Type` avec un corps Buffer. Un intercepteur Undici bloque tout réseau
+non simulé ; ce test vérifie le code du SDK, **pas l’application des restrictions
+par le serveur Vercel**. Undici 7.29.0, déjà présent transitivement, est déclaré
+explicitement en dépendance de développement pour cet intercepteur. La
+documentation des URL signées citée plus haut décrit toujours `Content-Type`.
+La cause de l’écart réel n’est donc pas déclarée résolue.
+
+Le nouveau rapport **v2** inscrit `mimeHeader` et accepte une seule variante
+par exécution :
+
+- `--mime-header=content-type` (défaut) reproduit l’en-tête de la première
+  recette : `Content-Type: text/plain` pour le refus MIME, puis PNG/PDF pour
+  les contrôles suivants. Aucun `x-content-type` ajouté implicitement.
+- `--mime-header=x-content-type` teste le type stocké déclaré par le SDK :
+  `x-content-type: text/plain`, puis PNG/PDF pour les autres contrôles. Aucun
+  `Content-Type` explicite ; le corps Blob est créé sans type.
+
+Simulations **sans réseau, sans chargement de secrets et sans écriture** :
+
+```bash
+npm run verify:storage -- --mime-header=content-type
+npm run verify:storage -- --mime-header=x-content-type
+```
+
+Ne pas lancer les deux variantes automatiquement, ni basculer après un échec.
+Une éventuelle exécution exige un **nouvel accord explicite borné** précisant
+la variante, le store dev, les chemins et les plafonds, puis les mêmes paramètres
+avec `--execute`, `--run-id` et `--confirm-store`. Les maxima techniques restent
+3 chemins / 30 Mio envoyés / 100 opérations, nettoyage compris ; ils ne recréent
+pas le budget consommé de l’autorisation initiale. Aucune exécution v2 n’est
+autorisée par les seules commandes de simulation ou par cette documentation.
+
+Après chacun des six PUT possibles, le probe réserve un GET privé supplémentaire
+**avant** l’envoi, puis observe le chemin exact sans cache, avant nettoyage et
+même si la réponse du PUT est perdue. Il enregistre d’abord le statut HTTP connu,
+puis l’observation horodatée : présence/absence, MIME classifié et taille déclarée.
+Une indisponibilité, un chemin/une taille invalides ou une taille > 25 Mio sont
+distincts d’une absence. Les en-têtes MIME libres deviennent `other` ; paramètres,
+URL, erreurs brutes, corps de réponse, clés et tokens ne sont jamais persistés.
+Le flux d’observation est annulé sans être consommé : **métadonnées seulement**,
+ni nouveau téléchargement complet du PDF, ni preuve d’intégrité du contenu.
+Les contrôles positifs existants conservent lecture bornée, SHA-256 et parseur PDF.
+
+Un HTTP 200 sur le refus MIME reste un échec, même si le fournisseur annonce
+`image/png`, ou renvoie du HTML sans objet. Un refus attendu avec un objet présent
+échoue aussi (sauf réécriture, où l’objet PNG précédent doit rester présent).
+Une observation indisponible échoue sans empêcher le nettoyage normal. La suite
+nominale réserve **27 opérations** (dont six GET d’observation et six opérations
+de nettoyage) et **25 Mio + 341 octets** envoyés. Les métadonnées ajoutent de
+l’usage fournisseur, pas un relevé exact de facturation ou une preuve de durée
+maximale de transfert. Le manifeste est écrit avant les opérations réservées ;
+une panne disque impose l’arrêt et la reprise explicite, pas des appels non tracés.
+
+Les rapports v1 restent lisibles pour `--cleanup`, **sans conversion, remise à
+zéro des compteurs ni rejeu**, même s’ils indiquent `prepared`. La récupération
+consomme le budget restant du rapport original. `--mime-header` est refusé avec
+`--cleanup` : aucun changement de protocole lors d’une reprise.
+
+Prochaine décision : choisir et autoriser une recette v2 bornée, puis examiner
+ses preuves. Le verrou applicatif, les quotas/tombstones, les gates de durée
+multipart, de callback déployée et de budget mensuel restent inchangés. Un succès
+local ou une seule variante réussie ne clôturent pas TECH-04 ni PILOT-01.
+
+Vérifications de ce lot : `npm run check` réussi, **466 tests / 103 fichiers**
+(22 tests de recette/SDK), MongoDB local temporaire, puis lint sans avertissement.
+Build de production E2E réussi et **REL-06 mobile/desktop : 2 tests réussis**,
+credentials Blob/OpenAI neutralisés. La suite E2E complète n’est pas rejouée
+pour ce seul outillage. Simulation CLI `x-content-type` vérifiée sans réseau.
+Le SHA-256 du manifeste v1 initial reste identique à la preuve consignée plus haut.
+
 ## Recette requise avant de déclarer TECH-04 livré
 
 - Unitaires : schémas, signatures, hash, limites PDF/photo, transitions,
@@ -703,14 +883,15 @@ L’ouverture des uploads, TECH-05 et PILOT-01 restent non validés.
 - Recette appareil de la file photo, coûts observés et procédure d’incident.
   Ces preuves restent techniques, sans clôturer PILOT-01 ni valider l’extraction.
 
-## Informations manquantes avant activation des uploads
+## Informations restantes avant ouverture en production
 
 - Budget mensuel maximum accepté et plafond de volume global ; les ressources
   déjà configurées ne garantissent pas une facturation bornée.
-- Recette de transport et de sécurité sur le store non productif, avec limites
-  applicatives en place avant tout upload opérationnel.
+- Recette déployée du worker et stratégie complète de nettoyage des capacités
+  multipart/en vol. La recette dev et les limites applicatives sont désormais
+  vérifiées pour le sous-lot PDF connecté, pas pour tout TECH-04.
 - Appareil/mode/version et résultats du test de comptage déjà rapporté.
 
-Les ressources et deux variables locales sont configurées après autorisation.
-Le lot 1 implémenté n’active aucun upload Blob utilisateur ; TECH-04 reste ouvert,
-sans extraction ni recherche vectorielle et sans clôture de recette métier.
+L’envoi PDF est maintenant activé localement après autorisation (voir le statut
+en tête), tandis que la production reste fermée. TECH-04 reste ouvert, sans
+extraction ni recherche vectorielle et sans clôture de recette métier.

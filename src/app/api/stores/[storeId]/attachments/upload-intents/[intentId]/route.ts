@@ -5,6 +5,7 @@ import { getAppDb, getMongoClient } from "@/server/db/mongo-client";
 import { attachmentErrorResponse } from "@/server/http/attachment-error-response";
 import { UploadIntentRepository } from "@/server/repositories/upload-intent-repository";
 import { requireUploadIntentConfig } from "@/server/storage/config";
+import { privateUploadsAvailable } from "@/server/storage/upload-transport";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,14 @@ export async function GET(
       id,
     );
     return NextResponse.json(
-      { intent, requestId },
+      {
+        intent: {
+          ...intent,
+          uploadAvailable:
+            intent.state === "reserved" && privateUploadsAvailable(),
+        },
+        requestId,
+      },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {

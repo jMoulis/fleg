@@ -73,8 +73,8 @@ export const uploadIntentReceiptSchema = z.object({
   state: uploadIntentStateSchema,
   createdAt: z.iso.datetime(),
   reconcileAfter: z.iso.datetime(),
-  // This foundation does not issue tokens or accept bytes, even when enabled.
-  uploadAvailable: z.literal(false),
+  // Informational only: a separate authorized command issues the capability.
+  uploadAvailable: z.boolean(),
   sourceId: z
     .string()
     .regex(/^[a-f0-9]{24}$/)

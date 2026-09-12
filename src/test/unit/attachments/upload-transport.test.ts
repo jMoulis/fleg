@@ -131,9 +131,7 @@ describe("TECH-04 constrained transport (no live provider)", () => {
 
   it("is release-locked even when intent reservations are explicitly enabled", () => {
     vi.stubEnv("BLOB_INTENTS_ENABLED", "true");
-    expect(requireUploadTransportConfig).toThrow(
-      "vérification et de nettoyage",
-    );
+    expect(requireUploadTransportConfig).toThrow("pas activés");
     expect(issueSignedToken).not.toHaveBeenCalled();
   });
   it("signs exact path, size, MIME, expiry and callback; never returns signing or RW material", async () => {
@@ -150,11 +148,13 @@ describe("TECH-04 constrained transport (no live provider)", () => {
     });
     expect(Object.keys(result).sort()).toEqual([
       "contentType",
+      "headers",
       "method",
       "url",
       "validUntil",
     ]);
     expect(JSON.stringify(result)).not.toContain(config.token);
+    expect(result.headers).toEqual({ "x-content-type": "image/png" });
     expect(JSON.stringify(result)).not.toContain("test-only-signing-key");
     const url = new URL(result.url);
     expect(url.origin).toBe("https://vercel.com");
@@ -170,6 +170,45 @@ describe("TECH-04 constrained transport (no live provider)", () => {
     expect(
       JSON.parse(url.searchParams.get("vercel-blob-callback-token-payload")!),
     ).toEqual({ intentId: input.intentId, attemptId: input.attemptId });
+  });
+  it("opens only explicitly configured dev/preview resources and never production", async () => {
+    const env = {
+      BLOB_DEV_UPLOADS_ENABLED: "true",
+      BLOB_INTENTS_ENABLED: "true",
+      BLOB_STORE_ID: "store_5MOJSflf0L273Hz3",
+      BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_5MOJSflf0L273Hz3_test",
+      BLOB_NAMESPACE: "local-test",
+      BLOB_STORE_QUOTA_BYTES: "1000",
+      BLOB_ENV_QUOTA_BYTES: "2000",
+      BLOB_STORE_QUOTA_OBJECTS: "10",
+      BLOB_ENV_QUOTA_OBJECTS: "20",
+    };
+    expect(requireUploadTransportConfig(env)).toMatchObject({
+      storeId: env.BLOB_STORE_ID,
+    });
+    expect(() =>
+      requireUploadTransportConfig({ ...env, VERCEL_ENV: "production" }),
+    ).toThrow("pas activés");
+    expect(() =>
+      requireUploadTransportConfig({ ...env, BLOB_INTENTS_ENABLED: "false" }),
+    ).toThrow();
+    expect(() =>
+      requireUploadTransportConfig({ ...env, BLOB_ENV_QUOTA_BYTES: "" }),
+    ).toThrow();
+    expect(() =>
+      requireUploadTransportConfig({
+        ...env,
+        BLOB_STORE_ID: "store_k3DcIwSL9uBZuhhH",
+      }),
+    ).toThrow();
+    const result = await new VercelUploadTransport({
+      ...config,
+      callbackUrl: undefined,
+      webhookPublicKey: undefined,
+    }).authorize(context, grant());
+    expect(
+      new URL(result.url).searchParams.has("vercel-blob-callback-url"),
+    ).toBe(false);
   });
   it("rejects foreign scope/resource, readers and expired or expanded lifetimes before any provider call", async () => {
     const input = grant();
