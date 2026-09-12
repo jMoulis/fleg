@@ -42,7 +42,7 @@ the server transport adapter, bounded persisted authorization attempts, signed
 callback recording and cancellation. **Transport and callbacks remain release-locked**,
 even with BLOB_INTENTS_ENABLED=true; no real token or object has been issued.
 Only hermetic tests inject an enabled transport. Legacy BSON CRUD still works.
-PR #37 is merged. **Lot 2b is implemented, still gated**: bounded object reads,
+PR #37 and #38 are merged. **Lot 2b is implemented, still gated**: bounded object reads,
 real PDFium WASM validation in a worker (60 pages, 10s, 256 MiB linear memory),
 live-author reauthorization and transactional linking, private document APIs,
 source removal and one-item scoped maintenance with recoverable leases.
@@ -55,6 +55,13 @@ of an in-flight upload. Do not release charged tombstones or remove the gate
 without provider lifetime/cleanup evidence and authorized non-production acceptance.
 Explicit callback-origin/public-key configuration and usage budgets also remain
 activation gates. Local photo queue and migration follow, neither is delivered.
+The isolated `npm run verify:storage` operator probe is prepared on
+`codex/tech-04-storage-acceptance`: dry-run by default, pinned to the dev store,
+synthetic fixtures only, explicit execution/store confirmation, durable local
+manifest and exact-path cleanup. Read its runbook in the TECH-04 contract.
+Live execution has been requested but is not yet authorized or performed; do
+not infer approval or provider lifetime guarantees from its hermetic tests.
+It does not validate deployed callbacks, the Vercel PDF worker or photo UI.
 `PILOT-01` remains open independently.
 
 Read the current state in `implementation/10_BACKLOG.md`, then the relevant
