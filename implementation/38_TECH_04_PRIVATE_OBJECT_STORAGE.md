@@ -2,7 +2,8 @@
 
 ## Statut et reprise du plan
 
-Contrat de réalisation préparé le 2026-09-12. **Non implémenté, non activé.**
+Contrat de réalisation préparé le 2026-09-12. **Infrastructure configurée après
+accord explicite ; uploads applicatifs non implémentés, non activés.**
 Il précise TECH-04 de la [PR #26](https://github.com/jMoulis/fleg/pull/26), sans
 nouvel identifiant ni extension de la feuille de route.
 
@@ -25,19 +26,52 @@ Ordre conservé : TECH-04 (objets), TECH-05 (traitements durables), V4-01
   ou une opération commerciale. Garder ces liens immuables.
 - JPEG/PNG/WebP, 4 Mio par photo, 20 photos par cible ; conservation jusqu’à
   suppression manuelle. Lire le [contrat existant](../docs/21_MEDIA_ATTACHMENTS.md).
-- Le SDK Blob n’est pas installé. Aucune variable dont le nom contient `BLOB`
-  n’a été trouvée dans `.env.local` ; pas de liaison locale `.vercel/project.json`.
-  Cela ne prouve pas l’absence de ressources dans le compte Vercel.
-- `vercel.json` déclare les fonctions à Paris (`cdg1`). La région du futur
-  stockage doit être choisie séparément ; celle d’Atlas n’a pas été auditée ici.
+- Le SDK Blob n’est pas installé dans l’application. Les deux variables Blob
+  locales sont maintenant configurées pour le développement, sans secret versionné.
+- `vercel.json` déclare les fonctions à Paris (`cdg1`), comme les nouveaux stores.
+  La région d’Atlas n’a pas été auditée ici.
 
-## Choix proposés, à confirmer avant activation cloud
+## Ressources configurées — 2026-09-12
+
+Le responsable confirme utiliser Vercel Pro puis autorise explicitement la
+création et la configuration séparée de deux stores privés à Paris, en
+conservant son premier store. Projet `fleg` :
+`prj_DHYR165gAexmV6NC6qVndf2fmqFQ`.
+
+- `fleg-blob-dev` — `store_5MOJSflf0L273Hz3` — privé, `cdg1`, connecté
+  uniquement à **Development et Preview**.
+- `fleg-blob-prod` — `store_k3DcIwSL9uBZuhhH` — privé, `cdg1`, connecté
+  uniquement à **Production**.
+- `fleg-blob` — `store_fAOO8lodC05HwRnl` — privé, `iad1`, vide au contrôle,
+  **conservé et déconnecté** du projet. Ni suppression du store ni rotation
+  de son token manuel ; une suppression ultérieure demande un accord distinct.
+
+Les liaisons et leur séparation ont été relues via l’API Vercel. Le projet
+possède `BLOB_READ_WRITE_TOKEN` et `BLOB_STORE_ID` pour chacun des deux groupes
+d’environnements, sans override de branche. Les tokens restent chiffrés chez
+Vercel ; aucune valeur de token ne figure dans ce dépôt ou dans le compte rendu.
+
+`.env.local` conserve la configuration applicative existante ; seules ses
+entrées `BLOB_READ_WRITE_TOKEN` et `BLOB_STORE_ID` ont été remplacées par celles
+du store Development. La récupération Vercel s’est faite dans un dossier
+temporaire, pas par écrasement global du fichier utilisateur. Le token local
+a réussi une lecture de liste vide ; le fichier demeure ignoré par Git.
+
+La CLI globale n’a pas été mise à jour. La CLI Vercel 59.16.0 temporaire et les
+guides Storage/Environment Variables ont servi à créer puis vérifier ces
+ressources. Aucun fichier envoyé, aucune migration MongoDB, aucun SDK applicatif
+installé et aucun redéploiement déclenché pendant cette configuration. Les futurs
+déploiements utiliseront les nouvelles variables ; les déploiements déjà émis
+ne sont pas prétendus reconfigurés. Les tests d’upload, de callback, d’accès anonyme
+et d’isolation effective par token restent à réaliser avec TECH-04.
+
+## Configuration retenue et activation applicative
 
 1. Deux stores Vercel Blob **privés**, l’un développement/preview, l’autre
    production. Aucun credential de production dans les tests ou previews.
    Séparer aussi les préfixes locaux/preview/déploiements choisis côté serveur.
-2. Région européenne, Paris si proposée et cohérente avec les fonctions/Atlas ;
-   confirmer la disponibilité et le coût pour le compte réel avant création.
+2. Région Paris (`cdg1`), disponible et configurée. Le forfait Pro est confirmé
+   par le responsable ; le budget d’usage avant ouverture reste à arrêter.
 3. Authentification serveur selon le SDK retenu : évaluer OIDC lorsqu’il est
    disponible, sinon token serveur propre à l’environnement. Ne jamais publier
    un token lecture/écriture dans `NEXT_PUBLIC_*`, IndexedDB, logs ou captures.
@@ -87,8 +121,9 @@ pas par effacement automatique des originaux.
 La documentation indique une facturation du stockage, des opérations et des
 transferts, avec des coûts additionnels de livraison par fonction pour le privé.
 Les quotas gratuits ne garantissent pas la disponibilité une fois dépassés.
-Le forfait réel, la région et le plafond mensuel accepté restent à renseigner ;
-aucun abonnement ni devis de production n’est déduit ici.
+Le forfait Pro et la région Paris sont confirmés. Le plafond mensuel accepté
+reste à renseigner ; aucun devis ni plafond de facturation n’est déduit du
+seul accord de création des ressources.
 [Tarification Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing).
 
 ## Frontière applicative à construire
@@ -215,14 +250,14 @@ une économie d’espace déjà obtenue.
 - Recette appareil de la file photo, coûts observés et procédure d’incident.
   Ces preuves restent techniques, sans clôturer PILOT-01 ni valider l’extraction.
 
-## Informations manquantes avant activation
+## Informations manquantes avant activation des uploads
 
-- Ressources Vercel éventuellement déjà créées : identifiants non secrets,
-  accès privé, région et liaison exacte Development/Preview/Production.
-- Forfait Vercel et budget mensuel maximum accepté ; plafond de volume global.
-- Accord de création si ressources absentes. Secrets uniquement dans les variables
-  d’environnement adaptées, jamais dans le chat ou le dépôt.
+- Budget mensuel maximum accepté et plafond de volume global ; les ressources
+  déjà configurées ne garantissent pas une facturation bornée.
+- Recette de transport et de sécurité sur le store non productif, avec limites
+  applicatives en place avant tout upload opérationnel.
 - Appareil/mode/version et résultats du test de comptage déjà rapporté.
 
-Cette préparation ne modifie pas `.env.local`, n’installe aucun SDK, ne provisionne
-aucun service, n’envoie aucun document et ne supprime aucune donnée métier.
+Les ressources et deux variables locales sont configurées après autorisation.
+TECH-04 reste à implémenter : cela ne livre ni upload utilisateur, ni extraction,
+ni recherche vectorielle et ne clôture aucune recette métier.

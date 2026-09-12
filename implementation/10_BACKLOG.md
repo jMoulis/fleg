@@ -35,10 +35,11 @@ drafts and versioned stock. The reported test does not close `PILOT-01` or
 prove unreported device/isolation scenarios.
 
 **Next ticket: `TECH-04` — private Blob objects and recoverable uploads.**
-Resume its preparation, not another inventory UX detour. The
-[execution contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md) identifies the
-resource/region/budget approvals needed before cloud activation. No Blob
-resource or upload feature is delivered by this documentation. The subsequent
+The [execution contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md) now records two
+private Paris Blob stores, configured after explicit approval: Development/Preview
+separate from Production. The local Blob configuration points to development;
+the original store remains intact and disconnected. Application uploads are
+not implemented; usage budget and upload/security acceptance remain open. The subsequent
 order remains TECH-05, then V4-01 after its own gates, then TECH-06; do not skip
 from storage directly to vectorization or coaching.
 
@@ -395,8 +396,8 @@ in [31 — Offline and document foundation](./31_OFFLINE_AND_DOCUMENT_FOUNDATION
 
 ### TECH-04
 
-- current work is preparation; see [the execution contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md);
-- separate cloud resources, region, quotas and costs need explicit approval before activation;
+- private Paris resources and scoped configuration are ready; see [the execution contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md);
+- implementation, usage budgets and non-production upload/security acceptance precede operational activation;
 - private Blob upload/read access derives from the server-authorized store;
 - intent, validation, linking, reconciliation and cleanup are idempotent;
 - bounded queued field photos and interrupted uploads expose recovery states;

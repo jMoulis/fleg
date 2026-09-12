@@ -17,8 +17,10 @@ manager reported testing and explicitly requested resuming this PR #26 sequence.
 Record that report without fabricating device/scenario evidence; persistence,
 authorization and physical-device rollout gates below still apply.
 `TECH-04` through `TECH-06` remain planned, not delivered.
-Current work is [TECH-04 preparation](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md):
-implementation contract and resource approvals, without cloud activation.
+The [TECH-04 contract](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md) records explicitly
+approved private Paris resources, now configured separately for Development/Preview
+and Production. Application uploads, their limits and their acceptance are not
+delivered by resource provisioning; TECH-04 implementation is next.
 The manager reports unreliable connectivity, particularly in the cold room.
 This is sufficient field evidence to prioritize resilient stock capture before
 new coaching features. No Mercalys data is needed to test technical recovery

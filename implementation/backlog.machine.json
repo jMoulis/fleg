@@ -568,9 +568,25 @@
       "epic": "documents",
       "title": "Private Blob objects and recoverable uploads",
       "priority": "P1",
-      "status": "preparing_pending_resource_approval",
+      "status": "infrastructure_configured_pending_implementation",
       "dependsOn": ["PREV3-04", "TECH-03"],
-      "externalGates": ["Private storage region credentials quotas and costs reviewed before provisioning"],
+      "externalGates": [
+        "Usage budget and global storage cap agreed before operational uploads",
+        "Non-production upload callback and token-isolation acceptance before activation"
+      ],
+      "infrastructure": {
+        "configuredAt": "2026-09-12",
+        "provisioningApproval": "explicit_user_confirmation",
+        "planReportedByOwner": "pro",
+        "region": "cdg1",
+        "access": "private",
+        "developmentPreviewStoreId": "store_5MOJSflf0L273Hz3",
+        "productionStoreId": "store_k3DcIwSL9uBZuhhH",
+        "originalStore": "store_fAOO8lodC05HwRnl retained and disconnected",
+        "localConfiguration": "development_only",
+        "verification": "resource metadata and environment scopes checked; local token list succeeded",
+        "applicationUploadsImplemented": false
+      },
       "spec": "implementation/38_TECH_04_PRIVATE_OBJECT_STORAGE.md",
       "acceptance": [
         "server-authorized private object upload and content access",

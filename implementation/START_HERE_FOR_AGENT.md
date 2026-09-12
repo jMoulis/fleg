@@ -27,14 +27,17 @@ The authorized Stocks entry now leads to the single static editor, with integrat
 preparation/consent, review, explicit online commitment and immutable correction.
 Legacy drafts are upgraded in place, never purged; the former connected editor
 is removed. Preserve local schema v3 and durable uncertain commit/correction intents.
-**Current work: `TECH-04` preparation**, following the original PR #26 order.
+**Next implementation: `TECH-04`**, following the original PR #26 order.
 Read `38_TECH_04_PRIVATE_OBJECT_STORAGE.md` before implementation. It records
 the existing BSON boundary, proposed limits, authorization/lifecycle tests and
-the resource approval gate. No Blob capability is delivered by that contract.
-No Blob credentials were found locally; deployed configuration has not been
-inventoried. Do not provision resources, migrate originals or activate paid
-services without explicit approval. Local isolated implementation can be
-prepared without cloud activation. `PILOT-01` remains open independently.
+the infrastructure record. After explicit approval, two private Paris Blob stores
+are configured: `fleg-blob-dev` for Development/Preview and `fleg-blob-prod` for
+Production. The former `fleg-blob` remains intact and disconnected. Local Blob
+variables now point only to development; do not print or commit their tokens.
+No application upload capability, SDK dependency, migration or deployment was
+added. Continue with implementation and isolated tests; usage-budget and live
+upload/security acceptance remain gates before operational activation.
+`PILOT-01` remains open independently.
 
 Read the current state in `implementation/10_BACKLOG.md`, then the relevant
 `31_OFFLINE_AND_DOCUMENT_FOUNDATION.md` or `32_OPERATIONAL_COACH_ROADMAP.md`.
