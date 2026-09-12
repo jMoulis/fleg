@@ -501,6 +501,117 @@ Prochain travail : lever ces preuves fournisseur/budget/recette du lot 2 avant
 activation ; puis lot 3 (photothèque et file locale), lot 4 (outillage de migration).
 Pas de TECH-05/V4-01 anticipé. PILOT-01 reste ouvert.
 
+### Recette opérateur isolée — préparation du 2026-09-12
+
+PR #38 fusionnée (`c6b4ca3`), contrôles Quality/build, E2E et Vercel réussis.
+La branche `codex/tech-04-storage-acceptance` prépare le premier contrôle réel
+du fournisseur **sans ouvrir les routes de l’application**. Ce n’est pas une
+recette complète déployée ni un nouveau ticket. L’accord pour les écritures
+synthétiques ci-dessous a été demandé ; il reste à recevoir. Aucun appel Blob
+réel, envoi de fichier, changement de variables ou de ressource effectué ici.
+
+#### Simulation et autorisation séparée
+
+`npm run verify:storage` produit un plan JSON et un `runId`, sans lire `.env.local`,
+sans écrire de manifeste et sans contacter le réseau. Il prépare un PNG de
+1 pixel, un PDF blanc structurellement valide de **25 Mio** et un troisième
+chemin synthétique réservé au test de falsification de destination.
+
+Avant l’exécution, obtenir l’accord explicite de l’opérateur : uniquement
+`fleg-blob-dev` / `store_5MOJSflf0L273Hz3`, au plus **3 chemins**, **30 Mio de
+corps de fichiers envoyés**, **100 tentatives d’opérations** par manifeste,
+nettoyage compris. Cette limite technique ne remplace pas un budget mensuel
+Vercel approuvé. La suite nominale réserve 21 opérations et environ 25 Mio
+d’envoi ; les lectures privées et le trafic associé consomment aussi de l’usage.
+Les compteurs réservés sont conservateurs, pas des relevés de facturation.
+
+Après accord, depuis la racine du dépôt local avec Node 24, reprendre le UUID
+affiché par la simulation :
+
+```bash
+npm run verify:storage -- --execute --run-id=<UUID> --confirm-store=store_5MOJSflf0L273Hz3
+```
+
+Le script refuse la CI, un déploiement Vercel, l’environnement de production,
+un token d’une autre ressource, les substitutions d’API/proxy et les logs de
+debug. Il lit `.env.local` sans la modifier ; seul le token RW de développement
+est passé explicitement au SDK, jamais de repli OIDC. Les tentatives automatiques
+du SDK épinglé **2.8.0** sont coupées dans ce processus (`VERCEL_BLOB_RETRIES=0`).
+Aucune donnée métier, chemin de fichier utilisateur, écriture MongoDB,
+callback applicative, requête multipart ou donnée OpenAI ne fait partie du test.
+
+Le namespace `local-acceptance-<UUID>` contient un contexte **synthétique**, pas
+un magasin existant. Les trois chemins doivent être absents avant toute émission
+d’autorisation : collision ou lecture incertaine = arrêt sans suppression.
+Le manifeste local privé `.local-backups/blob-acceptance/<UUID>/report.json`
+(ignoré par Git) est remplacé atomiquement et synchronisé sur disque **avant**
+chaque opération/capacité. Il conserve chemins, tailles, hash, échéances,
+compteurs et résultats compacts, jamais le token RW, les clés, les URL signées
+ou les erreurs brutes du fournisseur. Un même dossier ne peut pas réémettre les
+uploads ; la reprise est uniquement un nettoyage explicite.
+
+#### Contrôles et reprise
+
+- MIME et taille excessifs, chemin signé modifié, réécriture d’un objet existant,
+  lecture avec une signature PUT et lecture anonyme : refus attendus, avec code
+  HTTP consigné. Un timeout/5xx n’est jamais compté comme un refus réussi.
+- Contrôles positifs PNG/PDF : PUT privé, relecture via l’adaptateur applicatif
+  avec taille/MIME/hash, puis validation du PDF téléchargé par le vrai worker
+  **local**. Cela ne prouve pas encore son budget mémoire/durée sur Vercel.
+- Nettoyage des trois chemins exacts en fin de test, y compris après une réponse
+  perdue ; DELETE puis GET privé sans cache. Une erreur conserve `pending`.
+  Aucun listing/suppression de bucket, migration BSON ni libération de quota.
+
+Si un nettoyage reste à faire ou après interruption du processus :
+
+```bash
+npm run verify:storage -- --execute --cleanup --run-id=<UUID> --confirm-store=store_5MOJSflf0L273Hz3
+```
+
+La reprise valide le schéma, le store, chaque chemin/taille/hash et le budget
+restant du manifeste. Elle ne réémet aucun droit d’upload et revérifie aussi une
+absence déjà observée. Après un arrêt brutal, `operator.lock` peut subsister :
+vérifier d’abord que le PID consigné n’est plus ce processus, puis retirer
+**seulement ce verrou exact**, jamais le dossier/manifeste. Budget épuisé ou
+manifeste invalide : arrêter, conserver les preuves et demander une nouvelle
+autorisation d’intervention ; ne pas créer un nouveau run pour éluder le plafond.
+
+`status: passed` signifie uniquement « contrôles de ce probe réussis ».
+`absence_observed` constate une absence à cet instant, **pas** l’impossibilité
+d’une écriture tardive. `releaseReady` reste toujours `false`. Conserver le
+manifeste après nettoyage. Les routes, quotas/tombstones applicatifs et la
+photothèque BSON restent inchangés. Ne pas déduire d’un résultat local une
+validation des callbacks, du worker déployé, du streaming HTTP FLEG, de la file
+photo mobile ou des garanties de durée multipart.
+
+#### Questions fournisseur restant ouvertes
+
+La documentation des [URL signées](https://vercel.com/docs/vercel-blob/vercel-signed-urls)
+et du [SDK](https://vercel.com/docs/vercel-blob/using-blob-sdk), relue le
+2026-09-12, décrit l’expiration et les contraintes mais ne fournit pas les
+garanties nécessaires ci-dessous. Brouillon de demande au support, **non envoyé** :
+
+1. Un PUT commencé avant l’échéance peut-il finir après ? Quelle durée maximale
+   est garantie côté fournisseur pour ce transfert ?
+2. Une délégation `put` autorisant aussi `/mpu`, l’expiration est-elle recontrôlée
+   à la finalisation ? Quelle durée de conservation/nettoyage des parties ?
+3. Peut-on révoquer une délégation individuelle, annuler ses multipart ou limiter
+   cette capacité au PUT simple sans multipart ?
+4. Après suppression et lecture d’absence, à quelle condition garantie peut-on
+   exclure la recréation tardive et libérer le quota applicatif ?
+
+Des essais ponctuels ne prouvent pas une borne universelle. Si ces garanties
+ne sont pas disponibles, un changement de transport devra être arbitré avant
+activation ; pas de délai arbitraire « 24 h = nettoyé ». Budget mensuel, origine
+et clé publique de callback, recette Vercel et responsable de maintenance restent
+également des gates. Ne pas passer à TECH-05 sur ce seul probe.
+
+Vérifications de cette préparation : `npm run check` réussi, **455 tests dans
+102 fichiers**, y compris 11 nouveaux tests hermétiques du probe et le vrai
+parseur sur le PDF synthétique de 25 Mio. Build de production et **REL-06
+mobile/desktop : 2 tests réussis**, MongoDB local jetable, credentials Blob/OpenAI
+neutralisés. La suite E2E complète n’a pas été rejouée pour cet outillage seul.
+
 ## Recette requise avant de déclarer TECH-04 livré
 
 - Unitaires : schémas, signatures, hash, limites PDF/photo, transitions,

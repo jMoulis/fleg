@@ -43,7 +43,7 @@ disabled-by-default metadata intents, atomic quotas and hybrid private reads;
 the existing BSON photo workflow remains available. Lot 2a adds persisted bounded
 authorizations, a presigned transport adapter, signed callback recording and
 cancellation, all behind a non-configurable transport release gate (PR #37 merged).
-Lot 2b implements bounded byte/PDF validation, current-author reauthorization,
+Lot 2b (PR #38 merged) implements bounded byte/PDF validation, current-author reauthorization,
 transactional linking, private source APIs and durable scoped maintenance/deletion.
 Read its runbook in the contract. **Continue the TECH-04 lot 2 release gates**:
 provider evidence, budget and explicitly authorized non-production acceptance.
@@ -53,6 +53,10 @@ No Blob upload is available yet; local photo queuing and migration follow.
 Usage budget and upload/security acceptance remain open. The subsequent
 order remains TECH-05, then V4-01 after its own gates, then TECH-06; do not skip
 from storage directly to vectorization or coaching.
+An isolated dev-storage operator probe is prepared (`npm run verify:storage`,
+dry-run by default); its runbook separates provider checks from local parser
+proof and deployed-function/callback acceptance. No live execution authorized
+or performed yet, no production toggle changed, no additional feature opened.
 
 Follow [the technical sequence](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md) and
 [the coach delivery gates](./32_OPERATIONAL_COACH_ROADMAP.md). Preserve existing
