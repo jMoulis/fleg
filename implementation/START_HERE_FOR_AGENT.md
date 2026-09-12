@@ -70,6 +70,16 @@ was not captured before cleanup, so do not claim a proven provider vulnerability
 or silently turn the failed check into a pass. Next: clarify/test the wire-level
 MIME contract and record effective metadata before an explicitly framed rerun.
 Do not reset this run, reuse its budget as if unused, or bypass its replay guard.
+PR #39 and #40 are merged (`73045ff`). Branch
+`codex/tech-04-mime-probe-evidence` prepares the v2 probe: one explicit
+`--mime-header=content-type|x-content-type` variant (default preserves the first
+recipe), HTTP response MIME and bounded private metadata observation before
+cleanup. Six extra GETs make 27 nominal operations; limits remain 3 paths /
+30 MiB sent / 100 operations. Real SDK wire tests are network-blocked, not
+provider enforcement proof. Legacy v1 manifests stay cleanup-only, unchanged
+in version/history and without counter reset. No second live run is performed
+or authorized by this preparation; obtain a newly framed explicit approval
+before execution. Read the v2 section in the contract before continuing.
 It does not validate deployed callbacks, the Vercel PDF worker or photo UI.
 `PILOT-01` remains open independently.
 

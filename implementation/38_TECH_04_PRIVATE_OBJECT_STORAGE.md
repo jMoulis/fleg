@@ -523,8 +523,9 @@ Avant l’exécution, obtenir l’accord explicite de l’opérateur : uniquemen
 `fleg-blob-dev` / `store_5MOJSflf0L273Hz3`, au plus **3 chemins**, **30 Mio de
 corps de fichiers envoyés**, **100 tentatives d’opérations** par manifeste,
 nettoyage compris. Cette limite technique ne remplace pas un budget mensuel
-Vercel approuvé. La suite nominale réserve 21 opérations et environ 25 Mio
-d’envoi ; les lectures privées et le trafic associé consomment aussi de l’usage.
+Vercel approuvé. La suite nominale initiale (rapport v1) réserve 21 opérations et
+environ 25 Mio d’envoi ; la v2 décrite plus bas en réserve 27, avec le même budget
+d’envoi. Les lectures privées et le trafic associé consomment aussi de l’usage.
 Les compteurs réservés sont conservateurs, pas des relevés de facturation.
 
 Après accord, depuis la racine du dépôt local avec Node 24, reprendre le UUID
@@ -682,6 +683,86 @@ Cette exécution n’a changé ni les variables locales/Vercel, ni les ressource
 ni les routes applicatives, ni les quotas/tombstones métier. Aucune donnée
 utilisateur ou OpenAI utilisée. Aucune demande envoyée au support fournisseur.
 L’ouverture des uploads, TECH-05 et PILOT-01 restent non validés.
+
+### Observation MIME v2 — préparation sans nouvel appel réel
+
+Après fusion des PR #39 et #40 (`73045ff`), la branche
+`codex/tech-04-mime-probe-evidence` améliore uniquement le CLI de recette et ses
+tests. **L’échec réel ci-dessus reste inchangé.** Aucun nouveau run Blob, capacité,
+nettoyage distant, changement de variables ou upload utilisateur n’est exécuté
+par cette préparation. Le PDF présent dans `assets` n’est pas utilisé.
+
+**Ce qui est vérifié localement :** le vrai `put()` du SDK 2.8.0 transmet son
+option `contentType` dans `x-content-type`, pas dans l’en-tête HTTP
+`Content-Type` avec un corps Buffer. Un intercepteur Undici bloque tout réseau
+non simulé ; ce test vérifie le code du SDK, **pas l’application des restrictions
+par le serveur Vercel**. Undici 7.29.0, déjà présent transitivement, est déclaré
+explicitement en dépendance de développement pour cet intercepteur. La
+documentation des URL signées citée plus haut décrit toujours `Content-Type`.
+La cause de l’écart réel n’est donc pas déclarée résolue.
+
+Le nouveau rapport **v2** inscrit `mimeHeader` et accepte une seule variante
+par exécution :
+
+- `--mime-header=content-type` (défaut) reproduit l’en-tête de la première
+  recette : `Content-Type: text/plain` pour le refus MIME, puis PNG/PDF pour
+  les contrôles suivants. Aucun `x-content-type` ajouté implicitement.
+- `--mime-header=x-content-type` teste le type stocké déclaré par le SDK :
+  `x-content-type: text/plain`, puis PNG/PDF pour les autres contrôles. Aucun
+  `Content-Type` explicite ; le corps Blob est créé sans type.
+
+Simulations **sans réseau, sans chargement de secrets et sans écriture** :
+
+```bash
+npm run verify:storage -- --mime-header=content-type
+npm run verify:storage -- --mime-header=x-content-type
+```
+
+Ne pas lancer les deux variantes automatiquement, ni basculer après un échec.
+Une éventuelle exécution exige un **nouvel accord explicite borné** précisant
+la variante, le store dev, les chemins et les plafonds, puis les mêmes paramètres
+avec `--execute`, `--run-id` et `--confirm-store`. Les maxima techniques restent
+3 chemins / 30 Mio envoyés / 100 opérations, nettoyage compris ; ils ne recréent
+pas le budget consommé de l’autorisation initiale. Aucune exécution v2 n’est
+autorisée par les seules commandes de simulation ou par cette documentation.
+
+Après chacun des six PUT possibles, le probe réserve un GET privé supplémentaire
+**avant** l’envoi, puis observe le chemin exact sans cache, avant nettoyage et
+même si la réponse du PUT est perdue. Il enregistre d’abord le statut HTTP connu,
+puis l’observation horodatée : présence/absence, MIME classifié et taille déclarée.
+Une indisponibilité, un chemin/une taille invalides ou une taille > 25 Mio sont
+distincts d’une absence. Les en-têtes MIME libres deviennent `other` ; paramètres,
+URL, erreurs brutes, corps de réponse, clés et tokens ne sont jamais persistés.
+Le flux d’observation est annulé sans être consommé : **métadonnées seulement**,
+ni nouveau téléchargement complet du PDF, ni preuve d’intégrité du contenu.
+Les contrôles positifs existants conservent lecture bornée, SHA-256 et parseur PDF.
+
+Un HTTP 200 sur le refus MIME reste un échec, même si le fournisseur annonce
+`image/png`, ou renvoie du HTML sans objet. Un refus attendu avec un objet présent
+échoue aussi (sauf réécriture, où l’objet PNG précédent doit rester présent).
+Une observation indisponible échoue sans empêcher le nettoyage normal. La suite
+nominale réserve **27 opérations** (dont six GET d’observation et six opérations
+de nettoyage) et **25 Mio + 341 octets** envoyés. Les métadonnées ajoutent de
+l’usage fournisseur, pas un relevé exact de facturation ou une preuve de durée
+maximale de transfert. Le manifeste est écrit avant les opérations réservées ;
+une panne disque impose l’arrêt et la reprise explicite, pas des appels non tracés.
+
+Les rapports v1 restent lisibles pour `--cleanup`, **sans conversion, remise à
+zéro des compteurs ni rejeu**, même s’ils indiquent `prepared`. La récupération
+consomme le budget restant du rapport original. `--mime-header` est refusé avec
+`--cleanup` : aucun changement de protocole lors d’une reprise.
+
+Prochaine décision : choisir et autoriser une recette v2 bornée, puis examiner
+ses preuves. Le verrou applicatif, les quotas/tombstones, les gates de durée
+multipart, de callback déployée et de budget mensuel restent inchangés. Un succès
+local ou une seule variante réussie ne clôturent pas TECH-04 ni PILOT-01.
+
+Vérifications de ce lot : `npm run check` réussi, **466 tests / 103 fichiers**
+(22 tests de recette/SDK), MongoDB local temporaire, puis lint sans avertissement.
+Build de production E2E réussi et **REL-06 mobile/desktop : 2 tests réussis**,
+credentials Blob/OpenAI neutralisés. La suite E2E complète n’est pas rejouée
+pour ce seul outillage. Simulation CLI `x-content-type` vérifiée sans réseau.
+Le SHA-256 du manifeste v1 initial reste identique à la preuve consignée plus haut.
 
 ## Recette requise avant de déclarer TECH-04 livré
 

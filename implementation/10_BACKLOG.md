@@ -61,6 +61,13 @@ recipe on 2026-09-12 failed its MIME refusal check (HTTP 200): 68 payload bytes,
 three paths. The PDF and subsequent checks did not run. Clarify the wire-level
 MIME contract before a new recipe; see evidence in the contract. No production
 toggle changed, no application upload opened, no provider vulnerability inferred.
+PR #40 is also merged. Branch `codex/tech-04-mime-probe-evidence` prepares report
+v2 with an explicit single MIME-header variant, sanitized HTTP/metadata evidence
+before cleanup and real SDK wire tests with network blocked. Nominal budget is
+27 operations (six extra metadata GETs), same 3 paths / 30 MiB / 100-operation
+ceilings. v1 remains cleanup-only with its history/counters retained. This does
+not prove provider enforcement or authorize a second live run; see the v2
+runbook and obtain explicit bounded approval before execution. TECH-04 stays open.
 
 Follow [the technical sequence](./31_OFFLINE_AND_DOCUMENT_FOUNDATION.md) and
 [the coach delivery gates](./32_OPERATIONAL_COACH_ROADMAP.md). Preserve existing

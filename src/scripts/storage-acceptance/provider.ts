@@ -5,7 +5,11 @@ import {
   presignUrl,
 } from "@vercel/blob";
 import * as z from "zod";
-import type { PrivateBlobReference } from "@/domain/attachments/private-storage";
+import {
+  documentMaxSizeBytes,
+  type PrivateBlobReference,
+} from "@/domain/attachments/private-storage";
+import { classifyMimeType } from "./evidence";
 import { parsePrivateStorageConfig } from "@/server/storage/config";
 import { VercelPrivateUploadObjectStore } from "@/server/storage/private-upload-object";
 import { validatePdf } from "@/server/storage/pdf-validator";
@@ -156,18 +160,62 @@ export function createAcceptancePort(
         throw new Error("Unexpected signed upload destination");
       return url.toString();
     },
-    async request(url, { method, bytes, mimeType }) {
+    async request(url, { method, bytes, headers }) {
       const response = await fetch(ownedUrl(url), {
         method,
         redirect: "error",
         credentials: "omit",
         ...(bytes ? { body: new Blob([new Uint8Array(bytes)]) } : {}),
-        ...(mimeType ? { headers: { "Content-Type": mimeType } } : {}),
+        headers: {
+          ...(headers?.contentType
+            ? { "Content-Type": headers.contentType }
+            : {}),
+          ...(headers?.blobContentType
+            ? { "x-content-type": headers.blobContentType }
+            : {}),
+        },
         signal: AbortSignal.timeout(30000),
       });
       // Never log/parse an unbounded provider body or a signed URL.
-      await response.body?.cancel();
-      return response.status;
+      // Cancellation failure must not erase an already observed HTTP status.
+      await response.body?.cancel().catch(() => undefined);
+      return {
+        httpStatus: response.status,
+        responseContentType: classifyMimeType(
+          response.headers.get("content-type"),
+        ),
+      };
+    },
+    async observe(reference) {
+      ownedReference(reference);
+      const response = await get(reference.pathname, {
+        token: config.token,
+        access: "private",
+        useCache: false,
+        abortSignal: AbortSignal.timeout(config.readTimeoutMs),
+      });
+      if (response === null) return { state: "absent" };
+      if (response.statusCode !== 200) return { state: "unavailable" };
+      // Read only metadata, cancel the body immediately: no second 25 MiB
+      // buffer or parser run. The positive app reader still verifies the hash.
+      await response.stream.cancel();
+      const length = response.headers.get("content-length");
+      const size =
+        length !== null && /^\d{1,16}$/.test(length) ? Number(length) : NaN;
+      if (
+        response.blob.pathname !== reference.pathname ||
+        !Number.isSafeInteger(size) ||
+        size !== response.blob.size
+      )
+        return { state: "invalid_metadata" };
+      if (size > documentMaxSizeBytes) return { state: "size_exceeds_limit" };
+      return {
+        state: "present",
+        storedContentType: classifyMimeType(
+          response.headers.get("content-type"),
+        ),
+        declaredSizeBytes: size,
+      };
     },
     read: (reference, input) =>
       objects.read(acceptanceContext, ownedReference(reference), input),
