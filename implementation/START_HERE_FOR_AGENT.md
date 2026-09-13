@@ -11,8 +11,10 @@ the authorized application's store in `BLOB_MAINTENANCE_STORE_IDS`.
 `BLOB_DEV_UPLOADS_ENABLED` remains dev/Preview-only. The UI receives only a
 store-scoped boolean; disabling admission does not disable Cron cleanup.
 
-This code change alone does not enable production. Deployed Preview acceptance
-and the production environment rollout remain to be recorded. Do not claim
+This code change alone does not enable production. Preview now has synthetic
+accounts/stores and branch-specific configuration; see the current PR #45
+recipe report and deployment record for evidence/remaining steps. The production
+environment rollout still requires the merge and configuration. Do not claim
 TECH-04 closed or upload the user's untracked `assets/F&L-Promo.pdf` for testing.
 
 ## Latest continuation — 2026-09-13: simpler document recovery

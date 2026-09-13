@@ -21,6 +21,15 @@ droits métier. Aucun secret ni liste de magasins n'est transmis au composant.
 la recette Preview déployée, puis l'activation des variables et le redéploiement
 de production. Aucun changement de budget ou de pause globale Vercel n'est inclus.
 
+Vérifications locales : `npm run check` avec MongoDB jetable — **493 tests**,
+lint/types/Knip réussis ; test PDF/Chromium séparé et **68 E2E réussis**, quatre
+tests OpenAI désactivés. Un premier passage du test de concurrence de stock
+existant a échoué puis passé seul et dans la suite complète, sans changement du
+code de stock. La première CI PR #45 a révélé une contamination entre scénarios
+du test navigateur Documents (actualisation précédente encore active) : démontage
+de la page avant de réinitialiser le scénario de reprise manuelle, assertion
+« une vérification » conservée. Voir la PR pour la CI et la recette distante.
+
 ### Simplification approuvée — 2026-09-13
 
 Le responsable approuve une simplification opérationnelle après discussion du

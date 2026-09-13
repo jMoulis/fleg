@@ -63,10 +63,44 @@ L’intégration Atlas du Marketplace Vercel peut automatiser la connexion, mais
 2. Exécuter `npm run verify:preprod` avec les variables Preview récupérées par la CLI Vercel.
 3. Contrôler l’URL immuable du déploiement avec `DEPLOYMENT_URL=https://... npm run verify:deployment`.
 4. Exécuter la recette de `docs/18_OPERATIONS.md`, notamment l’isolation magasin, l’invitation, l’import et le Copilote.
-5. Promouvoir seulement le déploiement validé vers Production.
+5. Après fusion du code validé, construire un déploiement avec les variables
+   **Production**. Ne pas promouvoir tel quel un runtime Preview configuré avec
+   ses bases/secret Better Auth et son Blob de test.
 6. Réexécuter `/api/health` et les contrôles critiques sur le domaine de production.
 
 ## Isolation MongoDB Preview — état vérifié le 2026-09-12
+
+### Mise à jour du 2026-09-13 — recette Documents PR #45
+
+La branche `codex/enable-production-documents` a maintenant une configuration
+Preview dédiée : origine HTTPS de branche, deux comptes synthétiques à mots de
+passe aléatoires, organisation `recette-documents`, deux magasins `UPLOAD-01/02`
+et index fondation (dont la maintenance). Seules `fleg_preview_app` et
+`fleg_preview_auth` ont été préparées ; aucune donnée utilisateur ni base
+Production n'a été copiée. La connexion applicative et `/api/health` ont répondu
+200 sur le déploiement `dpl_6v6AGSvBoGuPMNcYHJkzpDUiZuAQ`.
+
+Les overrides d'environnement concernent cette branche Preview uniquement :
+Blob dev, namespace `preview-document-activation`, 10 Mio / 5 objets pour les
+plafonds magasin et environnement, maintenance limitée aux deux magasins de
+recette. OpenAI est neutralisé, invitations manuelles, inscriptions fermées.
+La protection Vercel du projet n'est pas désactivée : un lien de test pour
+l'alias de cette branche a été créé avec une durée de 30 minutes.
+
+Recette bornée : un PDF synthétique de 329 octets, un seul PUT, fermeture de
+l'onglet avant vérification, reprise serveur après l'échéance, téléchargement
+identique, refus du magasin témoin et suppression. Les résultats effectifs et
+éventuelles limites sont consignés dans le compte rendu de la
+[PR #45](https://github.com/jMoulis/fleg/pull/45). Matériel opérateur, secrets et
+captures restent privés dans `.local-backups/production-documents-20260913/`.
+Les variables Production sont inchangées ; la future activation nécessite
+la fusion puis sa configuration et un déploiement Production, pas une promotion
+de la Preview.
+
+**Les paragraphes suivants conservent le constat du 12 septembre.** L'état
+« bases Preview vides / origine et seed à faire » est remplacé par cette mise
+à jour. Le retrait des anciennes Previews et la rotation coordonnée du compte
+historique restent à faire ; la recette Documents ne les clôture pas.
 
 Après autorisation du responsable, la configuration des **futurs déploiements
 Preview** a été séparée de la production. Ce changement d’infrastructure ne
