@@ -2,6 +2,31 @@
 
 ## Statut et reprise du plan
 
+### Budget documents accepté — 2026-09-13
+
+Le responsable confirme **100 € par mois maximum pour le stockage et les
+transferts de documents, hors abonnement Vercel Pro**. C’est une enveloppe
+maximale, pas un objectif de consommation. Cette décision lève le préalable
+« budget mensuel à demander » des sections antérieures. Elle n’autorise pas
+une augmentation automatique du budget, un changement de forfait, ni une
+coupure des autres projets de l’équipe.
+
+Ce montant n’est **pas encore un plafond technique configuré chez Vercel**.
+L’équipe est facturée en USD. Spend Management couvre les ressources mesurées
+de toute l’équipe, après les crédits du forfait ; son action de pause coupe
+tous les déploiements de production. Les contrôles sont différés de plusieurs
+minutes : même cette pause n’est pas une garantie de facture arrêtée exactement
+à 100 €. Ne pas assimiler 100 € à 100 USD, ni les quotas d’octets à un plafond
+de transferts/facturation. Une pause globale exige un accord distinct sur son
+périmètre ; ne pas modifier une éventuelle protection existante sans la relire.
+[Gestion des dépenses Vercel](https://vercel.com/docs/spend-management).
+
+L’ouverture reste conditionnée à la recette applicative sur Vercel et à la
+résolution du transport/nettoyage décrite ci-dessous. Ne pas libérer un quota
+sur une simple expiration du jeton, ni augmenter les quotas pour masquer leur
+absence de libération. Aucun paramètre de facturation, variable Production ou
+verrou d’upload n’a été modifié lors de l’enregistrement de cette décision.
+
 ### Correctif PDF local et demande d’ouverture Production — 2026-09-13
 
 Le responsable autorise explicitement le correctif et demande l’activation des
@@ -285,8 +310,9 @@ La documentation indique une facturation du stockage, des opérations et des
 transferts, avec des coûts additionnels de livraison par fonction pour le privé.
 Les quotas gratuits ne garantissent pas la disponibilité une fois dépassés.
 Le forfait Pro et la région Paris sont confirmés. Le plafond mensuel accepté
-reste à renseigner ; aucun devis ni plafond de facturation n’est déduit du
-seul accord de création des ressources.
+est désormais de **100 € hors forfait Pro** (décision du 2026-09-13 en tête).
+Aucun devis ni plafond de facturation effectivement appliqué n’est déduit de
+cette autorisation ou du seul accord de création des ressources.
 [Tarification Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing).
 
 ## Frontière applicative à construire
@@ -946,8 +972,9 @@ Le SHA-256 du manifeste v1 initial reste identique à la preuve consignée plus 
 
 ## Informations restantes avant ouverture en production
 
-- Budget mensuel maximum accepté et plafond de volume global ; les ressources
-  déjà configurées ne garantissent pas une facturation bornée.
+- Budget mensuel maximum accepté : **100 € hors forfait Pro**. Restent le
+  plafond de volume global et les contrôles d’usage/facturation à configurer ;
+  les ressources déjà configurées ne garantissent pas une facturation bornée.
 - Recette déployée du worker et stratégie complète de nettoyage des capacités
   multipart/en vol. La recette dev et les limites applicatives sont désormais
   vérifiées pour le sous-lot PDF connecté, pas pour tout TECH-04.
