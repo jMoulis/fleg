@@ -51,7 +51,9 @@ describe("bounded private PDF validation", () => {
       );
       const original = bytes.slice();
       expect((await validatePdf(bytes)).pageCount).toBe(1);
-      expect(bytes).toEqual(original);
+      // Native byte comparison checks the entire file without the expensive
+      // per-element assertion traversal of a large typed array on CI runners.
+      expect(Buffer.compare(bytes, original)).toBe(0);
     }
   });
   it("does not use padding to repair an invalid document or discard arbitrary suffixes", async () => {
