@@ -23,8 +23,10 @@ import {
   type UploadIntentConfig,
 } from "@/server/storage/config";
 import { scopedObjectPrefix } from "@/server/storage/private-object-reader";
+import { storageMaintenanceConfig } from "@/server/storage/maintenance-config";
 
 export type UploadTransportConfig = UploadIntentConfig & {
+  allowedStoreIds?: readonly string[];
   callbackUrl?: string;
   webhookPublicKey?: string;
 };
@@ -38,31 +40,61 @@ const signedTokenSchema = z.object({
 export function requireUploadTransportConfig(
   env: Record<string, string | undefined> = process.env,
 ): UploadTransportConfig {
-  // Live dev acceptance verified MIME/size/path/overwrite/private reads. This
-  // opt-in is NOT a production release: deployed runtime/maintenance acceptance
-  // remains required. Application reservations are not a provider billing cap.
+  const production = env.VERCEL_ENV === "production";
+  // Separate opt-ins: enabling dev recipes must never open production.
   if (
-    env.BLOB_DEV_UPLOADS_ENABLED !== "true" ||
-    env.VERCEL_ENV === "production"
+    (production ? env.BLOB_UPLOADS_ENABLED : env.BLOB_DEV_UPLOADS_ENABLED) !==
+    "true"
   )
     throw new PrivateStorageError(
       "STORAGE_DISABLED",
       "Les envois privés ne sont pas activés sur cet environnement",
     );
   const config = requireUploadIntentConfig(env);
-  if (config.storeId !== "store_5MOJSflf0L273Hz3")
-    throw new PrivateStorageError(
-      "STORAGE_DISABLED",
-      "Les essais d’envoi sont réservés au stockage de développement",
-    );
-  // Development uses explicit, authenticated verification after the PUT. No
+  if (production) {
+    try {
+      if (env.BLOB_MAINTENANCE_ENABLED !== "true") throw new Error("Disabled");
+      const { storeIds } = storageMaintenanceConfig(env);
+      return { ...config, allowedStoreIds: storeIds };
+    } catch {
+      // Do not expose configuration/secret values from validation errors.
+      throw new PrivateStorageError(
+        "STORAGE_CONFIGURATION",
+        "La maintenance des envois doit être configurée avant leur activation",
+      );
+    }
+  }
+  // Use explicit, authenticated verification after the PUT. No
   // public callback origin/key is invented, and no browser receipt is trusted.
   return config;
 }
 
-export function privateUploadsAvailable() {
+function assertUploadStore(
+  context: AuthorizedStoreContext,
+  config: UploadTransportConfig,
+) {
+  if (
+    config.allowedStoreIds &&
+    !config.allowedStoreIds.includes(context.storeId)
+  )
+    throw new PrivateStorageError(
+      "STORAGE_DISABLED",
+      "Les envois privés ne sont pas activés pour ce magasin",
+    );
+}
+
+export function requireStoreUploadTransportConfig(
+  context: AuthorizedStoreContext,
+  env: Record<string, string | undefined> = process.env,
+) {
+  const config = requireUploadTransportConfig(env);
+  assertUploadStore(context, config);
+  return config;
+}
+
+export function privateUploadsAvailable(context: AuthorizedStoreContext) {
   try {
-    requireUploadTransportConfig();
+    requireStoreUploadTransportConfig(context);
     return true;
   } catch {
     return false;
@@ -75,6 +107,7 @@ export class VercelUploadTransport {
   async authorize(context: AuthorizedStoreContext, rawGrant: UploadGrant) {
     if (!context.permissions.includes("attachments.write"))
       throw new StoreAccessDeniedError();
+    assertUploadStore(context, this.config);
     const grant = uploadGrantSchema.parse(rawGrant);
     const issuedAt = Date.parse(grant.issuedAt);
     const validUntil = Date.parse(grant.validUntil);

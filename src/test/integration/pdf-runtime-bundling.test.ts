@@ -279,13 +279,18 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
                 puts: 1,
                 reservations: 1,
               });
+              // Tear down the completed recovery before resetting the mock
+              // counters. Its router.refresh() can still be in flight on CI;
+              // seeding sessionStorage in that live page starts a second
+              // recovery before reload and contaminates the next scenario.
+              await page.goto("about:blank");
               mode = "manual";
               checks = 0;
-              await page.evaluate(
+              await page.addInitScript(
                 ({ key, id }) => sessionStorage.setItem(key, id),
                 { key: recoveryKey, id },
               );
-              await page.reload();
+              await page.goto(`http://127.0.0.1:${port}`);
               await browserExpect(page.getByRole("status")).toContainText(
                 "Vérification à reprendre",
               );

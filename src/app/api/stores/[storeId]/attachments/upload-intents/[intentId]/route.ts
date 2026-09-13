@@ -34,7 +34,7 @@ export async function GET(
         intent: {
           ...intent,
           uploadAvailable:
-            intent.state === "reserved" && privateUploadsAvailable(),
+            intent.state === "reserved" && privateUploadsAvailable(context),
         },
         requestId,
       },

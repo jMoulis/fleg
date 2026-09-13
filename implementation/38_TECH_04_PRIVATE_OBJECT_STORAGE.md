@@ -2,6 +2,34 @@
 
 ## Statut et reprise du plan
 
+### Ouverture contrôlée de production — 2026-09-13
+
+PR #44 fusionnée et déployée (`ee40245`). Le suivi remplace l'interdiction
+inconditionnelle de production par `BLOB_UPLOADS_ENABLED=true`, distinct du flag
+dev/Preview. Les quotas explicites, la ressource privée de production et son
+namespace restent obligatoires. La maintenance doit être activée et avoir un
+secret et une liste de magasins valides ; seules les réservations et signatures
+pour un magasin autorisé inclus dans cette liste sont admises. Le contrôle
+précède l'accès DB/quota et est répété avant signature. Cette liste est un
+périmètre de déploiement, jamais une autorisation utilisateur.
+
+Le flag dev ne peut pas ouvrir la production. Désactiver l'admission ne coupe
+pas le Cron indépendant. Les documents existants restent consultables selon les
+droits métier. Aucun secret ni liste de magasins n'est transmis au composant.
+
+**Le code seul n'active pas les uploads de production.** Il faut encore consigner
+la recette Preview déployée, puis l'activation des variables et le redéploiement
+de production. Aucun changement de budget ou de pause globale Vercel n'est inclus.
+
+Vérifications locales : `npm run check` avec MongoDB jetable — **493 tests**,
+lint/types/Knip réussis ; test PDF/Chromium séparé et **68 E2E réussis**, quatre
+tests OpenAI désactivés. Un premier passage du test de concurrence de stock
+existant a échoué puis passé seul et dans la suite complète, sans changement du
+code de stock. La première CI PR #45 a révélé une contamination entre scénarios
+du test navigateur Documents (actualisation précédente encore active) : démontage
+de la page avant de réinitialiser le scénario de reprise manuelle, assertion
+« une vérification » conservée. Voir la PR pour la CI et la recette distante.
+
 ### Simplification approuvée — 2026-09-13
 
 Le responsable approuve une simplification opérationnelle après discussion du

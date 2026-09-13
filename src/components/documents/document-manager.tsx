@@ -275,7 +275,7 @@ export function DocumentManager({
       ) : (
         <p className="rounded-xl border p-4 text-sm text-muted-foreground">
           {canWrite
-            ? "L’envoi de PDF n’est pas activé sur cet environnement. Les essais sont ouverts sur le stockage de développement uniquement."
+            ? "L’envoi de PDF n’est pas activé pour ce magasin. Les documents déjà ajoutés restent consultables."
             : "Vous pouvez consulter les documents. Leur ajout est réservé aux responsables autorisés."}
         </p>
       )}

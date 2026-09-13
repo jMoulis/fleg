@@ -34,6 +34,7 @@ vi.mock("@/server/storage/config", () => ({
 }));
 vi.mock("@/server/storage/upload-transport", () => ({
   requireUploadTransportConfig: mocks.config,
+  requireStoreUploadTransportConfig: mocks.config,
   VercelUploadTransport: class {
     authorize = mocks.authorize;
     verifyCompletion = mocks.verify;
@@ -194,6 +195,7 @@ describe("TECH-04 transport route boundaries (release enabled only by test injec
     });
     const response = await authorize(request(), route);
     expect(response.status).toBe(200);
+    expect(mocks.config).toHaveBeenCalledWith(context);
     expect(mocks.context).toHaveBeenCalledTimes(2);
     expect(mocks.current).toHaveBeenCalledWith(context, { intentId });
     expect(response.headers.get("cache-control")).toBe("private, no-store");

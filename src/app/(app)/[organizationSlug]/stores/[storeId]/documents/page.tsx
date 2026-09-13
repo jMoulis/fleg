@@ -42,7 +42,7 @@ export default async function DocumentsPage({
         documents={documents}
         hasCursor={cursor.success}
         canWrite={context.permissions.includes("attachments.write")}
-        uploadsAvailable={privateUploadsAvailable()}
+        uploadsAvailable={privateUploadsAvailable(context)}
       />
     </main>
   );
