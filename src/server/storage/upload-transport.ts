@@ -39,7 +39,8 @@ export function requireUploadTransportConfig(
   env: Record<string, string | undefined> = process.env,
 ): UploadTransportConfig {
   // Live dev acceptance verified MIME/size/path/overwrite/private reads. This
-  // opt-in is NOT a production release: issued tombstones still retain quota.
+  // opt-in is NOT a production release: deployed runtime/maintenance acceptance
+  // remains required. Application reservations are not a provider billing cap.
   if (
     env.BLOB_DEV_UPLOADS_ENABLED !== "true" ||
     env.VERCEL_ENV === "production"
@@ -132,7 +133,8 @@ export class VercelUploadTransport {
       });
       // Signing material and provider errors must never reach a client or audit.
       // `put` also covers multipart in SDK 2.8.0: this is NOT a PUT-only or
-      // single-use capability. Keep the release gate until cleanup handles it.
+      // single-use capability. Late recreation is handled operationally by
+      // retained tombstones; do not treat quota release as final billing proof.
       return signedUploadSchema.parse({
         method: "PUT",
         url: presignedUrl,

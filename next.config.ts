@@ -15,11 +15,20 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  // PDFium resolves its sibling WASM binary at runtime inside a Node worker.
+  // Bundling turns require.resolve() into a module ID, not a filesystem path.
+  serverExternalPackages: ["@hyzyla/pdfium"],
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   compress: true,
   poweredByHeader: false,
   outputFileTracingIncludes: {
+    "/api/cron/storage-maintenance": [
+      "./src/server/storage/*.mjs",
+      "./node_modules/@hyzyla/pdfium/dist/index.cjs",
+      "./node_modules/@hyzyla/pdfium/dist/pdfium.wasm",
+      "./node_modules/@hyzyla/pdfium/package.json",
+    ],
     "/api/stores/\\[storeId\\]/attachments/upload-intents/\\[intentId\\]/verify": [
       "./src/server/storage/*.mjs",
       "./node_modules/@hyzyla/pdfium/dist/index.cjs",

@@ -36,6 +36,11 @@ jobs:
       - name: Run lint, type checks, and unit tests
         run: npm run check
 
+      - name: Verify the PDF worker in Turbopack
+        env:
+          PDF_RUNTIME_TEST: true
+        run: npm run test -- src/test/integration/pdf-runtime-bundling.test.ts
+
       - name: Build the production application
         run: npm run build
 
@@ -116,6 +121,12 @@ jobs:
         env:
           STORAGE_TEST_MONGODB_URI: "mongodb://127.0.0.1:27017/?directConnection=true&replicaSet=rs0"
         run: npm run test -- src/test/integration/storage-persistence.test.ts src/test/integration/inventory-sync-persistence.test.ts src/test/integration/private-storage-persistence.test.ts src/test/integration/upload-lifecycle-persistence.test.ts
+
+      - name: Verify document recovery in Chromium without live storage
+        env:
+          PDF_RUNTIME_TEST: true
+          DOCUMENT_UPLOAD_BROWSER_TEST: true
+        run: npm run test -- src/test/integration/pdf-runtime-bundling.test.ts
 
       - name: Run browser acceptance tests
         run: npm run test:e2e

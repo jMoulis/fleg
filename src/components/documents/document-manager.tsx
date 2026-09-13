@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import * as z from "zod";
@@ -13,8 +19,9 @@ import {
 } from "@/domain/attachments/private-storage";
 import {
   attachmentCommand,
+  documentVerificationMessage,
   sendDocument,
-  verifyDocumentUpload,
+  recoverDocumentUpload,
 } from "@/lib/attachments/document-upload";
 
 interface Props {
@@ -52,6 +59,12 @@ export function DocumentManager({
   const fileInput = useRef<HTMLInputElement>(null);
   const attempt = useRef(crypto.randomUUID());
   const locked = useRef(false);
+  const lifetime = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => controller.abort();
+  }, []);
   const recovery = useSyncExternalStore(
     subscribeRecovery,
     () => {
@@ -72,34 +85,35 @@ export function DocumentManager({
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function forget() {
+  const forget = useCallback(() => {
     sessionStorage.removeItem(recoveryKey);
     window.dispatchEvent(new Event(recoveryEvent));
     setFile(null);
     setCaption("");
     attempt.current = crypto.randomUUID();
     if (fileInput.current) fileInput.current.value = "";
-  }
-  function finish(intent: UploadIntentReceipt) {
-    if (intent.state === "linked") {
-      forget();
-      setMessage("PDF vérifié et enregistré.");
-      router.refresh();
-    } else if (
-      ["cancelled", "deleted", "deleting", "rejected"].includes(intent.state)
-    ) {
-      forget();
-      setMessage(
-        intent.state === "rejected"
-          ? "PDF refusé après vérification (contenu invalide, protégé ou limites dépassées). Choisissez un autre fichier."
-          : "Envoi abandonné. Son nettoyage sera effectué séparément.",
-      );
-    } else
-      setMessage(
-        `Réception non confirmée. Réessayez la vérification à partir de ${new Date(intent.reconcileAfter).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}. Ne renvoyez pas le fichier.`,
-      );
-  }
-  async function run(action: () => Promise<void>) {
+  }, [recoveryKey]);
+  const finish = useCallback(
+    (intent: UploadIntentReceipt) => {
+      if (lifetime.current?.signal.aborted) return;
+      if (intent.state === "linked") {
+        forget();
+        setMessage("PDF vérifié et enregistré.");
+        router.refresh();
+      } else if (
+        ["cancelled", "deleted", "deleting", "rejected"].includes(intent.state)
+      ) {
+        forget();
+        setMessage(
+          intent.state === "rejected"
+            ? "PDF refusé après vérification (contenu invalide, protégé ou limites dépassées). Choisissez un autre fichier."
+            : "Envoi abandonné. Nettoyage programmé.",
+        );
+      } else setMessage(documentVerificationMessage(intent));
+    },
+    [forget, router],
+  );
+  const run = useCallback(async (action: () => Promise<void>) => {
     if (locked.current) return;
     locked.current = true;
     setBusy(true);
@@ -107,6 +121,7 @@ export function DocumentManager({
     try {
       await action();
     } catch (caught) {
+      if (lifetime.current?.signal.aborted) return;
       setError(
         caught instanceof Error &&
           !["TypeError", "AbortError", "TimeoutError", "ZodError"].includes(
@@ -119,7 +134,33 @@ export function DocumentManager({
       locked.current = false;
       setBusy(false);
     }
-  }
+  }, []);
+
+  const recover = useCallback(
+    async (id: string, initial?: UploadIntentReceipt) => {
+      const controller = lifetime.current;
+      if (!controller || controller.signal.aborted) return;
+      finish(
+        await recoverDocumentUpload({
+          base,
+          id,
+          initial,
+          signal: controller.signal,
+          onProgress: (intent) =>
+            setMessage(documentVerificationMessage(intent, true)),
+        }),
+      );
+    },
+    [base, finish],
+  );
+
+  // A refresh resumes verification, never the file transfer. New submissions
+  // own the same lock, so mounting this effect cannot start a second check loop.
+  useEffect(() => {
+    if (!pending || !canWrite || !uploadsAvailable) return;
+    const timer = setTimeout(() => void run(() => recover(pending)), 0);
+    return () => clearTimeout(timer);
+  }, [pending, canWrite, uploadsAvailable, run, recover]);
 
   return (
     <div className="mt-6 space-y-6">
@@ -129,21 +170,20 @@ export function DocumentManager({
           onSubmit={(event) => {
             event.preventDefault();
             if (!file || pending || !ready) return;
-            void run(async () =>
-              finish(
-                await sendDocument({
-                  base,
-                  file,
-                  caption,
-                  idempotencyKey: attempt.current,
-                  phase: setMessage,
-                  remember: (id) => {
-                    sessionStorage.setItem(recoveryKey, id);
-                    window.dispatchEvent(new Event(recoveryEvent));
-                  },
-                }),
-              ),
-            );
+            void run(async () => {
+              const intent = await sendDocument({
+                base,
+                file,
+                caption,
+                idempotencyKey: attempt.current,
+                phase: setMessage,
+                remember: (id) => {
+                  sessionStorage.setItem(recoveryKey, id);
+                  window.dispatchEvent(new Event(recoveryEvent));
+                },
+              });
+              await recover(intent.id, intent);
+            });
           }}
           aria-busy={busy}
         >
@@ -192,7 +232,7 @@ export function DocumentManager({
                 onClick={() =>
                   void run(async () => {
                     setMessage("Vérification du PDF…");
-                    finish(await verifyDocumentUpload(base, pending));
+                    await recover(pending);
                   })
                 }
               >
@@ -218,9 +258,7 @@ export function DocumentManager({
                         "L’annulation n’est pas confirmée. Vérifiez la réception.",
                       );
                     forget();
-                    setMessage(
-                      "Envoi abandonné. Son nettoyage sera effectué séparément.",
-                    );
+                    setMessage("Envoi abandonné. Nettoyage programmé.");
                     router.refresh();
                   })
                 }

@@ -34,6 +34,8 @@ import { UploadLifecycleRepository } from "@/server/repositories/upload-lifecycl
 import { DocumentSourceRepository } from "@/server/repositories/document-source-repository";
 import { AttachmentRepository } from "@/server/repositories/attachment-repository";
 import { authorizeUploadAuthor } from "@/server/auth/upload-author-context";
+import * as pdfValidator from "@/server/storage/pdf-validator";
+import { runUploadMaintenanceBatch } from "@/server/services/upload-maintenance-service";
 
 const uri = process.env.STORAGE_TEST_MONGODB_URI;
 const organization = new ObjectId();
@@ -88,6 +90,7 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
     await ensureFoundationIndexesForDb(db);
   }, 30000);
   beforeEach(async () => {
+    vi.restoreAllMocks();
     for (const name of [
       "uploadIntents",
       "objectStorageQuotas",
@@ -212,6 +215,42 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       budgetHeld: true,
       state: "linked",
     });
+  });
+  it("exposes only a safe PDF-validator issue, respects backoff and clears it on successful recovery", async () => {
+    const bytes = pdf();
+    const receipt = await reserve(bytes, "document");
+    await repo.beginAuthorization(context, receipt.id, randomUUID());
+    objects.read.mockResolvedValue(bytes);
+    vi.spyOn(pdfValidator, "validatePdf").mockRejectedValueOnce(
+      new pdfValidator.PdfValidatorUnavailableError(),
+    );
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toMatchObject({ outcome: "retry" });
+    expect(await repo.get(context, receipt.id)).toMatchObject({
+      state: "uploaded",
+      receivedAt: expect.any(String),
+      verificationIssue: "pdf_validator_unavailable",
+    });
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toEqual({ processed: false });
+    expect(objects.read).toHaveBeenCalledTimes(1);
+    expect(await db.collection("documentSources").countDocuments()).toBe(0);
+    await intents().updateOne(
+      { _id: receipt.id },
+      { $set: { reconcileAfter: new Date(0) } },
+    );
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toMatchObject({ outcome: "linked" });
+    expect(
+      (await repo.get(context, receipt.id)).verificationIssue,
+    ).toBeUndefined();
+    expect(
+      (await intents().findOne({ _id: receipt.id }))?.verificationIssue,
+    ).toBeUndefined();
+    expect(await db.collection("documentSources").countDocuments()).toBe(1);
   });
   it("does not read unissued, foreign owner/store/organization or cancelled intents through owner verification", async () => {
     const receipt = await reserve();
@@ -442,15 +481,15 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
         .countDocuments({ action: "attachment.upload_reservation_released" }),
     ).toBe(1);
   });
-  it("keeps issued tombstones charged after absence and cleans again after a late callback", async () => {
+  it("releases an issued reservation once after confirmed deletion and cleans late callbacks without resurrection", async () => {
     const { receipt, grant } = await ready();
     await repo.cancel(context, receipt.id, randomUUID());
-    expect(await reconcile()).toMatchObject({ outcome: "cleanup_pending" });
+    expect(await reconcile()).toMatchObject({ outcome: "deleted" });
     expect(await intents().findOne({ _id: receipt.id })).toMatchObject({
-      state: "cancelled",
-      budgetHeld: true,
-      cleanupRequired: true,
-      lastMaintenanceCode: "AWAITING_TRANSPORT_PROOF",
+      state: "deleted",
+      budgetHeld: false,
+      cleanupRequired: false,
+      quotaReleasedAt: expect.any(Date),
     });
     await repo.recordCompletion(
       {
@@ -462,9 +501,26 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       },
       randomUUID(),
     );
-    expect(await reconcile()).toMatchObject({ outcome: "cleanup_pending" });
+    expect(await reconcile()).toMatchObject({ outcome: "deleted" });
     expect(objects.remove).toHaveBeenCalledTimes(2);
     expect(await db.collection("attachments").countDocuments()).toBe(0);
+    // A callback-free recreation is swept too; quota/audit are not decremented again.
+    await intents().updateOne(
+      { _id: receipt.id },
+      { $set: { reconcileAfter: new Date(0) } },
+    );
+    expect(await reconcile()).toMatchObject({ outcome: "deleted" });
+    expect(objects.remove).toHaveBeenCalledTimes(3);
+    expect(
+      await db
+        .collection("objectStorageQuotas")
+        .countDocuments({ bytes: 0, objects: 0 }),
+    ).toBe(2);
+    expect(
+      await db
+        .collection("auditLogs")
+        .countDocuments({ action: "attachment.upload_reservation_released" }),
+    ).toBe(1);
   });
   it("never deletes while a recorded grant is still valid", async () => {
     const receipt = await reserve();
@@ -472,6 +528,126 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
     await repo.cancel(context, receipt.id, randomUUID());
     expect(await reconcile()).toMatchObject({ outcome: "waiting" });
     expect(objects.remove).not.toHaveBeenCalled();
+  });
+  it("a late callback during deletion invalidates the lease before quota release", async () => {
+    const { receipt, grant } = await ready();
+    await repo.cancel(context, receipt.id, randomUUID());
+    objects.remove.mockImplementationOnce(async () => {
+      await repo.recordCompletion(
+        {
+          intentId: grant.intentId,
+          attemptId: grant.attemptId,
+          pathname: grant.storage.pathname,
+          contentType: "image/png",
+          url: `https://test.private.blob.vercel-storage.com/${grant.storage.pathname}`,
+        },
+        randomUUID(),
+      );
+    });
+    expect(await reconcile()).toMatchObject({ outcome: "superseded" });
+    expect(await intents().findOne({ _id: receipt.id })).toMatchObject({
+      budgetHeld: true,
+      cleanupRequired: true,
+    });
+    expect(await reconcile()).toMatchObject({ outcome: "deleted" });
+    expect(
+      await db
+        .collection("objectStorageQuotas")
+        .countDocuments({ bytes: 0, objects: 0 }),
+    ).toBe(2);
+  });
+  it("abandons only a missing unlinked intent older than 24h; errors never prove absence", async () => {
+    const { receipt } = await ready();
+    await intents().updateOne(
+      { _id: receipt.id },
+      { $set: { createdAt: new Date(Date.now() - 25 * 60 * 60_000) } },
+    );
+    objects.read.mockRejectedValueOnce(new Error("provider unavailable"));
+    expect(await reconcile()).toMatchObject({ outcome: "retry" });
+    expect(await intents().findOne({ _id: receipt.id })).toMatchObject({
+      state: "reserved",
+      budgetHeld: true,
+    });
+    await intents().updateOne(
+      { _id: receipt.id },
+      { $set: { reconcileAfter: new Date(0) } },
+    );
+    objects.read.mockResolvedValueOnce(null);
+    expect(await reconcile()).toMatchObject({ outcome: "cleanup_pending" });
+    expect(
+      await db
+        .collection("auditLogs")
+        .countDocuments({ action: "attachment.upload_abandoned" }),
+    ).toBe(1);
+    expect(await reconcile()).toMatchObject({ outcome: "deleted" });
+  });
+  it("bounds scheduled work and excludes other stores, resources, namespaces and live sources", async () => {
+    const { receipt } = await ready();
+    const template = (await intents().findOne({ _id: receipt.id }))!;
+    // Raw synthetic queue entries exercise selection without any remote objects.
+    await intents().insertMany([
+      ...Array.from({ length: 24 }, () => ({
+        ...template,
+        _id: randomUUID(),
+        idempotencyKey: randomUUID(),
+      })),
+      {
+        ...template,
+        _id: randomUUID(),
+        idempotencyKey: randomUUID(),
+        storeId: new ObjectId(),
+      },
+      {
+        ...template,
+        _id: randomUUID(),
+        idempotencyKey: randomUUID(),
+        storage: { ...template.storage, namespace: "local-other" },
+      },
+      {
+        ...template,
+        _id: randomUUID(),
+        idempotencyKey: randomUUID(),
+        storage: { ...template.storage, storeId: "store_other" },
+      },
+      {
+        ...template,
+        _id: randomUUID(),
+        idempotencyKey: randomUUID(),
+        state: "linked",
+      },
+    ]);
+    const worker = {
+      reconcile: vi
+        .fn<UploadLifecycleRepository["reconcile"]>()
+        .mockResolvedValue({ processed: false }),
+    };
+    expect(
+      await runUploadMaintenanceBatch({
+        db,
+        lifecycle: worker,
+        storage: config,
+        authorizedStoreIds: [context.storeId],
+        requestId: randomUUID(),
+      }),
+    ).toEqual({ examined: 20, processed: 0, retries: 0 });
+    expect(worker.reconcile).toHaveBeenCalledTimes(20);
+    for (const [scope] of worker.reconcile.mock.calls)
+      expect(scope).toMatchObject({
+        storeId: context.storeId,
+        organizationId: context.organizationId,
+        userId: "system:storage-maintenance",
+      });
+    worker.reconcile.mockClear();
+    expect(
+      await runUploadMaintenanceBatch({
+        db,
+        lifecycle: worker,
+        storage: config,
+        authorizedStoreIds: [new ObjectId().toHexString()],
+        requestId: randomUUID(),
+      }),
+    ).toEqual({ examined: 0, processed: 0, retries: 0 });
+    expect(worker.reconcile).not.toHaveBeenCalled();
   });
   it("isolates maintenance and deletion by organization, domain store, resource and namespace", async () => {
     const { receipt } = await ready();
@@ -551,7 +727,7 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       state: "deleting",
       budgetHeld: true,
     });
-    expect(await reconcile()).toMatchObject({ outcome: "cleanup_pending" });
+    expect(await reconcile()).toMatchObject({ outcome: "deleted" });
     expect(
       await lifecycle.removeSource(
         context,

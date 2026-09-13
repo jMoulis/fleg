@@ -46,6 +46,9 @@ async function run() {
       // credentials take priority: tests must never contact a real Blob store.
       BLOB_INTENTS_ENABLED: "false",
       BLOB_DEV_UPLOADS_ENABLED: "false",
+      BLOB_MAINTENANCE_ENABLED: "false",
+      BLOB_MAINTENANCE_STORE_IDS: "",
+      CRON_SECRET: "",
       BLOB_READ_WRITE_TOKEN: "",
       BLOB_STORE_ID: "",
       BLOB_NAMESPACE: "",

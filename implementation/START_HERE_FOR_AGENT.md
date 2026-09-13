@@ -1,5 +1,22 @@
 # START HERE — Coding Agent
 
+## Latest continuation — 2026-09-13: simpler document recovery
+
+This entry supersedes earlier indefinite-quota/provider-lifetime gates below.
+The manager approved keeping direct browser-to-Blob uploads (25 MiB), bounded
+automatic verification and operational cleanup. PR #43 supplies the PDF worker
+fix and records a €100/month documents/storage/transfers budget, excluding Pro.
+The follow-up adds automatic rechecks after upload/reload, receipt-vs-validation
+messages, and opt-in store-allowlisted Vercel Cron maintenance. Issued uploads
+release their **application** reservation only after grant expiry AND exact
+deletion/fresh absence. Tombstones remain watched daily; late callbacks re-arm
+cleanup without visibility or duplicate quota release. This does not guarantee
+no late bytes, account for abandoned multipart parts, or cap Vercel billing.
+See the current [TECH-04 policy](./38_TECH_04_PRIVATE_OBJECT_STORAGE.md).
+Production uploads and cron are not activated by this branch. Deployed acceptance,
+production rollout, credential retirement, photo queue and migration remain open.
+Do not start TECH-05/V4-01 or close PILOT-01 from these technical changes.
+
 ## Current continuation — 2026-09-12
 
 ### Latest operation: dedicated Preview MongoDB configuration

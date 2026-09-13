@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "playwright-report/**",
     "test-results/**",
+    ".local-backups/pdf-runtime-*/**",
     "next-env.d.ts",
     "public/sw.js",
     "public/sw.js.map",

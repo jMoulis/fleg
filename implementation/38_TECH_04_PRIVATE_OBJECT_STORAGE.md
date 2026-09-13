@@ -2,6 +2,144 @@
 
 ## Statut et reprise du plan
 
+### Simplification approuvée — 2026-09-13
+
+Le responsable approuve une simplification opérationnelle après discussion du
+surcoût de complexité. **Cette section remplace la règle historique de quota
+retenu indéfiniment après émission d’une autorisation.** Le transport reste
+navigateur → Blob privé, 25 Mio / 60 pages ; pas de proxy Functions à 4 Mo,
+de nouveau fournisseur, ni d’extraction IA.
+
+- Réception et validation sont distinguées. Une lecture intègre ou un callback
+  authentifié peut confirmer la réception ; seul le parseur réel autorise le lien.
+- Le client relance uniquement `/verify` sur la même intention : au plus quatre
+  vérifications supplémentaires après la première, avec une fenêtre de lancement
+  de 30 s (une requête déjà démarrée garde son timeout). Les échéances serveur sont
+  respectées ; après rechargement, reprise sans nouvelle réservation/URL/PUT.
+- Backoff serveur centralisé : 2 s, 5 s, 15 s, 60 s, puis 5 min. Une panne persistante
+  rend la main ; l’identifiant de reprise reste dans la session du navigateur.
+- Nettoyage : attendre l’expiration du jeton, supprimer **le chemin exact**, puis
+  constater son absence par une lecture privée sans cache. Une erreur/expiration
+  seule ne libère rien. Quotas magasin et ressource libérés une seule fois dans
+  la transaction MongoDB ; suppression d’accès immédiate et audit conservé.
+- Le tombstone reste en base sans fichier binaire, avec contrôle quotidien du
+  chemin. Un callback tardif réarme immédiatement ce contrôle ; aucune annulation
+  ou suppression ne peut redevenir un document visible. Un abandon automatique
+  après 24 h concerne seulement une intention non liée dont l’absence est constatée,
+  et est audité ; aucun PDF valide enregistré n’expire pour ce motif.
+
+**Compromis assumé :** ces quotas mesurent l’admission/usage applicatif, pas un
+maximum garanti d’octets physiques ou d’euros. Une recréation tardive peut rester
+présente jusqu’au prochain passage ; les éventuelles parties multipart incomplètes
+ne sont pas inventoriées par ce mécanisme. La maintenance conserve des métadonnées
+et réalise des opérations quotidiennes par tombstone : surveiller leur volume et
+la consommation fournisseur, sans inventer de délai garanti du fournisseur.
+
+#### Maintenance planifiée (désactivée par défaut)
+
+- Vercel Cron appelle `GET /api/cron/storage-maintenance` toutes les 15 minutes.
+- Activer `BLOB_MAINTENANCE_ENABLED=true`, un `CRON_SECRET` aléatoire de 32–256
+  caractères et `BLOB_MAINTENANCE_STORE_IDS` (IDs magasin applicatifs séparés par
+  des virgules). Le bearer est comparé avant tout accès DB/Blob. Ni cookie, slug,
+  paramètre d’URL ni état React n’élargit cette liste. Le job ignore les magasins
+  non autorisés, les autres ressources Blob et les autres namespaces.
+- Chaque passe sélectionne au plus 20 intentions dues. Elle cesse de démarrer
+  du travail après 240 s, dans une fonction de 300 s ; leases et transactions
+  protègent les passages simultanés. Nouvelle tentative de nettoyage après 15 min.
+- L’auteur humain est réautorisé avant de lier un document. L’acteur de maintenance
+  ne reçoit que les permissions de lecture et d’écriture des pièces jointes.
+- Réponse `ok`, `retry_pending`, `disabled`, `unauthorized` ou `unavailable`, avec
+  compteurs uniquement. Les reprises applicatives sont persistées même si Cron
+  ne rejoue pas une invocation ratée. Index ajouté : `upload_intents_authorized_maintenance`.
+- Installer les index via `ensureFoundationIndexesForDb` avant activation.
+  Couper les nouvelles réservations n’empêche pas cette maintenance ; désactiver
+  le flag de maintenance l’arrête sans toucher aux intentions ni aux sources.
+- En local, appeler cette route avec le secret pour une passe explicite ; Vercel
+  Cron n’exécute pas le travail dans un serveur local. Valider les compteurs,
+  l’échéance suivante et la visibilité sur un PDF synthétique avant le déploiement.
+
+Les CI neutralisent ces flags/secrets, Blob et OpenAI. Les scénarios automatiques
+utilisent un replica set MongoDB local et Chromium (390/1440), avec le vrai
+composant et le parseur PDF ; les appels Blob du navigateur sont simulés.
+**Aucun réglage de production, purge réelle ou activation distante dans ce lot.**
+Restent la recette applicative Vercel puis l’activation autorisée, la file photo
+offline et la migration BSON ; TECH-04 n’est pas clôturé.
+
+Vérification du lot : `npm run check` avec MongoDB local jetable, **490 tests
+réussis**, lint/types/Knip réussis ; recette Next.js/Turbopack + Chromium 390/1440
+réussie séparément. Build webpack et **68 E2E réussis**, quatre tests live IA
+désactivés. Worker et WASM présents dans la trace Cron. Écran Documents local
+inspecté, PDF utilisateur existant laissé intact. Aucun test Blob réel dans ce lot.
+
+### Budget documents accepté — 2026-09-13
+
+Le responsable confirme **100 € par mois maximum pour le stockage et les
+transferts de documents, hors abonnement Vercel Pro**. C’est une enveloppe
+maximale, pas un objectif de consommation. Cette décision lève le préalable
+« budget mensuel à demander » des sections antérieures. Elle n’autorise pas
+une augmentation automatique du budget, un changement de forfait, ni une
+coupure des autres projets de l’équipe.
+
+Ce montant n’est **pas encore un plafond technique configuré chez Vercel**.
+L’équipe est facturée en USD. Spend Management couvre les ressources mesurées
+de toute l’équipe, après les crédits du forfait ; son action de pause coupe
+tous les déploiements de production. Les contrôles sont différés de plusieurs
+minutes : même cette pause n’est pas une garantie de facture arrêtée exactement
+à 100 €. Ne pas assimiler 100 € à 100 USD, ni les quotas d’octets à un plafond
+de transferts/facturation. Une pause globale exige un accord distinct sur son
+périmètre ; ne pas modifier une éventuelle protection existante sans la relire.
+[Gestion des dépenses Vercel](https://vercel.com/docs/spend-management).
+
+L’ouverture reste conditionnée à la recette applicative sur Vercel et à la
+résolution du transport/nettoyage décrite ci-dessous. Ne pas libérer un quota
+sur une simple expiration du jeton, ni augmenter les quotas pour masquer leur
+absence de libération. Aucun paramètre de facturation, variable Production ou
+verrou d’upload n’a été modifié lors de l’enregistrement de cette décision.
+
+### Correctif PDF local et demande d’ouverture Production — 2026-09-13
+
+Le responsable autorise explicitement le correctif et demande l’activation des
+uploads en production. Cette autorisation remplace la limitation d’autorité
+« développement uniquement » des historiques ci-dessous, mais ne constitue pas
+une preuve technique de recette ou de nettoyage des transferts en vol.
+
+Incident constaté : le PDF utilisateur est reçu et intègre dans Blob dev, mais
+Turbopack remplace `require.resolve("@hyzyla/pdfium")` par un identifiant de module.
+Le worker ne trouve plus le WASM et la vérification est reportée de cinq minutes.
+L’exclusion du package du bundle, **seule**, ne corrige pas ce chemin.
+
+Correctif : PDFium reste une dépendance Node externe ; le worker ouvre le chemin
+WASM épinglé sous `node_modules`, déjà inclus dans les traces Vercel. Les limites
+de temps, mémoire, taille, pages, chiffrement et intégrité restent inchangées.
+Une indisponibilité du worker expose uniquement un motif allowlisté, jamais son
+erreur brute ; l’interface distingue ce cas d’une réception non confirmée et
+affiche l’échéance avec les secondes. La réussite efface ce motif de diagnostic.
+
+Preuve utilisateur locale : la reprise depuis « Vérifier la réception » a lié
+le PDF existant (8 pages, 2 233 885 octets) sans nouvel envoi. Aucun contenu du PDF
+n’a été envoyé à une IA. Aucun fichier utilisateur ajouté au dépôt.
+Un nouveau test HTTP démarre un vrai Next.js/Turbopack isolé, sans credentials,
+base ni Blob, et valide/refuse des PDF synthétiques avec le worker réel. Ce test
+reproduit l’échec avant le correctif puis passe ; il est ajouté à la CI.
+
+Vérification finale : `npm run check` avec MongoDB local jetable, **481 tests
+réussis / 104 fichiers**, lint/types/Knip réussis ; le test Turbopack est exécuté
+séparément et réussit. Build webpack et **68 E2E réussis**, quatre tests live IA
+désactivés. La première passe E2E avait révélé un clic avant la fin du filtrage
+dans le test de stock mobile : une attente sur le libellé exact du premier produit
+stabilise ce test, sans changer le fonctionnement du stock. La suite complète
+a ensuite été rejouée avec succès. Worker et WASM présents dans la trace `verify`.
+
+Production contrôlée en lecture seule : déploiement `28dfef9` prêt, ressource et
+token Blob présents, mais namespace, activation et quatre quotas non configurés.
+**Aucune activation distante ni modification des variables Production effectuée.**
+Restent le budget demandé au responsable, la recette du worker sur Vercel et
+l’arbitrage du transport/nettoyage : l’autorisation `put` couvre encore le
+multipart et les quotas des intentions autorisées ne peuvent pas être libérés
+sur une simple absence. Ne pas lever ce verrou en assimilant un timeout client
+ou une expiration de token à une preuve de nettoyage définitif.
+TECH-04 reste ouvert ; aucune fonctionnalité TECH-05/V4-01 n’est démarrée ici.
+
 ### Prérequis Preview MongoDB — 2026-09-12
 
 Après fusion de la PR #41 (`acef6e8`), le responsable autorise l’isolation de
@@ -241,8 +379,9 @@ La documentation indique une facturation du stockage, des opérations et des
 transferts, avec des coûts additionnels de livraison par fonction pour le privé.
 Les quotas gratuits ne garantissent pas la disponibilité une fois dépassés.
 Le forfait Pro et la région Paris sont confirmés. Le plafond mensuel accepté
-reste à renseigner ; aucun devis ni plafond de facturation n’est déduit du
-seul accord de création des ressources.
+est désormais de **100 € hors forfait Pro** (décision du 2026-09-13 en tête).
+Aucun devis ni plafond de facturation effectivement appliqué n’est déduit de
+cette autorisation ou du seul accord de création des ressources.
 [Tarification Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing).
 
 ## Frontière applicative à construire
@@ -902,8 +1041,9 @@ Le SHA-256 du manifeste v1 initial reste identique à la preuve consignée plus 
 
 ## Informations restantes avant ouverture en production
 
-- Budget mensuel maximum accepté et plafond de volume global ; les ressources
-  déjà configurées ne garantissent pas une facturation bornée.
+- Budget mensuel maximum accepté : **100 € hors forfait Pro**. Restent le
+  plafond de volume global et les contrôles d’usage/facturation à configurer ;
+  les ressources déjà configurées ne garantissent pas une facturation bornée.
 - Recette déployée du worker et stratégie complète de nettoyage des capacités
   multipart/en vol. La recette dev et les limites applicatives sont désormais
   vérifiées pour le sous-lot PDF connecté, pas pour tout TECH-04.

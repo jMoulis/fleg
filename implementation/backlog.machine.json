@@ -568,18 +568,21 @@
       "epic": "documents",
       "title": "Private Blob objects and recoverable uploads",
       "priority": "P1",
-      "status": "foundation_implemented_uploads_disabled",
+      "status": "development_pdf_uploads_available_production_pending",
       "implementationProgress": {
-        "completedLot": 1,
-        "nextLot": "Direct transport, byte verification, linking, durable deletion and reconciliation",
-        "featureFlag": "BLOB_INTENTS_ENABLED=false",
-        "directUploadsAvailable": false,
+        "completedLot": "connected_pdf_upload_and_recovery",
+        "nextLot": "Deployed acceptance and production activation; offline photo queue and migration remain",
+        "featureFlag": "BLOB_DEV_UPLOADS_ENABLED; BLOB_MAINTENANCE_ENABLED opt-in",
+        "directUploadsAvailable": "development_only",
+        "cleanupPolicy": "release application reservation after expired grant plus exact deletion and fresh absence; retained tombstone daily watch",
+        "monthlyDocumentsBudgetEUR": 100,
+        "budgetExcludesProSubscription": true,
         "localPhotoQueueAvailable": false,
         "migrationExecuted": false
       },
       "dependsOn": ["PREV3-04", "TECH-03"],
       "externalGates": [
-        "Usage budget and global storage cap agreed before operational uploads",
+        "Deployed runtime and scoped maintenance acceptance before production activation; application quota is not a billing cap",
         "Non-production upload callback and token-isolation acceptance before activation"
       ],
       "infrastructure": {
@@ -593,7 +596,7 @@
         "originalStore": "store_fAOO8lodC05HwRnl retained and disconnected",
         "localConfiguration": "development_only",
         "verification": "resource metadata and environment scopes checked; local token list succeeded",
-        "applicationUploadsImplemented": false
+        "applicationUploadsImplemented": true
       },
       "spec": "implementation/38_TECH_04_PRIVATE_OBJECT_STORAGE.md",
       "acceptance": [

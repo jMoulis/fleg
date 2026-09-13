@@ -55,6 +55,11 @@ async function prepare(
   await page
     .getByLabel("Rechercher dans le brouillon")
     .fill(selectedProduct.label);
+  // Filtering is deferred. Wait for the intended first row before opening its
+  // details, otherwise a reordering can move the clicked row during the test.
+  await expect(
+    page.locator("[data-local-count-product]").first().getByRole("heading"),
+  ).toHaveText(selectedProduct.label);
   return {
     ...copy,
     selectedProduct,
