@@ -13,6 +13,7 @@ import {
 } from "@/domain/attachments/private-storage";
 import {
   attachmentCommand,
+  documentVerificationMessage,
   sendDocument,
   verifyDocumentUpload,
 } from "@/lib/attachments/document-upload";
@@ -94,10 +95,7 @@ export function DocumentManager({
           ? "PDF refusé après vérification (contenu invalide, protégé ou limites dépassées). Choisissez un autre fichier."
           : "Envoi abandonné. Son nettoyage sera effectué séparément.",
       );
-    } else
-      setMessage(
-        `Réception non confirmée. Réessayez la vérification à partir de ${new Date(intent.reconcileAfter).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}. Ne renvoyez pas le fichier.`,
-      );
+    } else setMessage(documentVerificationMessage(intent));
   }
   async function run(action: () => Promise<void>) {
     if (locked.current) return;

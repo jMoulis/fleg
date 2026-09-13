@@ -34,6 +34,7 @@ import { UploadLifecycleRepository } from "@/server/repositories/upload-lifecycl
 import { DocumentSourceRepository } from "@/server/repositories/document-source-repository";
 import { AttachmentRepository } from "@/server/repositories/attachment-repository";
 import { authorizeUploadAuthor } from "@/server/auth/upload-author-context";
+import * as pdfValidator from "@/server/storage/pdf-validator";
 
 const uri = process.env.STORAGE_TEST_MONGODB_URI;
 const organization = new ObjectId();
@@ -88,6 +89,7 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
     await ensureFoundationIndexesForDb(db);
   }, 30000);
   beforeEach(async () => {
+    vi.restoreAllMocks();
     for (const name of [
       "uploadIntents",
       "objectStorageQuotas",
@@ -212,6 +214,41 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       budgetHeld: true,
       state: "linked",
     });
+  });
+  it("exposes only a safe PDF-validator issue, respects backoff and clears it on successful recovery", async () => {
+    const bytes = pdf();
+    const receipt = await reserve(bytes, "document");
+    await repo.beginAuthorization(context, receipt.id, randomUUID());
+    objects.read.mockResolvedValue(bytes);
+    vi.spyOn(pdfValidator, "validatePdf").mockRejectedValueOnce(
+      new pdfValidator.PdfValidatorUnavailableError(),
+    );
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toMatchObject({ outcome: "retry" });
+    expect(await repo.get(context, receipt.id)).toMatchObject({
+      state: "reserved",
+      verificationIssue: "pdf_validator_unavailable",
+    });
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toEqual({ processed: false });
+    expect(objects.read).toHaveBeenCalledTimes(1);
+    expect(await db.collection("documentSources").countDocuments()).toBe(0);
+    await intents().updateOne(
+      { _id: receipt.id },
+      { $set: { reconcileAfter: new Date(0) } },
+    );
+    expect(
+      await lifecycle.reconcile(context, randomUUID(), receipt.id),
+    ).toMatchObject({ outcome: "linked" });
+    expect(
+      (await repo.get(context, receipt.id)).verificationIssue,
+    ).toBeUndefined();
+    expect(
+      (await intents().findOne({ _id: receipt.id }))?.verificationIssue,
+    ).toBeUndefined();
+    expect(await db.collection("documentSources").countDocuments()).toBe(1);
   });
   it("does not read unissued, foreign owner/store/organization or cancelled intents through owner verification", async () => {
     const receipt = await reserve();

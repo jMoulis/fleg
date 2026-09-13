@@ -9,6 +9,22 @@ import { signedUploadSchema } from "@/domain/attachments/upload-transport";
 import { apiErrorSchema } from "@/domain/api/schemas";
 
 const receiptResponse = z.object({ intent: uploadIntentReceiptSchema });
+
+export function documentVerificationMessage(intent: UploadIntentReceipt) {
+  const reason =
+    intent.verificationIssue === "pdf_validator_unavailable"
+      ? "Le fichier a été reçu, mais le service de validation PDF est indisponible. Le document n’est pas encore enregistré."
+      : "La vérification n’a pas abouti. Cela ne signifie pas que le fichier n’a pas été envoyé.";
+  const retryAt = new Date(intent.reconcileAfter).toLocaleString("fr-FR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  return `${reason} À partir du ${retryAt}, cliquez sur « Vérifier la réception ». Ne renvoyez pas le fichier.`;
+}
+
 export async function attachmentCommand(path: string, body: unknown = {}) {
   const response = await fetch(path, {
     method: "POST",

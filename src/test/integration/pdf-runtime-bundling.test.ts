@@ -1,0 +1,168 @@
+import { spawn, type ChildProcess } from "node:child_process";
+import { once } from "node:events";
+import { mkdtemp, mkdir, symlink, writeFile, rm } from "node:fs/promises";
+import { createServer } from "node:net";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+// Separate CI job/command: exercises Next's real compiler, not Vitest's loader.
+// The isolated fixture has no .env, auth, database, Blob, or provider access.
+describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
+  "PDF worker in Next.js",
+  () => {
+    it("validates and rejects PDFs over HTTP with the production worker and Turbopack", async () => {
+      const root = process.cwd();
+      const parent = join(root, ".local-backups");
+      await mkdir(parent, { recursive: true });
+      const fixture = await mkdtemp(join(parent, "pdf-runtime-"));
+      let child: ChildProcess | undefined;
+      let passed = false;
+      try {
+        await symlink(
+          join(root, "node_modules"),
+          join(fixture, "node_modules"),
+          "dir",
+        );
+        await symlink(join(root, "src"), join(fixture, "src"), "dir");
+        await mkdir(join(fixture, "app", "validate"), { recursive: true });
+        await writeFile(
+          join(fixture, "package.json"),
+          JSON.stringify({ private: true }),
+        );
+        await writeFile(
+          join(fixture, "tsconfig.json"),
+          JSON.stringify({
+            compilerOptions: {
+              target: "ES2022",
+              module: "esnext",
+              moduleResolution: "bundler",
+              paths: { "@/*": ["./src/*"] },
+              jsx: "preserve",
+              esModuleInterop: true,
+            },
+          }),
+        );
+        await writeFile(
+          join(fixture, "next.config.ts"),
+          `
+        import appConfig from ${JSON.stringify(join(root, "next.config.ts"))};
+        export default {
+          serverExternalPackages: appConfig.serverExternalPackages,
+          turbopack: { root: ${JSON.stringify(root)} },
+          devIndicators: false,
+        };
+      `,
+        );
+        await writeFile(
+          join(fixture, "app", "validate", "route.ts"),
+          `
+        import { validatePdf } from "@/server/storage/pdf-validator";
+        import { PrivateStorageError } from "@/domain/attachments/private-storage";
+        export async function POST(request: Request) {
+          try {
+            return Response.json(await validatePdf(new Uint8Array(await request.arrayBuffer())));
+          } catch (error) {
+            const code = error instanceof PrivateStorageError ? error.code : "STORAGE_UNAVAILABLE";
+            return Response.json({ code }, { status: code === "STORAGE_INTEGRITY" ? 422 : 503 });
+          }
+        }
+      `,
+        );
+        const socket = createServer();
+        socket.listen(0, "127.0.0.1");
+        await once(socket, "listening");
+        const address = socket.address();
+        if (!address || typeof address === "string")
+          throw new Error("No test port");
+        const port = address.port;
+        await new Promise<void>((resolve, reject) =>
+          socket.close((error) => (error ? reject(error) : resolve())),
+        );
+        child = spawn(
+          process.execPath,
+          [
+            join(root, "node_modules/next/dist/bin/next"),
+            "dev",
+            "--turbopack",
+            "-H",
+            "127.0.0.1",
+            "-p",
+            String(port),
+          ],
+          {
+            cwd: fixture,
+            env: {
+              PATH: process.env.PATH,
+              NODE_ENV: "development",
+              NEXT_TELEMETRY_DISABLED: "1",
+            },
+            stdio: "pipe",
+          },
+        );
+        child.stdout?.resume();
+        child.stderr?.resume();
+        const url = `http://127.0.0.1:${port}/validate`;
+        let ready = false;
+        for (let attempt = 0; attempt < 90; attempt++) {
+          if (child.exitCode !== null)
+            throw new Error("Next test server exited");
+          try {
+            const response = await fetch(url, {
+              signal: AbortSignal.timeout(2000),
+            });
+            await response.body?.cancel();
+            if (response.status === 405) {
+              ready = true;
+              break;
+            }
+          } catch {
+            /* Startup / first compilation. */
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+        expect(ready).toBe(true);
+        let pdf = "%PDF-1.7\n";
+        const offsets: number[] = [];
+        for (const object of [
+          "<< /Type /Catalog /Pages 2 0 R >>",
+          "<< /Type /Pages /Count 1 /Kids [3 0 R] >>",
+          "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>",
+        ]) {
+          offsets.push(pdf.length);
+          pdf += `${offsets.length} 0 obj\n${object}\nendobj\n`;
+        }
+        const start = pdf.length;
+        pdf += `xref\n0 4\n0000000000 65535 f \n${offsets.map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n${start}\n%%EOF\n`;
+        const valid = await fetch(url, {
+          method: "POST",
+          body: pdf,
+          signal: AbortSignal.timeout(20000),
+        });
+        expect(await valid.json()).toEqual({
+          pageCount: 1,
+          parserVersion: "pdfium-2.1.13-fleg-1",
+        });
+        expect(valid.status).toBe(200);
+        const invalid = await fetch(url, {
+          method: "POST",
+          body: "%PDF-1.7 not a PDF",
+          signal: AbortSignal.timeout(20000),
+        });
+        expect(invalid.status).toBe(422);
+        expect(await invalid.json()).toEqual({ code: "STORAGE_INTEGRITY" });
+        passed = true;
+      } finally {
+        if (child && child.exitCode === null) {
+          const exited = once(child, "exit");
+          child.kill("SIGTERM");
+          const timer = setTimeout(() => child?.kill("SIGKILL"), 5000);
+          await exited;
+          clearTimeout(timer);
+        }
+        // Only the unique generated fixture. rm does not follow its symlinks.
+        if (passed) await rm(fixture, { recursive: true, force: true });
+        else console.error(`PDF runtime diagnostics: ${fixture}`);
+      }
+    }, 150000);
+  },
+);

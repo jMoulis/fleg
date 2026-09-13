@@ -75,6 +75,8 @@ export const uploadIntentReceiptSchema = z.object({
   reconcileAfter: z.iso.datetime(),
   // Informational only: a separate authorized command issues the capability.
   uploadAvailable: z.boolean(),
+  // Allowlisted diagnostic only; never return parser/provider error text.
+  verificationIssue: z.literal("pdf_validator_unavailable").optional(),
   sourceId: z
     .string()
     .regex(/^[a-f0-9]{24}$/)

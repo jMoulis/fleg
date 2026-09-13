@@ -17,6 +17,12 @@ export type PdfValidation = z.infer<typeof pdfValidationSchema>;
 const parseTimeoutMs = 10000;
 let parsing = false;
 
+export class PdfValidatorUnavailableError extends PrivateStorageError {
+  constructor() {
+    super("STORAGE_UNAVAILABLE", "Validation PDF temporairement indisponible");
+  }
+}
+
 export async function validatePdf(bytes: Uint8Array): Promise<PdfValidation> {
   if (
     bytes.length < 8 ||
@@ -42,13 +48,7 @@ export async function validatePdf(bytes: Uint8Array): Promise<PdfValidation> {
             "PDF non analysable dans les limites autorisées",
           ),
         );
-      const unavailable = () =>
-        reject(
-          new PrivateStorageError(
-            "STORAGE_UNAVAILABLE",
-            "Validation PDF temporairement indisponible",
-          ),
-        );
+      const unavailable = () => reject(new PdfValidatorUnavailableError());
       worker = new Worker(
         join(process.cwd(), "src/server/storage/pdf-validator.worker.mjs"),
         {

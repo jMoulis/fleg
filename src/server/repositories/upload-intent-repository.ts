@@ -73,6 +73,7 @@ export interface IntentDocument {
     absenceObservedAt?: Date;
   }[];
   lastMaintenanceCode?: "RETRY" | "REJECTED" | "AWAITING_TRANSPORT_PROOF";
+  verificationIssue?: UploadIntentReceipt["verificationIssue"];
 }
 interface QuotaDocument {
   _id: string;
@@ -91,6 +92,9 @@ function receipt(document: IntentDocument): UploadIntentReceipt {
     createdAt: document.createdAt.toISOString(),
     reconcileAfter: document.reconcileAfter.toISOString(),
     uploadAvailable: false,
+    ...(document.lastMaintenanceCode === "RETRY" && document.verificationIssue
+      ? { verificationIssue: document.verificationIssue }
+      : {}),
     ...(document.sourceId ? { sourceId: document.sourceId.toHexString() } : {}),
   });
 }

@@ -2,6 +2,50 @@
 
 ## Statut et reprise du plan
 
+### Correctif PDF local et demande d’ouverture Production — 2026-09-13
+
+Le responsable autorise explicitement le correctif et demande l’activation des
+uploads en production. Cette autorisation remplace la limitation d’autorité
+« développement uniquement » des historiques ci-dessous, mais ne constitue pas
+une preuve technique de recette ou de nettoyage des transferts en vol.
+
+Incident constaté : le PDF utilisateur est reçu et intègre dans Blob dev, mais
+Turbopack remplace `require.resolve("@hyzyla/pdfium")` par un identifiant de module.
+Le worker ne trouve plus le WASM et la vérification est reportée de cinq minutes.
+L’exclusion du package du bundle, **seule**, ne corrige pas ce chemin.
+
+Correctif : PDFium reste une dépendance Node externe ; le worker ouvre le chemin
+WASM épinglé sous `node_modules`, déjà inclus dans les traces Vercel. Les limites
+de temps, mémoire, taille, pages, chiffrement et intégrité restent inchangées.
+Une indisponibilité du worker expose uniquement un motif allowlisté, jamais son
+erreur brute ; l’interface distingue ce cas d’une réception non confirmée et
+affiche l’échéance avec les secondes. La réussite efface ce motif de diagnostic.
+
+Preuve utilisateur locale : la reprise depuis « Vérifier la réception » a lié
+le PDF existant (8 pages, 2 233 885 octets) sans nouvel envoi. Aucun contenu du PDF
+n’a été envoyé à une IA. Aucun fichier utilisateur ajouté au dépôt.
+Un nouveau test HTTP démarre un vrai Next.js/Turbopack isolé, sans credentials,
+base ni Blob, et valide/refuse des PDF synthétiques avec le worker réel. Ce test
+reproduit l’échec avant le correctif puis passe ; il est ajouté à la CI.
+
+Vérification finale : `npm run check` avec MongoDB local jetable, **481 tests
+réussis / 104 fichiers**, lint/types/Knip réussis ; le test Turbopack est exécuté
+séparément et réussit. Build webpack et **68 E2E réussis**, quatre tests live IA
+désactivés. La première passe E2E avait révélé un clic avant la fin du filtrage
+dans le test de stock mobile : une attente sur le libellé exact du premier produit
+stabilise ce test, sans changer le fonctionnement du stock. La suite complète
+a ensuite été rejouée avec succès. Worker et WASM présents dans la trace `verify`.
+
+Production contrôlée en lecture seule : déploiement `28dfef9` prêt, ressource et
+token Blob présents, mais namespace, activation et quatre quotas non configurés.
+**Aucune activation distante ni modification des variables Production effectuée.**
+Restent le budget demandé au responsable, la recette du worker sur Vercel et
+l’arbitrage du transport/nettoyage : l’autorisation `put` couvre encore le
+multipart et les quotas des intentions autorisées ne peuvent pas être libérés
+sur une simple absence. Ne pas lever ce verrou en assimilant un timeout client
+ou une expiration de token à une preuve de nettoyage définitif.
+TECH-04 reste ouvert ; aucune fonctionnalité TECH-05/V4-01 n’est démarrée ici.
+
 ### Prérequis Preview MongoDB — 2026-09-12
 
 Après fusion de la PR #41 (`acef6e8`), le responsable autorise l’isolation de

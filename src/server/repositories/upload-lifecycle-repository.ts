@@ -26,7 +26,10 @@ import { AttachmentReferenceError } from "./attachment-repository";
 import type { IntentDocument } from "./upload-intent-repository";
 import type { PrivateStorageConfig } from "@/server/storage/config";
 import type { PrivateUploadObjectStore } from "@/server/storage/private-upload-object";
-import { validatePdf } from "@/server/storage/pdf-validator";
+import {
+  PdfValidatorUnavailableError,
+  validatePdf,
+} from "@/server/storage/pdf-validator";
 import * as z from "zod";
 
 const leaseMs = 120000;
@@ -300,8 +303,16 @@ export class UploadLifecycleRepository {
                 $set: {
                   lastMaintenanceCode: "RETRY",
                   reconcileAfter: new Date(Date.now() + retryMs),
+                  ...(error instanceof PdfValidatorUnavailableError
+                    ? { verificationIssue: "pdf_validator_unavailable" as const }
+                    : {}),
                 },
-                $unset: { lease: "" },
+                $unset: {
+                  lease: "",
+                  ...(error instanceof PdfValidatorUnavailableError
+                    ? {}
+                    : { verificationIssue: "" }),
+                },
               },
               { session },
             );
@@ -405,7 +416,7 @@ export class UploadLifecycleRepository {
               cleanupRequired: false,
               artifacts: [{ kind: "original", storage: document.storage }],
             },
-            $unset: { lease: "", lastMaintenanceCode: "" },
+            $unset: { lease: "", lastMaintenanceCode: "", verificationIssue: "" },
           },
           { session },
         );

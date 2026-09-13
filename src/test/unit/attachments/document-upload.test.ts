@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import {
   prepareDocument,
+  documentVerificationMessage,
   sendDocument,
 } from "@/lib/attachments/document-upload";
 
@@ -36,6 +37,23 @@ const input = () => ({
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("connected document upload client", () => {
+  it("distinguishes a received PDF with an unavailable validator from an unknown receipt", () => {
+    const intent = { ...receipt, state: "reserved" as const };
+    expect(documentVerificationMessage(intent)).toContain(
+      "La vérification n’a pas abouti",
+    );
+    expect(documentVerificationMessage(intent)).not.toContain(
+      "Le fichier a été reçu",
+    );
+    const message = documentVerificationMessage({
+      ...intent,
+      verificationIssue: "pdf_validator_unavailable",
+    });
+    expect(message).toContain("Le fichier a été reçu");
+    expect(message).toContain("service de validation PDF est indisponible");
+    expect(message).toContain("Vérifier la réception");
+    expect(message).toContain("Ne renvoyez pas le fichier");
+  });
   it("validates PDF type/size before reading bytes and calculates a bounded SHA-256", async () => {
     const metadata = await prepareDocument(file, "  Promo  ", randomUUID());
     expect(metadata).toMatchObject({

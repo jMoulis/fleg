@@ -89,6 +89,13 @@ l’envoi** retire le suivi ; le nettoyage distant reste séparé. Ne pas fermer
 définitivement l’onglet tant que la réception est incertaine.
 
 **Télécharger** restitue le PDF aux utilisateurs autorisés du magasin.
+
+Si le message indique que le **service de validation PDF est indisponible**, le
+fichier a été reçu mais n’est pas encore enregistré dans les documents. Utiliser
+**Vérifier la réception** après la date et l’heure affichées, sans renvoyer le
+PDF. Si le message persiste, le signaler à l’administrateur ; attendre n’est pas
+une garantie de résolution. Ce contrôle technique n’est pas une analyse IA.
+
 **Supprimer** le retire immédiatement de la liste après confirmation ; l’effacement
 du stockage intervient séparément. Un plafond de stockage atteint nécessite un
 contrôle par l’administrateur, pas des envois répétés. Les photos existantes gardent

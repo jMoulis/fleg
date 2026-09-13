@@ -1,7 +1,7 @@
 import { parentPort, workerData } from "node:worker_threads";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { capWasmMemory } from "./pdf-memory.mjs";
 
 // No credentials, filesystem paths or provider URLs are passed by callers.
@@ -20,7 +20,9 @@ try {
   const { PDFiumModule } = require("@hyzyla/pdfium");
   const wasm = capWasmMemory(
     readFileSync(
-      join(dirname(require.resolve("@hyzyla/pdfium")), "pdfium.wasm"),
+      // Turbopack rewrites require.resolve() to a module ID even for externals.
+      // This pinned asset is explicitly included in the Vercel function traces.
+      join(process.cwd(), "node_modules/@hyzyla/pdfium/dist/pdfium.wasm"),
     ),
     wasmMemoryPages,
   );
