@@ -14,6 +14,7 @@ import { validatePhotoBytes } from "@/domain/attachments/photo-validation";
 import { signedUploadSchema } from "@/domain/attachments/upload-transport";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import { uploadLifecyclePolicy } from "@/domain/attachments/upload-lifecycle-policy";
+import type { OfflineIdentity } from "@/domain/offline/schemas";
 
 const receiptResponse = z.object({ intent: uploadIntentReceiptSchema });
 
@@ -43,12 +44,16 @@ export async function attachmentCommand(
   path: string,
   body: unknown = {},
   signal?: AbortSignal,
+  owner?: OfflineIdentity,
 ) {
   const response = await fetch(path, {
     method: "POST",
     credentials: "same-origin",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(owner ? { "x-fleg-photo-owner": JSON.stringify(owner) } : {}),
+    },
     body: JSON.stringify(body),
     signal: AbortSignal.any([
       AbortSignal.timeout(65_000),
@@ -71,9 +76,15 @@ export async function verifyDocumentUpload(
   base: string,
   id: string,
   signal?: AbortSignal,
+  owner?: OfflineIdentity,
 ): Promise<UploadIntentReceipt> {
   return receiptResponse.parse(
-    await attachmentCommand(`${base}/${z.uuid().parse(id)}/verify`, {}, signal),
+    await attachmentCommand(
+      `${base}/${z.uuid().parse(id)}/verify`,
+      {},
+      signal,
+      owner,
+    ),
   ).intent;
 }
 
@@ -207,9 +218,11 @@ export async function sendPhoto(input: {
   target: AttachmentTarget;
   caption: string;
   idempotencyKey: string;
-  remember: (id: string) => void;
+  remember: (id: string) => void | Promise<void>;
   phase: (text: string) => void;
   signal: AbortSignal;
+  owner?: OfflineIdentity;
+  beforeRequest?: () => Promise<void>;
 }) {
   input.signal.throwIfAborted();
   input.phase("Préparation de la photo…");
@@ -226,21 +239,25 @@ async function sendPreparedAttachment(input: {
   base: string;
   file: File;
   metadata: UploadIntentInput;
-  remember: (id: string) => void;
+  remember: (id: string) => void | Promise<void>;
   phase: (text: string) => void;
   label: "PDF" | "photo";
   signal?: AbortSignal;
+  owner?: OfflineIdentity;
+  beforeRequest?: () => Promise<void>;
 }) {
+  await input.beforeRequest?.();
   input.signal?.throwIfAborted();
   const metadata = input.metadata;
   const intent = receiptResponse.parse(
-    await attachmentCommand(input.base, metadata, input.signal),
+    await attachmentCommand(input.base, metadata, input.signal, input.owner),
   ).intent;
   // Persist only an opaque recovery ID, before requesting a capability or PUT.
   // A storage failure must prevent the upload, not silently lose recovery.
-  input.remember(intent.id);
+  await input.remember(intent.id);
   input.signal?.throwIfAborted();
   if (intent.state !== "reserved") return intent;
+  await input.beforeRequest?.();
   const { upload } = z
     .object({ upload: signedUploadSchema })
     .parse(
@@ -248,6 +265,7 @@ async function sendPreparedAttachment(input: {
         `${input.base}/${intent.id}/authorization`,
         {},
         input.signal,
+        input.owner,
       ),
     );
   const url = new URL(upload.url);
@@ -261,6 +279,7 @@ async function sendPreparedAttachment(input: {
   )
     throw new Error("Autorisation d’envoi invalide. Aucun fichier envoyé.");
   input.signal?.throwIfAborted();
+  await input.beforeRequest?.();
   input.phase(input.label === "PDF" ? "Envoi du PDF…" : "Envoi de la photo…");
   try {
     const response = await fetch(upload.url, {
@@ -287,5 +306,6 @@ async function sendPreparedAttachment(input: {
       ? "Vérification du PDF…"
       : "Vérification de la photo…",
   );
-  return verifyDocumentUpload(input.base, intent.id, input.signal);
+  await input.beforeRequest?.();
+  return verifyDocumentUpload(input.base, intent.id, input.signal, input.owner);
 }

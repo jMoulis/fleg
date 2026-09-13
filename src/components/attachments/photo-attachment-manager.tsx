@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PhotoUploadForm } from "@/components/attachments/photo-upload-form";
+import { OfflinePhotoPanel } from "@/components/attachments/offline-photo-panel";
 import { attachmentCommand } from "@/lib/attachments/private-upload";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import {
@@ -208,6 +209,26 @@ export function PhotoAttachmentManager({
             <AlertDescription>{notice}</AlertDescription>
           </Alert>
         ) : null}
+
+        {canWrite && uploadsAvailable && (
+          <details className="rounded-xl border p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              Photos hors connexion
+            </summary>
+            <OfflinePhotoPanel
+              scope={{ userId, storeId }}
+              target={
+                selectedTarget
+                  ? {
+                      target: selectedTarget.target,
+                      label: selectedTarget.label,
+                    }
+                  : null
+              }
+              onLinked={refreshPhotos}
+            />
+          </details>
+        )}
 
         {targets.length === 0 ? (
           <div className="rounded-xl border border-dashed p-6 text-center">

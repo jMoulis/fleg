@@ -2,6 +2,46 @@
 
 ## Statut et reprise du plan
 
+### Lot 3b — file locale photo consentie — 2026-09-13
+
+Après fusion #46/#47, préparation explicite d’une cible/version depuis la
+photothèque ; saisie et file dans le même espace terrain `/offline#offline-photos`.
+Pas de nouveau shell ni de cache privé. La préparation serveur contrôle droits,
+session et existence de la cible ; la copie locale n’autorise jamais un envoi.
+
+IndexedDB v4 ajoute `photos` sans toucher aux comptages/opérations/reçus. Octets
+originaux + métadonnées figées sont enregistrés atomiquement avant confirmation.
+Plafond global 10 photos / 40 Mio, sans éviction et sans compteur d’un autre compte.
+Références bornées par l’expiration de session/la durée offline existante ; les
+photos en attente ne sont jamais purgées automatiquement. Repréparer avec le même
+propriétaire rétablit l’accès à ses anciennes photos. L’expiration/effacement de
+la seule référence de stock ne supprime pas la préparation photo.
+
+Reprise au premier plan : contrôle serveur des accès, commandes portant un hash
+de session attendu (jamais un token), bail local transactionnel inter-onglets,
+5 tentatives bornées avec délai de 30 s minimum et respect de `reconcileAfter`.
+Si l’ACK de réservation ou de PUT est perdu, rejeu de la même intention/vérification
+uniquement : aucun second PUT automatique. Une interruption avant émission peut
+donc nécessiter vérification puis abandon manuel et nouvel ajout depuis une copie.
+Un refus conserve les octets. Suppression locale uniquement après liaison vérifiée
+ou retrait explicite rapproché ; une photo déjà liée n’est pas supprimée à distance.
+
+Tests : quotas concurrents, migration locale v3/v4, isolation/session/expiration,
+perte d’ACK, bail expiré, quota IndexedDB refusé, rejet et retrait explicite,
+limites de reprise, API préparation et fence des commandes ; recette Chromium
+390/1440 avec transport simulé et E2E d’ouverture à froid sur build de production.
+La recette sur téléphone/tablette physique reste à fournir par le manager.
+Guide utilisateur mis à jour. Pas de données utilisateur transmises à Blob/OpenAI,
+pas de migration réelle ou configuration Production. Prochain lot : outillage
+de migration ; TECH-04 et PILOT-01 restent ouverts.
+
+Validation locale : `npm run check` avec MongoDB jetable — **522 tests réussis**,
+un test runtime activé séparément ; recette Next/Turbopack + Chromium 390/1440
+réussie (API/Blob simulés), incluant l’actualisation de galerie après reprise
+manuelle. Build webpack et **70 E2E réussis**, quatre scénarios live OpenAI
+désactivés. Captures mobiles et desktop inspectées. Le bloc photo reste replié
+par défaut, après le comptage, sans masquer ses champs ni ses actions.
+
 ### Lot 3a — photothèque connectée sur Blob — 2026-09-13
 
 Suite séparée du correctif PDF PR #46. Les photothèques Paramètres, Espace et TG

@@ -137,6 +137,13 @@ test("TECH-01 efface la référence lors d’un changement de compte", async ({
   await other.getByLabel("Mot de passe").fill("FlegManager!2026");
   await other.getByRole("button", { name: "Se connecter" }).click();
   await expect(other).toHaveURL(/\/stores$/);
+  // The existing manager session also proves photo preparation isolation;
+  // do not add redundant logins that consume the real auth rate-limit budget.
+  expect(
+    (
+      await other.request.get(`/api/stores/${control.id}/attachments/offline`)
+    ).status(),
+  ).toBe(404);
   await expect(page.getByText(/Aucun catalogue préparé/)).toBeVisible();
   await expect(page.locator("[data-offline-product]")).toHaveCount(0);
   expect(

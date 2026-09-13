@@ -13,6 +13,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { AppBrand } from "@/components/app-shell/app-brand";
+import { OfflinePhotoPanel } from "@/components/attachments/offline-photo-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -109,6 +110,13 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
       readUpdate();
     };
     const query = new URL(window.location.href).searchParams;
+    if (window.location.hash === "#offline-photos") {
+      const photos = document.getElementById("offline-photos");
+      if (photos instanceof HTMLDetailsElement) {
+        photos.open = true;
+        photos.scrollIntoView();
+      }
+    }
     const requestedStore = storeIdSchema.safeParse(query.get("storeId"));
     const requestedDate = inventoryWorkspaceQuerySchema.safeParse({
       businessDate: query.get("businessDate"),
@@ -138,7 +146,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
         if (!copy) setWorkspace(null);
         if (copy && offlineFreshness(copy, Date.now()) === "purged") {
           setWorkspace(null);
-          await forgetPreparedWorkspace();
+          await forgetPreparedWorkspace("inventory");
           return;
         }
         if (copy && navigator.onLine) {
@@ -282,7 +290,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
 
   useEffect(() => {
     if (workspace && offlineFreshness(workspace, now) === "purged") {
-      void forgetPreparedWorkspace().catch(() =>
+      void forgetPreparedWorkspace("inventory").catch(() =>
         setError(
           "Copie expirée : reconnectez-vous puis réessayez. Ne supprimez pas les données du site : elles peuvent contenir vos brouillons.",
         ),
@@ -377,7 +385,7 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
   async function forget() {
     setPending(true);
     try {
-      await forgetPreparedWorkspace();
+      await forgetPreparedWorkspace("inventory");
       setWorkspace(null);
       setError(null);
       setNotice(
@@ -847,6 +855,14 @@ export function OfflineWorkspace({ enabled }: { enabled: boolean }) {
             </ul>
           </section>
         )}
+        <details id="offline-photos" className="my-3 scroll-mt-20">
+          <summary className="cursor-pointer py-2 text-sm font-semibold">
+            Photos terrain
+          </summary>
+          <OfflinePhotoPanel
+            scope={target.storeId ? { storeId: target.storeId } : undefined}
+          />
+        </details>
       </main>
     </div>
   );

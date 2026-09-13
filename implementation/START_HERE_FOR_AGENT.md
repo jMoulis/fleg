@@ -1,5 +1,26 @@
 # START HERE — Coding Agent
 
+## Latest continuation — 2026-09-13: TECH-04 consented local photo queue
+
+PR #46/#47 are merged on master (`da6b307`). The manager reports successful
+connected PDF and Space photo uploads, not an offline device acceptance.
+Branch `codex/tech-04-offline-photo-queue` implements lot 3b within the same
+photothèque and `/offline#offline-photos` field workspace. No private HTML/API
+cache, new stock editor, production configuration change or migration.
+
+IndexedDB moves from v3 to v4 by adding a durable `photos` table only. A consented
+prepared-target reference is disposable; photos survive expiry/logout. Budgets
+are global per origin/device (10 / 40 MiB), without exposing other owners. Live
+reauthorization and an expected session header fence uploads; uncertain attempts
+verify the same intent without another PUT. Manual discard is explicit and
+reconciled; only verified linkage removes bytes automatically. No background
+upload while closed, no PDF local queue, no automatic purge or vision AI.
+
+Next: physical-device photo acceptance, then TECH-04 lot 4 migration tooling
+(inventory/dry-run, verified copy, rollback). Real migration needs separate
+authorization. Keep TECH-05/V4-01/TECH-06 and PILOT-01 gates unchanged. Preserve
+the untracked user PDF. Prior status entries below remain historical.
+
 ## Latest continuation — 2026-09-13: TECH-04 connected photo library
 
 The PDF fix is PR #46; its first CI hit a slow deep-equality assertion on a
