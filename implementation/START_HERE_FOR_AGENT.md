@@ -1,5 +1,25 @@
 # START HERE — Coding Agent
 
+## Latest continuation — 2026-09-13: TECH-04 connected photo library
+
+The PDF fix is PR #46; its first CI hit a slow deep-equality assertion on a
+large typed array. Native exact byte comparison replaces that traversal without
+raising timeouts or relaxing any parser check. Keep that PR independent.
+
+The next branch integrates **connected** photo uploads in Settings, Space and
+TG. It reuses private upload admission, intent/signing/verification and cleanup;
+old multipart POSTs are refused before reading bytes. New application uploads
+never fall back to BSON. Historical BSON photos remain readable/deletable, and
+the new optional public backend discriminator routes deletion safely.
+The shared client transport is now `src/lib/attachments/private-upload.ts`.
+Only opaque user/store-scoped recovery IDs live in sessionStorage, not images
+or signed URLs. No claim of offline photo capture or closed-browser transfer.
+
+Next sub-lot: the consented bounded IndexedDB photo queue (10 photos / 40 MiB
+per origin/device, not per store), then migration tooling. No real photo migration,
+production configuration change, TECH-05/V4-01 or PILOT-01 closure is included.
+Preserve the user's untracked PDF. Merge the PDF fix before this continuation.
+
 ## Latest continuation — 2026-09-13: padded PDF compatibility
 
 PR #45 is merged (`da9d1a1`). Its authorized Production rollout and synthetic

@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Layers3, Maximize2, MonitorCog, Pencil, Ru
 import * as z from "zod";
 
 import { PhotoAttachmentManager } from "@/components/attachments/photo-attachment-manager";
+import { privateUploadsAvailable } from "@/server/storage/upload-transport";
 import { LayoutPlan } from "@/components/space/layout-plan";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -195,6 +196,9 @@ export default async function StoreSpacePage({ params, searchParams }: StoreSpac
 
       <section className="mt-8" aria-label="Photos du plan et du mobilier">
         <PhotoAttachmentManager
+          key={`${context.userId}:${storeId}`}
+          userId={context.userId}
+          uploadsAvailable={privateUploadsAvailable(context)}
           canWrite={context.permissions.includes("attachments.write")}
           description="Documentez manuellement une version du plan ou un mobilier précis. Ces photos restent des observations et ne déplacent aucun élément."
           initialAttachments={attachments}

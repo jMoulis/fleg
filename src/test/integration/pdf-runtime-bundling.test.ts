@@ -5,6 +5,7 @@ import { createServer } from "node:net";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { chromium, expect as browserExpect } from "@playwright/test";
+import { verifyPhotoLibrary } from "@/test/helpers/photo-library-browser";
 
 // Separate CI job/command: exercises Next's real compiler, not Vitest's loader.
 // The isolated fixture has no .env, auth, database, Blob, or provider access.
@@ -71,8 +72,12 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
         );
         if (process.env.DOCUMENT_UPLOAD_BROWSER_TEST === "true") {
           await writeFile(
+            join(fixture, "postcss.config.mjs"),
+            'export { default } from "../../postcss.config.mjs";',
+          );
+          await writeFile(
             join(fixture, "app", "layout.tsx"),
-            `export default function Layout({children}) { return <html lang="fr"><body>{children}</body></html>; }`,
+            `import "@/app/globals.css"; export default function Layout({children}) { return <html lang="fr"><body>{children}</body></html>; }`,
           );
           await writeFile(
             join(fixture, "app", "page.tsx"),
@@ -80,6 +85,19 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
             import { DocumentManager } from "@/components/documents/document-manager";
             export default function Page() {
               return <DocumentManager storeId={"a".repeat(24)} userId="synthetic-manager" basePath="/" canWrite uploadsAvailable hasCursor={false} documents={{sources:[],nextCursor:null}} />;
+            }
+          `,
+          );
+          await mkdir(join(fixture, "app", "photos"));
+          await writeFile(
+            join(fixture, "app", "photos", "page.tsx"),
+            `
+            import { PhotoAttachmentManager } from "@/components/attachments/photo-attachment-manager";
+            import { legacyPhoto } from "@/test/helpers/photo-library-browser-fixture";
+            export default async function Page({searchParams}) {
+              const query = await searchParams;
+              const userId = query.user === "other" ? "other-manager" : "synthetic-manager";
+              return <main className="mx-auto max-w-5xl p-4"><PhotoAttachmentManager key={userId} userId={userId} storeId={"a".repeat(24)} title="Photos du magasin" description="Observations terrain" canWrite uploadsAvailable={query.disabled !== "true"} initialAttachments={[legacyPhoto]} targets={[{label:"Magasin",description:"Vue générale",target:{type:"store"}},{label:"Face A",description:"Plan immuable",target:{type:"fixture",layoutVersionId:"d".repeat(24),fixtureId:"face-a"}}]} /></main>;
             }
           `,
           );
@@ -180,6 +198,7 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
         if (process.env.DOCUMENT_UPLOAD_BROWSER_TEST === "true") {
           const browser = await chromium.launch({ headless: true });
           try {
+            await verifyPhotoLibrary(browser, `http://127.0.0.1:${port}`, root);
             for (const width of [390, 1440]) {
               const page = await browser.newPage({
                 viewport: { width, height: 900 },

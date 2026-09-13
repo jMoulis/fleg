@@ -5,7 +5,7 @@ import {
   documentVerificationMessage,
   sendDocument,
   recoverDocumentUpload,
-} from "@/lib/attachments/document-upload";
+} from "@/lib/attachments/private-upload";
 
 const id = randomUUID();
 const base = `/api/stores/${"a".repeat(24)}/attachments/upload-intents`;

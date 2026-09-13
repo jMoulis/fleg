@@ -1,15 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useRef, useState } from "react";
-import {
-  Camera,
-  CircleAlert,
-  ImagePlus,
-  LoaderCircle,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import * as z from "zod";
+import { Camera, CircleAlert, LoaderCircle, Trash2, X } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -22,15 +16,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { PhotoUploadForm } from "@/components/attachments/photo-upload-form";
+import { attachmentCommand } from "@/lib/attachments/private-upload";
 import { apiErrorSchema } from "@/domain/api/schemas";
 import {
-  attachmentCreateMetadataSchema,
   attachmentDeletionResponseSchema,
-  attachmentMaxSizeBytes,
-  attachmentResponseSchema,
+  attachmentsResponseSchema,
   attachmentTargetKey,
   type Attachment,
   type AttachmentTarget,
@@ -49,6 +40,8 @@ interface PhotoAttachmentManagerProps {
   targets: AttachmentTargetOption[];
   initialAttachments: Attachment[];
   canWrite: boolean;
+  userId: string;
+  uploadsAvailable: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -69,15 +62,13 @@ export function PhotoAttachmentManager({
   targets,
   initialAttachments,
   canWrite,
+  userId,
+  uploadsAvailable,
 }: PhotoAttachmentManagerProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState(initialAttachments);
   const [selectedTargetKey, setSelectedTargetKey] = useState(() =>
     targets[0] ? attachmentTargetKey(targets[0].target) : "",
   );
-  const [file, setFile] = useState<File | null>(null);
-  const [caption, setCaption] = useState("");
-  const [pending, setPending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,58 +94,26 @@ export function PhotoAttachmentManager({
     (attachment) => attachment.targetKey === selectedTargetKey,
   );
 
-  async function uploadPhoto() {
-    if (!selectedTarget || !file || pending) return;
-    setError(null);
-    setNotice(null);
-    const metadata = attachmentCreateMetadataSchema.safeParse({
-      target: selectedTarget.target,
-      caption: caption.trim() || null,
-      idempotencyKey: crypto.randomUUID(),
-    });
-    if (!metadata.success) {
-      setError(metadata.error.issues[0]?.message ?? "Métadonnées invalides.");
-      return;
-    }
-    if (file.size > attachmentMaxSizeBytes) {
-      setError("La photo doit peser au maximum 4 Mio.");
-      return;
-    }
-
-    setPending(true);
-    try {
-      const form = new FormData();
-      form.set("metadata", JSON.stringify(metadata.data));
-      form.set("file", file);
+  const refreshPhotos = useCallback(
+    async (sourceId?: string) => {
       const response = await fetch(`/api/stores/${storeId}/attachments`, {
-        method: "POST",
-        body: form,
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
       });
       const body: unknown = await response.json();
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(
-          apiMessage(body, "La photo n’a pas pu être enregistrée."),
+          apiMessage(body, "La galerie n’a pas pu être actualisée."),
         );
-      }
-      const result = attachmentResponseSchema.parse(body);
-      setAttachments((current) => [
-        result.attachment,
-        ...current.filter(({ id }) => id !== result.attachment.id),
-      ]);
-      setFile(null);
-      setCaption("");
-      if (inputRef.current) inputRef.current.value = "";
-      setNotice("Photo ajoutée. La géométrie du plan reste inchangée.");
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "La photo n’a pas pu être enregistrée.",
-      );
-    } finally {
-      setPending(false);
-    }
-  }
+      const current = attachmentsResponseSchema.parse(body).attachments;
+      setAttachments(current);
+      const added = current.find((photo) => photo.id === sourceId);
+      if (added && targetByKey.has(added.targetKey))
+        setSelectedTargetKey(added.targetKey);
+    },
+    [storeId, targetByKey],
+  );
 
   async function deletePhoto(attachmentId: string) {
     if (!canWrite || deletingId) return;
@@ -162,6 +121,24 @@ export function PhotoAttachmentManager({
     setError(null);
     setNotice(null);
     try {
+      const attachment = attachments.find(({ id }) => id === attachmentId);
+      if (!attachment) throw new Error("Photo introuvable.");
+      if (attachment.storageBackend === "vercel_blob") {
+        z.object({
+          state: z.literal("deleting"),
+          deletionComplete: z.literal(false),
+        }).parse(
+          await attachmentCommand(
+            `/api/stores/${storeId}/attachments/sources/${attachmentId}/remove`,
+          ),
+        );
+        setAttachments((current) =>
+          current.filter(({ id }) => id !== attachmentId),
+        );
+        setConfirmDeleteId(null);
+        setNotice("Photo retirée. Le nettoyage du stockage est en attente.");
+        return;
+      }
       const response = await fetch(
         `/api/stores/${storeId}/attachments/${attachmentId}`,
         {
@@ -172,14 +149,18 @@ export function PhotoAttachmentManager({
       );
       const body: unknown = await response.json();
       if (!response.ok) {
-        throw new Error(apiMessage(body, "La photo n’a pas pu être supprimée."));
+        throw new Error(
+          apiMessage(body, "La photo n’a pas pu être supprimée."),
+        );
       }
       const result = attachmentDeletionResponseSchema.parse(body);
       setAttachments((current) =>
         current.filter(({ id }) => id !== result.deletedAttachment.id),
       );
       setConfirmDeleteId(null);
-      setNotice("Photo supprimée définitivement. La trace d’audit est conservée.");
+      setNotice(
+        "Photo supprimée définitivement. La trace d’audit est conservée.",
+      );
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -210,8 +191,8 @@ export function PhotoAttachmentManager({
       <CardContent className="space-y-5">
         <p className="text-xs leading-5 text-muted-foreground">
           JPEG, PNG ou WebP · 4 Mio maximum · 20 photos par cible · conservées
-          jusqu’à suppression manuelle. La suppression retire définitivement le
-          fichier ; l’audit reste conservé.
+          jusqu’à suppression manuelle. Le retrait coupe l’accès, puis le
+          fichier est nettoyé ; l’audit reste conservé.
         </p>
 
         {error ? (
@@ -259,52 +240,25 @@ export function PhotoAttachmentManager({
                 testIdPrefix="attachment-target-picker"
               />
 
-              {canWrite ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="attachment-file">Photo</Label>
-                    <Input
-                      ref={inputRef}
-                      id="attachment-file"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(event) => {
-                        setFile(event.target.files?.[0] ?? null);
-                        setError(null);
-                        setNotice(null);
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2 sm:row-span-2">
-                    <Label htmlFor="attachment-caption">Légende facultative</Label>
-                    <Textarea
-                      id="attachment-caption"
-                      value={caption}
-                      maxLength={300}
-                      placeholder="Ex. implantation observée avant ouverture"
-                      onChange={(event) => setCaption(event.target.value)}
-                    />
-                  </div>
-                  <Button
-                    className="w-full sm:w-fit"
-                    disabled={!file || pending}
-                    onClick={uploadPhoto}
-                    type="button"
-                  >
-                    {pending ? (
-                      <LoaderCircle aria-hidden="true" className="animate-spin" />
-                    ) : (
-                      <ImagePlus aria-hidden="true" />
-                    )}
-                    Ajouter la photo
-                  </Button>
-                </div>
+              {canWrite && uploadsAvailable ? (
+                <PhotoUploadForm
+                  key={`${userId}:${storeId}`}
+                  userId={userId}
+                  storeId={storeId}
+                  target={selectedTarget?.target ?? null}
+                  onLinked={refreshPhotos}
+                />
               ) : (
                 <Alert>
-                  <AlertTitle>Consultation uniquement</AlertTitle>
+                  <AlertTitle>
+                    {canWrite
+                      ? "Envoi indisponible"
+                      : "Consultation uniquement"}
+                  </AlertTitle>
                   <AlertDescription>
-                    La permission d’écriture des pièces jointes est requise pour
-                    ajouter ou supprimer une photo.
+                    {canWrite
+                      ? "L’envoi de photos n’est pas activé pour ce magasin. Les photos existantes restent consultables et peuvent être supprimées."
+                      : "La permission d’écriture des pièces jointes est requise pour ajouter ou supprimer une photo."}
                   </AlertDescription>
                 </Alert>
               )}
@@ -330,7 +284,9 @@ export function PhotoAttachmentManager({
                         <Image
                           fill
                           unoptimized
-                          alt={attachment.caption ?? attachment.originalFileName}
+                          alt={
+                            attachment.caption ?? attachment.originalFileName
+                          }
                           className="object-cover"
                           sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
                           src={attachment.contentUrl}

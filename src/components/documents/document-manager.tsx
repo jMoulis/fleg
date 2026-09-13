@@ -22,7 +22,7 @@ import {
   documentVerificationMessage,
   sendDocument,
   recoverDocumentUpload,
-} from "@/lib/attachments/document-upload";
+} from "@/lib/attachments/private-upload";
 
 interface Props {
   storeId: string;

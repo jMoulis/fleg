@@ -113,6 +113,10 @@ function toAttachment(document: WithId<AttachmentDocument>): Attachment {
     storeId,
     createdAt: document.createdAt.toISOString(),
     contentUrl: `/api/stores/${storeId}/attachments/${document._id.toHexString()}/content`,
+    // Preserve the shape of historical BSON receipts and their replay equality.
+    ...(document.storage?.backend === "vercel_blob"
+      ? { storageBackend: "vercel_blob" }
+      : {}),
   });
 }
 

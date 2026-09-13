@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 
 import { PhotoAttachmentManager } from "@/components/attachments/photo-attachment-manager";
+import { privateUploadsAvailable } from "@/server/storage/upload-transport";
 import { TgPlanner } from "@/components/commercial-events/tg-planner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
@@ -101,6 +102,9 @@ export default async function TgPage({ params }: TgPageProps) {
 
       <section className="mt-8" aria-label="Photos des opérations commerciales">
         <PhotoAttachmentManager
+          key={`${context.userId}:${storeId}`}
+          userId={context.userId}
+          uploadsAvailable={privateUploadsAvailable(context)}
           canWrite={context.permissions.includes("attachments.write")}
           description="Rattachez les photos terrain à une opération existante pour conserver le contexte observé avant, pendant ou après sa diffusion."
           initialAttachments={attachments}

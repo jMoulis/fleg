@@ -76,6 +76,7 @@ export const attachmentSchema = z.object({
   uploadedBy: z.string().min(1),
   createdAt: z.iso.datetime(),
   contentUrl: z.string().startsWith("/api/stores/"),
+  storageBackend: z.enum(["mongo_bson", "vercel_blob"]).optional(),
 });
 export type Attachment = z.infer<typeof attachmentSchema>;
 
@@ -88,11 +89,6 @@ export const attachmentsResponseSchema = z.object({
     retention: z.literal(attachmentRetentionPolicy),
     deletion: z.literal("permanent"),
   }),
-  requestId: z.uuid(),
-});
-
-export const attachmentResponseSchema = z.object({
-  attachment: attachmentSchema,
   requestId: z.uuid(),
 });
 

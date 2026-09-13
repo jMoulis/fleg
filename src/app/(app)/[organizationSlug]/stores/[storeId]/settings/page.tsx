@@ -7,6 +7,7 @@ import { StoreConfigurationManager } from "@/components/configuration/store-conf
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { listPhotoAttachments } from "@/server/services/attachment-service";
+import { privateUploadsAvailable } from "@/server/storage/upload-transport";
 import { getStoreConfigurationWorkspace } from "@/server/services/store-configuration-service";
 
 export const metadata: Metadata = {
@@ -64,6 +65,9 @@ export default async function StoreSettingsPage({
 
       <section className="mt-8" aria-label="Photos du magasin">
         <PhotoAttachmentManager
+          key={`${context.userId}:${storeId}`}
+          userId={context.userId}
+          uploadsAvailable={privateUploadsAvailable(context)}
           canWrite={canWriteAttachments}
           description="Conservez des vues générales du magasin comme observations datées, sans modifier les données d’implantation."
           initialAttachments={attachments}
