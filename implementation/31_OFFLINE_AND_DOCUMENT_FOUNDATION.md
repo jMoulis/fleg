@@ -1,5 +1,15 @@
 # Offline field work and document foundation
 
+## 2026-09-13 scope override — offline extensions frozen
+
+The manager approves stopping further offline expansion after PR #48: the photo
+workflow operates, but its UX cost is too high. Keep current stock safeguards
+and pending local work intact. No further notes/briefing caches, new offline UX
+project, feature removal or local-data purge is authorized. Remaining documentary
+work (legacy-photo inventory/migration preparation, TECH-05/06) proceeds without
+adding offline behavior. Historical acceptance criteria below remain evidence
+requirements for delivered capabilities, not an obligation to expand them.
+
 ## Decision and status
 
 Framed on 2026-09-11. `TECH-01` now has a read-only implementation and automated

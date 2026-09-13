@@ -2,6 +2,20 @@
 
 ## Statut et reprise du plan
 
+### Décision courante — gel offline et préparation migration — 2026-09-13
+
+PR #48 fusionnée. Retour manager : fonctionnement constaté, UX trop coûteuse.
+Gel explicite des extensions offline, sans désactivation ni effacement des
+photos/comptages locaux. Pas de nouveau chantier UX offline. Ce retour ne vaut
+pas recette exhaustive sur tous les appareils.
+
+Lot 4a : [inventaire BSON et plan de migration en lecture seule](./39_PHOTO_MIGRATION_PREPARATION.md).
+Vérifier le volume et l’intégrité avant de construire un exécuteur de bascule.
+Le CLI ne copie, ne modifie et ne supprime aucun objet distant ; aucun accès
+Atlas/Blob réel dans sa recette locale. Les contrôles, quotas, audit et retour
+arrière de l’exécution future restent obligatoires si l’inventaire justifie cette
+migration. Ne pas annoncer d’économie MongoDB déjà réalisée.
+
 ### Lot 3b — file locale photo consentie — 2026-09-13
 
 Après fusion #46/#47, préparation explicite d’une cible/version depuis la

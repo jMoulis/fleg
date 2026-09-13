@@ -1,5 +1,19 @@
 # Build backlog — recommended order
 
+## Current scope override — 2026-09-13: offline freeze approved
+
+After PR #48, the manager confirms basic photo operation but reports excessive
+UX complexity. Freeze ALL new offline extensions, including V4-02 notes and
+V4-04 cached briefings. Keep existing stock protection/sync and pending photos;
+no removal, automatic purge or new offline UX project is authorized. Do not
+treat this as full device acceptance or PILOT-01 completion.
+
+Proceed with TECH-04 lot 4a: bounded, authorized **read-only** BSON inventory and
+dry-run/rollback plan ([runbook](./39_PHOTO_MIGRATION_PREPARATION.md)). No live
+migration or automatic switch. Decide subsequent execution tooling from the
+actual inventory rather than presuming a large legacy stock. TECH-05/06 remain
+document processing/retrieval, not further offline expansion.
+
 ## Latest TECH-04 continuation — 2026-09-13
 
 PR #46/#47 merged. Lot 3b adds the consented, bounded local photo queue to the
@@ -514,7 +528,7 @@ The following tickets share the full acceptance and evidence gates in
 
 ### V4-02
 
-- automatic weather/calendar context and qualitative offline notes preserve source, time and corrections;
+- automatic weather/calendar context and connected qualitative notes preserve source, time and corrections; offline extension frozen by the decision above;
 - forecasts, regional alerts and actual store observations remain distinct;
 - missing/provider-failure states stay unknown and collection adds no hidden forecast multiplier;
 - journal usefulness and maintenance time are measured.
