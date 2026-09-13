@@ -1,5 +1,16 @@
 # Build backlog — recommended order
 
+## Latest TECH-04 policy — 2026-09-13
+
+After the PDF worker fix (PR #43), the manager approves simpler recovery:
+bounded automatic checks, explicit received/verified states, opt-in scoped cron
+and quota release after exact deletion plus fresh absence. Retained tombstones
+and daily rechecks handle late recreation; these are application quotas, not a
+hard Blob billing ceiling. This replaces the indefinite charged-tombstone gate
+in the historical entries below. €100/month documents budget is agreed, excluding
+Pro; no global billing pause is authorized. Production activation and deployed
+acceptance remain pending. TECH-04 stays current; PILOT-01 still needs field data.
+
 ## Correctif prioritaire stockage — 2026-09-11
 
 `HARD-STORAGE-01` : isolation des E2E locaux, preuves de commande compactes,

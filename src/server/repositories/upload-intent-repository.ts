@@ -57,6 +57,9 @@ export interface IntentDocument {
     issueCount: number;
   };
   callbackReceivedAt?: Date;
+  receivedAt?: Date;
+  verificationFailures?: number;
+  quotaReleasedAt?: Date;
   cancelledAt?: Date;
   lateUploadReceivedAt?: Date;
   cleanupRequired?: boolean;
@@ -92,6 +95,9 @@ function receipt(document: IntentDocument): UploadIntentReceipt {
     createdAt: document.createdAt.toISOString(),
     reconcileAfter: document.reconcileAfter.toISOString(),
     uploadAvailable: false,
+    ...(document.receivedAt
+      ? { receivedAt: document.receivedAt.toISOString() }
+      : {}),
     ...(document.lastMaintenanceCode === "RETRY" && document.verificationIssue
       ? { verificationIssue: document.verificationIssue }
       : {}),
@@ -371,7 +377,10 @@ export class UploadIntentRepository {
               organizationId: document.organizationId,
               storeId: document.storeId,
             },
-            { $set: { cleanupRequired: true, reconcileAfter: new Date() } },
+            {
+              $set: { cleanupRequired: true, reconcileAfter: new Date() },
+              $unset: { lease: "" },
+            },
             { session },
           );
           return;
@@ -401,8 +410,9 @@ export class UploadIntentRepository {
               reconcileAfter: now,
               ...(late
                 ? { lateUploadReceivedAt: now, cleanupRequired: true }
-                : { callbackReceivedAt: now }),
+                : { callbackReceivedAt: now, receivedAt: now }),
             },
+            ...(late ? { $unset: { lease: "" } } : {}),
           },
           { session },
         );

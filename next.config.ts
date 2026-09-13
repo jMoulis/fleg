@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   outputFileTracingIncludes: {
+    "/api/cron/storage-maintenance": [
+      "./src/server/storage/*.mjs",
+      "./node_modules/@hyzyla/pdfium/dist/index.cjs",
+      "./node_modules/@hyzyla/pdfium/dist/pdfium.wasm",
+      "./node_modules/@hyzyla/pdfium/package.json",
+    ],
     "/api/stores/\\[storeId\\]/attachments/upload-intents/\\[intentId\\]/verify": [
       "./src/server/storage/*.mjs",
       "./node_modules/@hyzyla/pdfium/dist/index.cjs",

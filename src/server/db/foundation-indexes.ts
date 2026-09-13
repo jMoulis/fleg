@@ -419,6 +419,10 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
       { name: "upload_intents_scoped_maintenance" },
     ),
     db.collection("uploadIntents").createIndex(
+      { "storage.storeId": 1, "storage.namespace": 1, storeId: 1, reconcileAfter: 1, _id: 1 },
+      { name: "upload_intents_authorized_maintenance" },
+    ),
+    db.collection("uploadIntents").createIndex(
       { organizationId: 1, storeId: 1, sourceId: 1 },
       {
         name: "upload_intents_source",

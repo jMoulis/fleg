@@ -9,7 +9,12 @@ import {
 import {
   PrivateStorageError,
   uploadIntentInputSchema,
+  uploadIntentAbandonAfterMs,
 } from "@/domain/attachments/private-storage";
+import {
+  uploadLifecyclePolicy,
+  uploadVerificationRetryMs,
+} from "@/domain/attachments/upload-lifecycle-policy";
 import {
   validatePhotoBytes,
   PhotoValidationError,
@@ -33,7 +38,6 @@ import {
 import * as z from "zod";
 
 const leaseMs = 120000;
-const retryMs = 300000;
 
 export class UploadLifecycleRepository {
   constructor(
@@ -124,6 +128,7 @@ export class UploadLifecycleRepository {
                   ],
                 },
               },
+              { state: "deleted", authorization: { $exists: true } },
               { cleanupRequired: true },
             ],
           },
@@ -161,9 +166,10 @@ export class UploadLifecycleRepository {
         ) ||
         !document.authorization
       ) {
-        // A never-issued reservation has no remote upload capability. All other
-        // tombstones retain quota, even after DELETE + fresh absence: SDK 2.8.0
-        // does not yet supply the in-flight/multipart lifetime proof we require.
+        // Expiry alone is never deletion proof. Remove the exact object and
+        // confirm fresh absence, then release the APPLICATION reservation.
+        // Keep a tombstone and a daily sweep: late recreation remains possible
+        // and must never restore document access. This is not a billing cap.
         if (document.authorization) {
           if (document.authorization.validUntil > now) {
             await intents.updateOne(filter, {
@@ -177,28 +183,8 @@ export class UploadLifecycleRepository {
             };
           }
           await this.objects.remove(context, document.storage);
-          await intents.updateOne(filter, {
-            $set: {
-              artifacts: [
-                {
-                  kind: "original",
-                  storage: document.storage,
-                  absenceObservedAt: new Date(),
-                },
-              ],
-              cleanupRequired: true,
-              lastMaintenanceCode: "AWAITING_TRANSPORT_PROOF",
-              reconcileAfter: new Date(Date.now() + retryMs),
-            },
-            $unset: { lease: "" },
-          });
-          return {
-            processed: true as const,
-            id: document._id,
-            outcome: "cleanup_pending" as const,
-          };
         }
-        const released = await this.releaseNeverIssued(
+        const released = await this.finalizeCleanup(
           context,
           document,
           requestId,
@@ -236,11 +222,70 @@ export class UploadLifecycleRepository {
       );
       const input = uploadIntentInputSchema.parse(document.input);
       const bytes = await this.objects.read(author, document.storage, input);
+      if (
+        !bytes &&
+        Date.now() - document.createdAt.getTime() >= uploadIntentAbandonAfterMs
+      ) {
+        // No source is discarded: only an unlinked intent with a fresh, explicit
+        // absence is abandoned after 24h. Provider errors take the retry branch.
+        const session = this.client.startSession();
+        try {
+          const abandoned = await session.withTransaction(async () => {
+            const current = await intents.findOne(
+              { ...filter, "lease.until": { $gt: new Date() } },
+              { session },
+            );
+            if (!current) return false;
+            await intents.updateOne(
+              filter,
+              {
+                $set: {
+                  state: "cancelled",
+                  cleanupRequired: true,
+                  reconcileAfter: new Date(),
+                },
+                $unset: { lease: "" },
+              },
+              { session },
+            );
+            current.state = "cancelled";
+            await this.audit(
+              current,
+              context.userId,
+              requestId,
+              "attachment.upload_abandoned",
+              session,
+            );
+            return true;
+          });
+          return {
+            processed: true as const,
+            id: document._id,
+            outcome: abandoned
+              ? ("cleanup_pending" as const)
+              : ("superseded" as const),
+          };
+        } finally {
+          await session.endSession();
+        }
+      }
       if (!bytes)
         throw new PrivateStorageError(
           "STORAGE_UNAVAILABLE",
           "Réception non confirmée",
         );
+      const received = await intents.updateOne(filter, {
+        $set: {
+          state: "uploaded",
+          receivedAt: document.receivedAt ?? new Date(),
+        },
+      });
+      if (!received.matchedCount)
+        return {
+          processed: true as const,
+          id: document._id,
+          outcome: "superseded" as const,
+        };
       const verification =
         input.kind === "document"
           ? { ...(await validatePdf(bytes)), verifiedAt: new Date() }
@@ -283,7 +328,7 @@ export class UploadLifecycleRepository {
                   state: "rejected",
                   cleanupRequired: true,
                   lastMaintenanceCode: "REJECTED",
-                  reconcileAfter: new Date(Date.now() + retryMs),
+                  reconcileAfter: new Date(),
                 },
                 $unset: { lease: "" },
               },
@@ -302,9 +347,22 @@ export class UploadLifecycleRepository {
               {
                 $set: {
                   lastMaintenanceCode: "RETRY",
-                  reconcileAfter: new Date(Date.now() + retryMs),
+                  reconcileAfter: new Date(
+                    Date.now() +
+                      (["reserved", "uploaded"].includes(current.state)
+                        ? uploadVerificationRetryMs(
+                            (current.verificationFailures ?? 0) + 1,
+                          )
+                        : uploadLifecyclePolicy.cleanupRetryMs),
+                  ),
+                  verificationFailures: Math.min(
+                    (current.verificationFailures ?? 0) + 1,
+                    100,
+                  ),
                   ...(error instanceof PdfValidatorUnavailableError
-                    ? { verificationIssue: "pdf_validator_unavailable" as const }
+                    ? {
+                        verificationIssue: "pdf_validator_unavailable" as const,
+                      }
                     : {}),
                 },
                 $unset: {
@@ -416,7 +474,12 @@ export class UploadLifecycleRepository {
               cleanupRequired: false,
               artifacts: [{ kind: "original", storage: document.storage }],
             },
-            $unset: { lease: "", lastMaintenanceCode: "", verificationIssue: "" },
+            $unset: {
+              lease: "",
+              lastMaintenanceCode: "",
+              verificationIssue: "",
+              verificationFailures: "",
+            },
           },
           { session },
         );
@@ -434,7 +497,7 @@ export class UploadLifecycleRepository {
     }
   }
 
-  private async releaseNeverIssued(
+  private async finalizeCleanup(
     context: AuthorizedStoreContext,
     original: IntentDocument,
     requestId: string,
@@ -447,10 +510,11 @@ export class UploadLifecycleRepository {
           {
             ...this.scope(context),
             _id: original._id,
-            authorization: { $exists: false },
-            budgetHeld: true,
             "lease.token": original.lease!.token,
-            state: { $in: ["reserved", "cancelled", "rejected", "deleting"] },
+            "lease.until": { $gt: new Date() },
+            state: {
+              $in: ["reserved", "cancelled", "rejected", "deleting", "deleted"],
+            },
           },
           { session },
         );
@@ -463,10 +527,13 @@ export class UploadLifecycleRepository {
             ]),
           )
           .digest("hex");
-        for (const key of [
-          `environment:${this.config.storeId}`,
-          `store:${this.config.storeId}:${storeKey}`,
-        ]) {
+        const releaseBudget = document.budgetHeld;
+        for (const key of releaseBudget
+          ? [
+              `environment:${this.config.storeId}`,
+              `store:${this.config.storeId}:${storeKey}`,
+            ]
+          : []) {
           const quota = await this.db
             .collection<{
               _id: string;
@@ -493,18 +560,54 @@ export class UploadLifecycleRepository {
               state: "deleted",
               budgetHeld: false,
               cleanupRequired: false,
+              ...(releaseBudget ? { quotaReleasedAt: new Date() } : {}),
+              reconcileAfter: new Date(
+                Date.now() + uploadLifecyclePolicy.cleanupWatchMs,
+              ),
+              ...(document.authorization
+                ? {
+                    artifacts: [
+                      {
+                        kind: "original",
+                        storage: document.storage,
+                        absenceObservedAt: new Date(),
+                      },
+                    ],
+                  }
+                : {}),
             },
-            $unset: { lease: "", lastMaintenanceCode: "" },
+            $unset: {
+              lease: "",
+              lastMaintenanceCode: "",
+              verificationIssue: "",
+              verificationFailures: "",
+            },
           },
           { session },
         );
-        await this.audit(
-          document,
-          context.userId,
-          requestId,
-          "attachment.upload_reservation_released",
-          session,
-        );
+        if (document.sourceId)
+          await this.db
+            .collection(
+              document.kind === "photo" ? "attachments" : "documentSources",
+            )
+            .updateOne(
+              {
+                _id: document.sourceId,
+                organizationId: document.organizationId,
+                storeId: document.storeId,
+                storageState: "deleting",
+              },
+              { $set: { storageState: "deleted" } },
+              { session },
+            );
+        if (releaseBudget)
+          await this.audit(
+            document,
+            context.userId,
+            requestId,
+            "attachment.upload_reservation_released",
+            session,
+          );
         return true;
       });
     } finally {

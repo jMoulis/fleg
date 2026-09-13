@@ -2,6 +2,75 @@
 
 ## Statut et reprise du plan
 
+### Simplification approuvée — 2026-09-13
+
+Le responsable approuve une simplification opérationnelle après discussion du
+surcoût de complexité. **Cette section remplace la règle historique de quota
+retenu indéfiniment après émission d’une autorisation.** Le transport reste
+navigateur → Blob privé, 25 Mio / 60 pages ; pas de proxy Functions à 4 Mo,
+de nouveau fournisseur, ni d’extraction IA.
+
+- Réception et validation sont distinguées. Une lecture intègre ou un callback
+  authentifié peut confirmer la réception ; seul le parseur réel autorise le lien.
+- Le client relance uniquement `/verify` sur la même intention : au plus quatre
+  vérifications supplémentaires après la première, avec une fenêtre de lancement
+  de 30 s (une requête déjà démarrée garde son timeout). Les échéances serveur sont
+  respectées ; après rechargement, reprise sans nouvelle réservation/URL/PUT.
+- Backoff serveur centralisé : 2 s, 5 s, 15 s, 60 s, puis 5 min. Une panne persistante
+  rend la main ; l’identifiant de reprise reste dans la session du navigateur.
+- Nettoyage : attendre l’expiration du jeton, supprimer **le chemin exact**, puis
+  constater son absence par une lecture privée sans cache. Une erreur/expiration
+  seule ne libère rien. Quotas magasin et ressource libérés une seule fois dans
+  la transaction MongoDB ; suppression d’accès immédiate et audit conservé.
+- Le tombstone reste en base sans fichier binaire, avec contrôle quotidien du
+  chemin. Un callback tardif réarme immédiatement ce contrôle ; aucune annulation
+  ou suppression ne peut redevenir un document visible. Un abandon automatique
+  après 24 h concerne seulement une intention non liée dont l’absence est constatée,
+  et est audité ; aucun PDF valide enregistré n’expire pour ce motif.
+
+**Compromis assumé :** ces quotas mesurent l’admission/usage applicatif, pas un
+maximum garanti d’octets physiques ou d’euros. Une recréation tardive peut rester
+présente jusqu’au prochain passage ; les éventuelles parties multipart incomplètes
+ne sont pas inventoriées par ce mécanisme. La maintenance conserve des métadonnées
+et réalise des opérations quotidiennes par tombstone : surveiller leur volume et
+la consommation fournisseur, sans inventer de délai garanti du fournisseur.
+
+#### Maintenance planifiée (désactivée par défaut)
+
+- Vercel Cron appelle `GET /api/cron/storage-maintenance` toutes les 15 minutes.
+- Activer `BLOB_MAINTENANCE_ENABLED=true`, un `CRON_SECRET` aléatoire de 32–256
+  caractères et `BLOB_MAINTENANCE_STORE_IDS` (IDs magasin applicatifs séparés par
+  des virgules). Le bearer est comparé avant tout accès DB/Blob. Ni cookie, slug,
+  paramètre d’URL ni état React n’élargit cette liste. Le job ignore les magasins
+  non autorisés, les autres ressources Blob et les autres namespaces.
+- Chaque passe sélectionne au plus 20 intentions dues. Elle cesse de démarrer
+  du travail après 240 s, dans une fonction de 300 s ; leases et transactions
+  protègent les passages simultanés. Nouvelle tentative de nettoyage après 15 min.
+- L’auteur humain est réautorisé avant de lier un document. L’acteur de maintenance
+  ne reçoit que les permissions de lecture et d’écriture des pièces jointes.
+- Réponse `ok`, `retry_pending`, `disabled`, `unauthorized` ou `unavailable`, avec
+  compteurs uniquement. Les reprises applicatives sont persistées même si Cron
+  ne rejoue pas une invocation ratée. Index ajouté : `upload_intents_authorized_maintenance`.
+- Installer les index via `ensureFoundationIndexesForDb` avant activation.
+  Couper les nouvelles réservations n’empêche pas cette maintenance ; désactiver
+  le flag de maintenance l’arrête sans toucher aux intentions ni aux sources.
+- En local, appeler cette route avec le secret pour une passe explicite ; Vercel
+  Cron n’exécute pas le travail dans un serveur local. Valider les compteurs,
+  l’échéance suivante et la visibilité sur un PDF synthétique avant le déploiement.
+
+Les CI neutralisent ces flags/secrets, Blob et OpenAI. Les scénarios automatiques
+utilisent un replica set MongoDB local et Chromium (390/1440), avec le vrai
+composant et le parseur PDF ; les appels Blob du navigateur sont simulés.
+**Aucun réglage de production, purge réelle ou activation distante dans ce lot.**
+Restent la recette applicative Vercel puis l’activation autorisée, la file photo
+offline et la migration BSON ; TECH-04 n’est pas clôturé.
+
+Vérification du lot : `npm run check` avec MongoDB local jetable, **490 tests
+réussis**, lint/types/Knip réussis ; recette Next.js/Turbopack + Chromium 390/1440
+réussie séparément. Build webpack et **68 E2E réussis**, quatre tests live IA
+désactivés. Worker et WASM présents dans la trace Cron. Écran Documents local
+inspecté, PDF utilisateur existant laissé intact. Aucun test Blob réel dans ce lot.
+
 ### Budget documents accepté — 2026-09-13
 
 Le responsable confirme **100 € par mois maximum pour le stockage et les

@@ -82,22 +82,26 @@ l’environnement de développement uniquement, pas sur le site de production.
 2. Ajouter éventuellement une description puis cliquer sur **Envoyer le PDF**.
 3. Attendre **PDF vérifié et enregistré**, puis retrouver le document dans la liste.
 
-Une connexion est requise. Après une interruption, recharger le même onglet puis
-utiliser **Vérifier la réception** : cela vérifie l’envoi existant sans renvoyer le
-fichier. Si une heure de reprise est affichée, attendre cette heure. **Abandonner
-l’envoi** retire le suivi ; le nettoyage distant reste séparé. Ne pas fermer
-définitivement l’onglet tant que la réception est incertaine.
+Une connexion est requise. Après une interruption, recharger le même onglet :
+l’application reprend automatiquement la vérification de l’envoi existant,
+sans renvoyer le fichier. Elle distingue **Confirmation de réception en cours**
+de **PDF reçu — vérification en cours**. Après quelques tentatives, elle rend la
+main ; utiliser **Vérifier la réception** à partir de l’heure affichée.
+**Abandonner l’envoi** retire le suivi et programme le nettoyage du fichier.
+Lorsque la maintenance serveur est activée, elle reprend aussi les opérations
+en attente après fermeture de l’onglet ; le document apparaîtra une fois vérifié.
 
 **Télécharger** restitue le PDF aux utilisateurs autorisés du magasin.
 
-Si le message indique que le **service de validation PDF est indisponible**, le
+Si le message indique **validation temporairement indisponible**, le
 fichier a été reçu mais n’est pas encore enregistré dans les documents. Utiliser
 **Vérifier la réception** après la date et l’heure affichées, sans renvoyer le
 PDF. Si le message persiste, le signaler à l’administrateur ; attendre n’est pas
 une garantie de résolution. Ce contrôle technique n’est pas une analyse IA.
 
 **Supprimer** le retire immédiatement de la liste après confirmation ; l’effacement
-du stockage intervient séparément. Un plafond de stockage atteint nécessite un
+du stockage intervient en arrière-plan. La place est libérée après vérification
+de cet effacement, pas dès le clic. Un plafond de stockage atteint nécessite un
 contrôle par l’administrateur, pas des envois répétés. Les photos existantes gardent
 leur fonctionnement habituel.
 

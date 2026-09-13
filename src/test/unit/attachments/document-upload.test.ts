@@ -4,6 +4,7 @@ import {
   prepareDocument,
   documentVerificationMessage,
   sendDocument,
+  recoverDocumentUpload,
 } from "@/lib/attachments/document-upload";
 
 const id = randomUUID();
@@ -35,24 +36,31 @@ const input = () => ({
   remember: vi.fn(),
   phase: vi.fn(),
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 describe("connected document upload client", () => {
   it("distinguishes a received PDF with an unavailable validator from an unknown receipt", () => {
     const intent = { ...receipt, state: "reserved" as const };
     expect(documentVerificationMessage(intent)).toContain(
-      "La vérification n’a pas abouti",
+      "Confirmation de réception en cours",
     );
-    expect(documentVerificationMessage(intent)).not.toContain(
-      "Le fichier a été reçu",
-    );
+    expect(documentVerificationMessage(intent)).not.toContain("PDF reçu");
     const message = documentVerificationMessage({
       ...intent,
       verificationIssue: "pdf_validator_unavailable",
     });
-    expect(message).toContain("Le fichier a été reçu");
-    expect(message).toContain("service de validation PDF est indisponible");
-    expect(message).toContain("Vérifier la réception");
-    expect(message).toContain("Ne renvoyez pas le fichier");
+    expect(message).toContain("PDF reçu");
+    expect(message).toContain("validation temporairement indisponible");
+    expect(message).toContain("Vérification à reprendre");
+    expect(message).toContain("Aucun nouvel envoi nécessaire");
+    expect(
+      documentVerificationMessage(
+        { ...intent, receivedAt: intent.createdAt },
+        true,
+      ),
+    ).toContain("Reprise automatique");
   });
   it("validates PDF type/size before reading bytes and calculates a bounded SHA-256", async () => {
     const metadata = await prepareDocument(file, "  Promo  ", randomUUID());
@@ -142,5 +150,94 @@ describe("connected document upload client", () => {
     vi.stubGlobal("fetch", fetcher);
     expect(await sendDocument(input())).toMatchObject({ state: "linked" });
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it("recovers only the same verification endpoint, respecting delays and stopping when linked", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        json({
+          intent: {
+            ...receipt,
+            reconcileAfter: new Date(Date.now() + 2000).toISOString(),
+          },
+        }),
+      )
+      .mockResolvedValueOnce(json({ intent: { ...receipt, state: "linked" } }));
+    vi.stubGlobal("fetch", fetcher);
+    const progress = vi.fn();
+    const promise = recoverDocumentUpload({
+      base,
+      id,
+      onProgress: progress,
+      signal: new AbortController().signal,
+    });
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await promise).toMatchObject({ state: "linked" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(
+      fetcher.mock.calls.every(([path]) => path === `${base}/${id}/verify`),
+    ).toBe(true);
+    expect(progress).toHaveBeenCalledTimes(1);
+  });
+  it("bounds automatic checks and keeps the intent available for manual recovery", async () => {
+    vi.useFakeTimers();
+    const pending = {
+      ...receipt,
+      state: "uploaded" as const,
+      reconcileAfter: new Date().toISOString(),
+    };
+    const fetcher = vi.fn(async () => json({ intent: pending }));
+    vi.stubGlobal("fetch", fetcher);
+    const promise = recoverDocumentUpload({
+      base,
+      id,
+      initial: pending,
+      onProgress: vi.fn(),
+      signal: new AbortController().signal,
+    });
+    await vi.advanceTimersByTimeAsync(30000);
+    expect(await promise).toMatchObject({ id, state: "uploaded" });
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    fetcher.mockClear();
+    expect(
+      await recoverDocumentUpload({
+        base,
+        id,
+        initial: {
+          ...pending,
+          reconcileAfter: new Date(Date.now() + 300000).toISOString(),
+        },
+        onProgress: vi.fn(),
+        signal: new AbortController().signal,
+      }),
+    ).toMatchObject({ id });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("cancels pending verification on navigation without another request", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    const controller = new AbortController();
+    const promise = recoverDocumentUpload({
+      base,
+      id,
+      initial: {
+        ...receipt,
+        state: "reserved",
+        reconcileAfter: new Date(Date.now() + 5000).toISOString(),
+      },
+      onProgress: vi.fn(),
+      signal: controller.signal,
+    });
+    const rejected = expect(promise).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    controller.abort();
+    await rejected;
+    await vi.advanceTimersByTimeAsync(30000);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });
