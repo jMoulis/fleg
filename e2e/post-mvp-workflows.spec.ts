@@ -9,10 +9,7 @@ import { join } from "node:path";
 import {
   attachmentCreateMetadataSchema,
   attachmentDeletionResponseSchema,
-  attachmentResponseSchema,
   attachmentsResponseSchema,
-  type Attachment,
-  type AttachmentTarget,
 } from "@/domain/attachments/schemas";
 import {
   commercialEventCreateInputSchema,
@@ -31,16 +28,12 @@ import {
   importFixtureIntoStore,
   selectPrimaryDemoStore,
 } from "./demo-store";
+import { seedLegacyPhoto } from "./legacy-photo-fixture";
 
 const networkFixtureByProject = {
   "mobile-390": "10_2025.xlsx",
   "desktop-1440": "11_2025.xlsx",
 } as const;
-
-const onePixelPng = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-  "base64",
-);
 
 async function signInToStore(page: Page) {
   await page.goto("/stores");
@@ -113,34 +106,6 @@ function isolatedFutureWindow() {
     startsOn: startsOn.toISOString().slice(0, 10),
     endsOn: endsOn.toISOString().slice(0, 10),
   };
-}
-
-async function uploadRecipePhoto(input: {
-  page: Page;
-  storeId: string;
-  target: AttachmentTarget;
-  caption: string;
-}): Promise<Attachment> {
-  const metadata = attachmentCreateMetadataSchema.parse({
-    target: input.target,
-    caption: input.caption,
-    idempotencyKey: crypto.randomUUID(),
-  });
-  const response = await input.page.request.post(
-    `/api/stores/${input.storeId}/attachments`,
-    {
-      multipart: {
-        metadata: JSON.stringify(metadata),
-        file: {
-          name: "photo-recette.png",
-          mimeType: "image/png",
-          buffer: onePixelPng,
-        },
-      },
-    },
-  );
-  expect(response.status()).toBe(201);
-  return attachmentResponseSchema.parse(await response.json()).attachment;
 }
 
 test("REL-01 versionne le plan et enregistre une allocation", async ({
@@ -833,22 +798,23 @@ test("REL-06 sécurise les photos manuelles sans modifier le plan", async ({
       },
     },
   );
-  expect(invalidPhotoResponse.status()).toBe(400);
+  expect(invalidPhotoResponse.status()).toBe(503);
+  expect(await invalidPhotoResponse.json()).toMatchObject({ code: "STORAGE_DISABLED" });
 
   const uploaded = await Promise.all([
-    uploadRecipePhoto({
+    seedLegacyPhoto({
       page,
       storeId,
       target: { type: "store" },
       caption: `Magasin ${marker}`,
     }),
-    uploadRecipePhoto({
+    seedLegacyPhoto({
       page,
       storeId,
       target: { type: "layout", layoutVersionId: layoutBefore.id },
       caption: `Plan ${marker}`,
     }),
-    uploadRecipePhoto({
+    seedLegacyPhoto({
       page,
       storeId,
       target: {
@@ -858,7 +824,7 @@ test("REL-06 sécurise les photos manuelles sans modifier le plan", async ({
       },
       caption: `Mobilier ${marker}`,
     }),
-    uploadRecipePhoto({
+    seedLegacyPhoto({
       page,
       storeId,
       target: { type: "commercial_event", eventId: commercialEvent.id },
@@ -873,7 +839,7 @@ test("REL-06 sécurise les photos manuelles sans modifier le plan", async ({
     expect(contentResponse.headers()["cache-control"]).toBe("private, no-store");
     expect(contentResponse.headers()["x-content-type-options"]).toBe("nosniff");
     expect((await contentResponse.body()).subarray(0, 8)).toEqual(
-      onePixelPng.subarray(0, 8),
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     );
   }
   const isolatedContentResponse = await page.request.get(

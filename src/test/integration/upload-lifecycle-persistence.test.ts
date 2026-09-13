@@ -317,6 +317,12 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       persisted!.sourceId!.toHexString(),
     );
     expect(await db.collection("attachmentObjects").countDocuments()).toBe(0);
+    expect(
+      (await new AttachmentRepository(db).listForStore(context))[0],
+    ).toMatchObject({
+      storageBackend: "vercel_blob",
+      id: persisted!.sourceId!.toHexString(),
+    });
     expect(await reconcile()).toEqual({ processed: false });
   });
   it("transfers a full 20-photo reservation without double admission", async () => {

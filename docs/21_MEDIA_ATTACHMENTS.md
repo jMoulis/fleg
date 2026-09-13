@@ -35,21 +35,28 @@ and capped at 180 characters.
 
 ## Storage and delivery
 
-`attachments` contains validated metadata. `attachmentObjects` stores the
-private BSON binary under the same `_id` and tenant scope. This split prevents
-list queries and audit snapshots from carrying image bytes.
+New photos use private Vercel Blob through the same upload-intent lifecycle as
+Documents. `attachments` contains metadata and a verified immutable Blob
+reference; no new photo bytes are written to MongoDB by the application.
+Historical photos in `attachmentObjects` remain readable/deletable as BSON.
+There is no implicit migration and no fallback to BSON when Blob is unavailable.
 
 Photo content has no public object URL. The authorized content route returns
 `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
 
-TECH-04 lot 1 adds a disabled foundation; it does not change the available
-photo workflow. The repository can read a verified, linked private Blob
-reference without falling back to BSON, but no application route creates such
-a link yet. New intent routes only reserve metadata/quotas, require explicit
-configuration and never issue a token. BSON creation and deletion remain
-available; a remote reference cannot be erased through the legacy delete path.
-See [the TECH-04 record](../implementation/38_TECH_04_PRIVATE_OBJECT_STORAGE.md)
-for the remaining transport, deletion, queue and migration gates.
+The connected library uses store-scoped upload admission, SHA-256, server-side
+type/size verification, target reauthorization, atomic quota/linking and audit.
+The legacy multipart POST is refused before reading its body. Old tabs must
+refresh. Downloads and deletion remain available for historical records.
+The public metadata exposes only the backend discriminator, never a provider
+URL or token. Blob removal uses the durable source-removal route: immediate
+loss of visibility, then physical cleanup. Legacy BSON deletion remains immediate.
+
+Only an opaque recovery ID is kept in sessionStorage, scoped to user/store.
+Reloading the same tab verifies the same intent; it never resends the file.
+This connected lot does **not** persist image bytes locally or provide offline
+capture. The bounded, consented IndexedDB queue and migration tooling remain in
+[TECH-04](../implementation/38_TECH_04_PRIVATE_OBJECT_STORAGE.md).
 
 ## Interface
 

@@ -2,6 +2,47 @@
 
 ## Statut et reprise du plan
 
+### Lot 3a — photothèque connectée sur Blob — 2026-09-13
+
+Suite séparée du correctif PDF PR #46. Les photothèques Paramètres, Espace et TG
+utilisent désormais l'envoi direct privé, les mêmes quotas/admissions que les
+Documents et le cycle de validation/réautorisation/liaison/audit déjà livré.
+Les nouvelles photos ne sont plus écrites en BSON. L'ancien POST multipart est
+refusé avant lecture du fichier, même si Blob est indisponible. Une ancienne page
+ouverte doit être actualisée ; pas de fallback ni de migration implicite.
+
+Les anciennes photos BSON restent lisibles et supprimables. Une photo Blob est
+retirée via la route de suppression durable, jamais via le DELETE BSON.
+La galerie expose seulement le discriminateur de backend et distingue accès
+retiré/nettoyage en attente de la suppression immédiate historique.
+
+La reprise connectée ne persiste qu'un identifiant opaque par utilisateur/magasin
+dans sessionStorage, avant autorisation et PUT. Même onglet/rechargement : on
+vérifie l'intention existante, sans retransmettre. Changement de compte, démontage
+et navigation interrompent la chaîne cliente ; le serveur recontrôle les droits.
+Le fichier n'est pas annoncé sauvegardé localement. Aucun nouveau shell/éditeur.
+
+Tests synthétiques : signatures/limites/hash/cible figée, ancien POST fermé,
+réponse PUT perdue sans doublon, réouverture/changement de compte, galerie mixte
+et deux modes de suppression. Le composant et la feuille de style réels sont
+exercés sous Next/Turbopack et Chromium 390/1440, transport simulé ; le cycle
+serveur/isolation/quotas est testé séparément avec MongoDB local jetable.
+REL-06 prépare explicitement des **fixtures BSON historiques** dans les seules
+bases E2E générées, puis conserve les assertions de lecture privée et suppression.
+Ce n'est pas une porte d'upload alternative dans l'application.
+
+Vérifications locales : lint/TypeScript/Knip et **504 tests réussis**, avec un
+replica set MongoDB jetable ; recette Next/Turbopack + Chromium 390/1440 réussie,
+captures inspectées sans débordement ; build webpack et **68 E2E réussis**, quatre
+tests live OpenAI désactivés. Les envois Blob de la recette navigateur sont
+simulés ; aucun nouveau test avec fichier utilisateur ni upload distant dans
+ce sous-lot. Les preuves antérieures du transport Blob réel ne sont pas une
+recette appareil de la future file hors connexion.
+
+Restent lot 3b (file photo locale consentie et bornée + recette appareil), puis
+lot 4 (outillage de migration). Pas de migration réelle, activation/configuration
+distante ni nouvelle promesse offline dans ce lot. TECH-04 demeure ouvert.
+
 ### Compatibilité PDF et reprise — 2026-09-13
 
 PR #45 fusionnée (`da9d1a1`), activation Production autorisée et recette synthétique

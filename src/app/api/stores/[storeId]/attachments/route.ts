@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { PhotoValidationError } from "@/domain/attachments/photo-validation";
+import { PrivateStorageError } from "@/domain/attachments/private-storage";
 import {
-  attachmentCreateMetadataSchema,
   attachmentPolicy,
-  attachmentResponseSchema,
   attachmentsResponseSchema,
 } from "@/domain/attachments/schemas";
 import { requireStoreContext } from "@/server/auth/store-context";
 import { attachmentErrorResponse } from "@/server/http/attachment-error-response";
-import {
-  createPhotoAttachment,
-  listPhotoAttachments,
-} from "@/server/services/attachment-service";
+import { listPhotoAttachments } from "@/server/services/attachment-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,32 +47,12 @@ export async function POST(request: Request, routeContext: RouteContext) {
   const requestId = crypto.randomUUID();
   try {
     const { storeId } = await routeContext.params;
-    const context = await requireStoreContext(
-      storeId,
-      ["attachments.write"],
-      request.headers,
-    );
-    const form = await request.formData();
-    const metadataValue = form.get("metadata");
-    const fileValue = form.get("file");
-    if (typeof metadataValue !== "string") {
-      throw new PhotoValidationError("Les métadonnées de la photo sont requises");
-    }
-    if (!(fileValue instanceof File)) {
-      throw new PhotoValidationError("Sélectionnez une photo");
-    }
-    const metadata = attachmentCreateMetadataSchema.parse(
-      JSON.parse(metadataValue) as unknown,
-    );
-    const attachment = await createPhotoAttachment({
-      context,
-      metadata,
-      file: fileValue,
-      requestId,
-    });
-    return NextResponse.json(
-      attachmentResponseSchema.parse({ attachment, requestId }),
-      { status: 201 },
+    await requireStoreContext(storeId, ["attachments.write"], request.headers);
+    // Old tabs must not silently keep writing binaries to MongoDB, even when
+    // Blob is disabled or unavailable. The intent flow is now the only writer.
+    throw new PrivateStorageError(
+      "STORAGE_DISABLED",
+      "Cet ancien mode d’envoi est désactivé. Actualisez la page pour ajouter une photo via le stockage privé.",
     );
   } catch (error) {
     return attachmentErrorResponse({

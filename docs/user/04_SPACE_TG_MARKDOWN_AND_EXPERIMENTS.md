@@ -48,6 +48,21 @@ Dans une photothèque, la cible active est affichée avec sa description. Utilis
 sa description, puis la sélectionner. Seules les photos de cette cible sont
 alors présentées.
 
+Pour ajouter une photo, choisir **Photo** (JPEG, PNG ou WebP, 4 Mio maximum),
+éventuellement une légende, puis **Ajouter la photo**. Attendre la confirmation
+**Photo vérifiée et ajoutée**. Une connexion est requise ; la photo n’est pas
+sauvegardée sur l’appareil dans ce parcours.
+
+Après une coupure, rouvrir la même page dans le même onglet et avec le même
+compte : seule la vérification reprend, sans nouvel envoi. Si nécessaire,
+utiliser **Vérifier la réception** après l’échéance affichée. **Abandonner l’envoi**
+programme son nettoyage. Si l’envoi est désactivé pour le magasin, les photos
+existantes restent consultables et supprimables.
+
+**Supprimer**, puis **Confirmer**, retire l’accès à une nouvelle photo et
+programme l’effacement du stockage. Une ancienne photo peut être effacée
+immédiatement. La trace d’audit est conservée dans les deux cas.
+
 ## TG : planifier une opération
 
 La rubrique **TG** nécessite un plan contenant au moins une tête de gondole.
