@@ -2,6 +2,42 @@
 
 ## Statut et reprise du plan
 
+### Compatibilité PDF et reprise — 2026-09-13
+
+PR #45 fusionnée (`da9d1a1`), activation Production autorisée et recette synthétique
+upload/lecture/suppression/nettoyage Cron réussies. Le
+[compte rendu expurgé publié](https://github.com/jMoulis/fleg/pull/45#issuecomment-5654639643)
+remplace les étapes d'activation encore ouvertes dans les entrées historiques.
+Le budget reste inchangé ; aucune nouvelle opération de production dans ce correctif.
+
+Un export PDF lisible, non chiffré, contenait un remplissage d'octets nuls après
+sa fin. PDFium reconstruisait alors la table xref, déclenchant notre refus des
+PDF réparés. Le correctif raccourcit seulement la **vue d'analyse en mémoire**
+si le suffixe est exclusivement nul et suit une ligne terminale `%%EOF` et ses
+éventuels espaces PDF. Aucun retrait de données internes ou suffixe arbitraire.
+La table xref doit toujours être valide, toutes les pages lisibles et le PDF
+non chiffré. Les limites portent sur le fichier original complet : 25 Mio,
+60 pages, mémoire et temps bornés. Blob conserve l'original, Mongo ses seules
+métadonnées pour les Documents ; taille et SHA-256 restent ceux de l'original.
+
+La preuve passe à `pdfium-2.1.13-fleg-2`, avec lecture maintenue des preuves v1.
+Les tests couvrent le remplissage, les fins de ligne, l'intégrité des octets,
+les refus structure/chiffrement/limites, le worker sous Turbopack et le cycle
+de liaison/lecture/suppression avec MongoDB local. Les fixtures commitées sont
+synthétiques ; le fichier utilisateur est vérifié localement, intact, sans
+nouvel upload ni traitement IA.
+
+Vérifications : `npm run check` avec replica set local jetable, **498 tests
+réussis**, lint/types/Knip réussis (un avertissement lint préexistant dans un
+script opérateur ignoré). Recette isolée Next/Turbopack + Chromium 390/1440
+réussie ; build webpack et **68 E2E réussis**, quatre tests live IA désactivés.
+Le cas synthétique rembourré échouait avant le correctif et passe après.
+
+**Suite :** photothèque connectée vers Blob, file locale bornée, puis outillage
+de migration BSON. Les photos passent encore par l'ancien CRUD BSON à ce stade.
+TECH-04 et PILOT-01 restent ouverts ; la migration réelle n'est pas autorisée
+implicitement par ce correctif.
+
 ### Ouverture contrôlée de production — 2026-09-13
 
 PR #44 fusionnée et déployée (`ee40245`). Le suivi remplace l'interdiction

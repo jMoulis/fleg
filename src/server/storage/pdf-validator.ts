@@ -10,7 +10,8 @@ import {
 export const pdfValidationSchema = z
   .object({
     pageCount: z.number().int().min(1).max(60),
-    parserVersion: z.literal("pdfium-2.1.13-fleg-1"),
+    // Existing persisted verification records remain valid after upgrades.
+    parserVersion: z.enum(["pdfium-2.1.13-fleg-1", "pdfium-2.1.13-fleg-2"]),
   })
   .strict();
 export type PdfValidation = z.infer<typeof pdfValidationSchema>;

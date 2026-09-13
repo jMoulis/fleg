@@ -1,5 +1,26 @@
 # START HERE — Coding Agent
 
+## Latest continuation — 2026-09-13: padded PDF compatibility
+
+PR #45 is merged (`da9d1a1`). Its authorized Production rollout and synthetic
+upload/read/delete/Cron cleanup passed; the redacted report is published on
+[PR #45](https://github.com/jMoulis/fleg/pull/45#issuecomment-5654639643).
+This supersedes the unactivated-production statements in the historical entries
+below. Do not repeat the rollout or change production configuration for this fix.
+
+The next PDF fix ignores contiguous trailing NUL bytes only in the parser's
+analysis view, after a terminal line-delimited `%%EOF` (optional PDF whitespace).
+Full original bytes, size, hash and Blob storage stay unchanged. Xref integrity,
+encryption rejection, page/memory/time/size limits remain enforced. New proof
+version: `pdfium-2.1.13-fleg-2`; existing v1 records remain readable. Regression
+fixtures are synthetic; no user PDF is committed or uploaded by these tests.
+
+Next TECH-04 work remains the existing photo library's Blob transport, then
+the bounded local photo queue and migration tooling. New photos still use the
+legacy BSON path until that integration is delivered. Do not claim all binaries
+are out of MongoDB, migrate existing photos without separate authorization,
+start TECH-05/V4-01, or close PILOT-01. Preserve `assets/F&L-Promo.pdf` untracked.
+
 ## Latest continuation — 2026-09-13: production document admission
 
 PR #44 is merged and its production deployment is ready (`ee40245`). This
