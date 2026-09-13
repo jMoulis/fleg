@@ -42,10 +42,23 @@ try {
   });
   pdf._FPDF_InitLibrary();
   contentStarted = true;
-  const pointer = pdf._malloc(bytes.length);
+  // Some exporters fill a buffer with NULs after the final %%EOF. PDFium then
+  // rebuilds an otherwise valid xref because its trailer search is bounded.
+  // Shorten only the analysis view, never the stored bytes/hash/quota input.
+  let end = bytes.length;
+  while (end > 0 && bytes[end - 1] === 0) end--;
+  let eofEnd = end;
+  while ([9, 10, 12, 13, 32].includes(bytes[eofEnd - 1])) eofEnd--;
+  const hasTerminalEof =
+    eofEnd >= 6 &&
+    [10, 13].includes(bytes[eofEnd - 6]) &&
+    new TextDecoder().decode(bytes.subarray(eofEnd - 5, eofEnd)) === "%%EOF";
+  const analysisBytes =
+    end < bytes.length && hasTerminalEof ? bytes.subarray(0, end) : bytes;
+  const pointer = pdf._malloc(analysisBytes.length);
   if (!pointer) throw new Error("Allocation refused");
-  pdf.HEAPU8.set(bytes, pointer);
-  const document = pdf._FPDF_LoadMemDocument(pointer, bytes.length, 0);
+  pdf.HEAPU8.set(analysisBytes, pointer);
+  const document = pdf._FPDF_LoadMemDocument(pointer, analysisBytes.length, 0);
   if (
     !document ||
     !pdf._FPDF_DocumentHasValidCrossReferenceTable(document) ||
@@ -63,7 +76,7 @@ try {
   pdf._FPDF_CloseDocument(document);
   pdf._free(pointer);
   pdf._FPDF_DestroyLibrary();
-  parentPort.postMessage({ pageCount, parserVersion: "pdfium-2.1.13-fleg-1" });
+  parentPort.postMessage({ pageCount, parserVersion: "pdfium-2.1.13-fleg-2" });
 } catch {
   // Never emit document content or library diagnostics.
   parentPort.postMessage({

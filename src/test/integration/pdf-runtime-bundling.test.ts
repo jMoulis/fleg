@@ -156,9 +156,20 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
         });
         expect(await valid.json()).toEqual({
           pageCount: 1,
-          parserVersion: "pdfium-2.1.13-fleg-1",
+          parserVersion: "pdfium-2.1.13-fleg-2",
         });
         expect(valid.status).toBe(200);
+        const padded = Buffer.concat([Buffer.from(pdf), Buffer.alloc(351792)]);
+        const paddedResponse = await fetch(url, {
+          method: "POST",
+          body: padded,
+          signal: AbortSignal.timeout(20000),
+        });
+        expect(paddedResponse.status).toBe(200);
+        expect(await paddedResponse.json()).toEqual({
+          pageCount: 1,
+          parserVersion: "pdfium-2.1.13-fleg-2",
+        });
         const invalid = await fetch(url, {
           method: "POST",
           body: "%PDF-1.7 not a PDF",

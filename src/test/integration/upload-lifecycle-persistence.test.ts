@@ -683,59 +683,72 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       ),
     ).rejects.toMatchObject({ code: "UPLOAD_NOT_FOUND" });
   });
-  it("verifies a real PDF before listing, and deletion during download removes visibility", async () => {
-    const bytes = pdf();
-    objects.read.mockResolvedValue(bytes);
-    const { receipt } = await ready(bytes, "document");
-    const sources = new DocumentSourceRepository(db);
-    expect(await sources.list(context)).toEqual({
-      sources: [],
-      nextCursor: null,
-    });
-    expect(await reconcile()).toMatchObject({ outcome: "linked" });
-    const list = await sources.list(context);
-    expect(list.sources[0]).toMatchObject({
-      pageCount: 1,
-      originalFileName: "brief.pdf",
-    });
-    expect(JSON.stringify(list)).not.toMatch(/pathname|token|vercel_blob/);
-    const sourceId = list.sources[0]!.id;
-    expect((await sources.content(context, sourceId, objects)).bytes).toEqual(
-      bytes,
-    );
-    expect(
-      (
-        await sources.list({
-          ...context,
-          storeId: new ObjectId().toHexString(),
-        })
-      ).sources,
-    ).toEqual([]);
-    objects.read.mockImplementationOnce(async () => {
-      await lifecycle.removeSource(
-        context,
-        new ObjectId(sourceId),
-        randomUUID(),
+  it.each([false, true])(
+    "verifies a real PDF (null padding: %s) without changing stored bytes, and deletion during download removes visibility",
+    async (withPadding) => {
+      const bytes = withPadding
+        ? Buffer.concat([pdf(), Buffer.alloc(351792)])
+        : pdf();
+      objects.read.mockResolvedValue(bytes);
+      const { receipt } = await ready(bytes, "document");
+      const sources = new DocumentSourceRepository(db);
+      expect(await sources.list(context)).toEqual({
+        sources: [],
+        nextCursor: null,
+      });
+      expect(await reconcile()).toMatchObject({ outcome: "linked" });
+      const list = await sources.list(context);
+      expect(list.sources[0]).toMatchObject({
+        pageCount: 1,
+        originalFileName: "brief.pdf",
+        sizeBytes: bytes.length,
+      });
+      const persisted = await intents().findOne({ _id: receipt.id });
+      expect(persisted?.input.checksumSha256).toBe(
+        createHash("sha256").update(bytes).digest("hex"),
       );
-      return bytes;
-    });
-    await expect(
-      sources.content(context, sourceId, objects),
-    ).rejects.toMatchObject({ code: "UPLOAD_NOT_FOUND" });
-    expect((await sources.list(context)).sources).toEqual([]);
-    expect(await intents().findOne({ _id: receipt.id })).toMatchObject({
-      state: "deleting",
-      budgetHeld: true,
-    });
-    expect(await reconcile()).toMatchObject({ outcome: "deleted" });
-    expect(
-      await lifecycle.removeSource(
-        context,
-        new ObjectId(sourceId),
-        randomUUID(),
-      ),
-    ).toEqual({ state: "deleting", deletionComplete: false });
-  });
+      expect(await db.collection("attachmentObjects").countDocuments({})).toBe(
+        0,
+      );
+      expect(JSON.stringify(list)).not.toMatch(/pathname|token|vercel_blob/);
+      const sourceId = list.sources[0]!.id;
+      expect((await sources.content(context, sourceId, objects)).bytes).toEqual(
+        bytes,
+      );
+      expect(
+        (
+          await sources.list({
+            ...context,
+            storeId: new ObjectId().toHexString(),
+          })
+        ).sources,
+      ).toEqual([]);
+      objects.read.mockImplementationOnce(async () => {
+        await lifecycle.removeSource(
+          context,
+          new ObjectId(sourceId),
+          randomUUID(),
+        );
+        return bytes;
+      });
+      await expect(
+        sources.content(context, sourceId, objects),
+      ).rejects.toMatchObject({ code: "UPLOAD_NOT_FOUND" });
+      expect((await sources.list(context)).sources).toEqual([]);
+      expect(await intents().findOne({ _id: receipt.id })).toMatchObject({
+        state: "deleting",
+        budgetHeld: true,
+      });
+      expect(await reconcile()).toMatchObject({ outcome: "deleted" });
+      expect(
+        await lifecycle.removeSource(
+          context,
+          new ObjectId(sourceId),
+          randomUUID(),
+        ),
+      ).toEqual({ state: "deleting", deletionComplete: false });
+    },
+  );
   it("retains failed deletions for a later pass without exposing the hidden photo", async () => {
     const { receipt } = await ready();
     await reconcile();

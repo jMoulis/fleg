@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 vi.mock("server-only", () => ({}));
-import { validatePdf } from "@/server/storage/pdf-validator";
+import {
+  pdfValidationSchema,
+  validatePdf,
+} from "@/server/storage/pdf-validator";
 import { capWasmMemory } from "@/server/storage/pdf-memory.mjs";
 
 // Minimal in-memory PDF fixture with computed xref offsets, not a fake %PDF
@@ -33,11 +36,61 @@ function pdf(pages: number, broken = false) {
   return new TextEncoder().encode(text);
 }
 
+function padded(bytes: Uint8Array, size = bytes.length + 351792) {
+  const result = new Uint8Array(size);
+  result.set(bytes);
+  return result;
+}
+
 describe("bounded private PDF validation", () => {
+  it("accepts terminal null padding without mutating the original file", async () => {
+    const source = pdf(1);
+    for (const ending of ["", "\n", "\r\n", " \t\f\r\n"]) {
+      const bytes = padded(
+        Buffer.concat([source.subarray(0, -1), Buffer.from(ending)]),
+      );
+      const original = bytes.slice();
+      expect((await validatePdf(bytes)).pageCount).toBe(1);
+      expect(bytes).toEqual(original);
+    }
+  });
+  it("does not use padding to repair an invalid document or discard arbitrary suffixes", async () => {
+    const source = pdf(1);
+    for (const bytes of [
+      padded(pdf(1, true)),
+      padded(pdf(61)),
+      padded(pdf(0)),
+      padded(source.subarray(0, -6)),
+      padded(Buffer.concat([source, Buffer.from("untrusted suffix")])),
+      Buffer.concat([source, Buffer.alloc(4096, 65)]),
+    ])
+      await expect(validatePdf(bytes)).rejects.toMatchObject({
+        code: "STORAGE_INTEGRITY",
+      });
+  });
+  it("enforces the size ceiling on the original padded file", async () => {
+    await expect(
+      validatePdf(padded(pdf(1), 25 * 1024 * 1024 + 1)),
+    ).rejects.toMatchObject({ code: "STORAGE_INTEGRITY" });
+  });
+  it("keeps previous verification records readable", () => {
+    expect(
+      pdfValidationSchema.safeParse({
+        pageCount: 1,
+        parserVersion: "pdfium-2.1.13-fleg-1",
+      }).success,
+    ).toBe(true);
+    expect(
+      pdfValidationSchema.safeParse({
+        pageCount: 1,
+        parserVersion: "unknown",
+      }).success,
+    ).toBe(false);
+  });
   it("parses actual pages, including the exact 60-page ceiling", async () => {
     expect(await validatePdf(pdf(1))).toEqual({
       pageCount: 1,
-      parserVersion: "pdfium-2.1.13-fleg-1",
+      parserVersion: "pdfium-2.1.13-fleg-2",
     });
     expect((await validatePdf(pdf(60))).pageCount).toBe(60);
   });
@@ -69,6 +122,9 @@ describe("bounded private PDF validation", () => {
       "base64",
     );
     await expect(validatePdf(encrypted)).rejects.toMatchObject({
+      code: "STORAGE_INTEGRITY",
+    });
+    await expect(validatePdf(padded(encrypted))).rejects.toMatchObject({
       code: "STORAGE_INTEGRITY",
     });
   });
