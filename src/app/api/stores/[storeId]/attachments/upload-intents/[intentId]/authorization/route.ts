@@ -7,7 +7,7 @@ import { attachmentErrorResponse } from "@/server/http/attachment-error-response
 import { readUploadIntentRequest } from "@/server/http/upload-intent-request";
 import { UploadIntentRepository } from "@/server/repositories/upload-intent-repository";
 import {
-  requireUploadTransportConfig,
+  requireStoreUploadTransportConfig,
   VercelUploadTransport,
 } from "@/server/storage/upload-transport";
 
@@ -28,7 +28,7 @@ export async function POST(
     );
     const id = z.uuid().parse(intentId);
     uploadCommandSchema.parse(await readUploadIntentRequest(request));
-    const config = requireUploadTransportConfig();
+    const config = requireStoreUploadTransportConfig(context);
     const [db, client] = await Promise.all([getAppDb(), getMongoClient()]);
     const repository = new UploadIntentRepository(db, client, config);
     const grant = await repository.beginAuthorization(context, id, requestId);

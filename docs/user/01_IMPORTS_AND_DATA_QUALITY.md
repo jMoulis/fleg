@@ -75,8 +75,8 @@ mensuel seul ne permet pas de reconstituer des jours manquants.
 
 La rubrique **Documents** est distincte des imports de ventes. Elle permet de
 conserver un PDF pour le magasin actif ; elle ne transforme pas son contenu en
-ventes, promotions ou recommandations IA. L’envoi est actuellement ouvert sur
-l’environnement de développement uniquement, pas sur le site de production.
+ventes, promotions ou recommandations IA. Le bouton **Envoyer le PDF** est
+disponible lorsque l’administrateur a activé l’envoi pour votre magasin.
 
 1. Ouvrir **Documents**, choisir un PDF de 25 Mo et 60 pages maximum.
 2. Ajouter éventuellement une description puis cliquer sur **Envoyer le PDF**.

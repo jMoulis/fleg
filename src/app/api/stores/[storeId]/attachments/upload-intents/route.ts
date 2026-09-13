@@ -6,7 +6,10 @@ import { attachmentErrorResponse } from "@/server/http/attachment-error-response
 import { readUploadIntentRequest } from "@/server/http/upload-intent-request";
 import { UploadIntentRepository } from "@/server/repositories/upload-intent-repository";
 import { requireUploadIntentConfig } from "@/server/storage/config";
-import { privateUploadsAvailable } from "@/server/storage/upload-transport";
+import {
+  privateUploadsAvailable,
+  requireStoreUploadTransportConfig,
+} from "@/server/storage/upload-transport";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +26,12 @@ export async function POST(
       ["attachments.write"],
       request.headers,
     );
-    const config = requireUploadIntentConfig(process.env);
+    // Production admission is limited to stores covered by maintenance, before
+    // reserving quota. Development can still exercise metadata-only intents.
+    const config =
+      process.env.VERCEL_ENV === "production"
+        ? requireStoreUploadTransportConfig(context)
+        : requireUploadIntentConfig(process.env);
     const input = uploadIntentInputSchema.parse(
       await readUploadIntentRequest(request),
     );
@@ -38,7 +46,7 @@ export async function POST(
         intent: {
           ...intent,
           uploadAvailable:
-            intent.state === "reserved" && privateUploadsAvailable(),
+            intent.state === "reserved" && privateUploadsAvailable(context),
         },
         requestId,
       },

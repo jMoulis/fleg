@@ -66,6 +66,8 @@ describe("upload intent API boundary", () => {
     vi.unstubAllEnvs();
     for (const [key, value] of Object.entries({
       BLOB_INTENTS_ENABLED: "true",
+      BLOB_DEV_UPLOADS_ENABLED: "false",
+      BLOB_UPLOADS_ENABLED: "false",
       BLOB_STORE_ID: "store_5MOJSflf0L273Hz3",
       BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_5MOJSflf0L273Hz3_fake",
       BLOB_NAMESPACE: "preview-tests",
@@ -137,6 +139,35 @@ describe("upload intent API boundary", () => {
       expect([400, 404]).toContain((await POST(req, route)).status);
     }
     expect(mocks.reserve).not.toHaveBeenCalled();
+  });
+  it("limits production reservation to the authorized maintenance scope before quota/database work", async () => {
+    for (const [key, value] of Object.entries({
+      VERCEL_ENV: "production",
+      BLOB_UPLOADS_ENABLED: "true",
+      BLOB_STORE_ID: "store_k3DcIwSL9uBZuhhH",
+      BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_k3DcIwSL9uBZuhhH_test",
+      BLOB_NAMESPACE: "production-tests",
+      BLOB_MAINTENANCE_ENABLED: "true",
+      BLOB_MAINTENANCE_STORE_IDS: "b".repeat(24),
+      CRON_SECRET: "test-secret-".repeat(4),
+    }))
+      vi.stubEnv(key, value);
+    const denied = await POST(request(), route);
+    expect(denied.status).toBe(503);
+    expect(await denied.json()).toMatchObject({ code: "STORAGE_DISABLED" });
+    expect(mocks.reserve).not.toHaveBeenCalled();
+    expect(mocks.db).not.toHaveBeenCalled();
+    vi.stubEnv("BLOB_MAINTENANCE_STORE_IDS", storeId);
+    const accepted = await POST(request(), route);
+    expect(accepted.status).toBe(201);
+    expect(await accepted.json()).toMatchObject({
+      intent: { uploadAvailable: true },
+    });
+    expect(mocks.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({ storeId }),
+      input,
+      expect.any(String),
+    );
   });
   it("bounds JSON body size without trusting Content-Length", async () => {
     const response = await POST(

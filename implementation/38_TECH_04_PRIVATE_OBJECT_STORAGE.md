@@ -2,6 +2,25 @@
 
 ## Statut et reprise du plan
 
+### Ouverture contrôlée de production — 2026-09-13
+
+PR #44 fusionnée et déployée (`ee40245`). Le suivi remplace l'interdiction
+inconditionnelle de production par `BLOB_UPLOADS_ENABLED=true`, distinct du flag
+dev/Preview. Les quotas explicites, la ressource privée de production et son
+namespace restent obligatoires. La maintenance doit être activée et avoir un
+secret et une liste de magasins valides ; seules les réservations et signatures
+pour un magasin autorisé inclus dans cette liste sont admises. Le contrôle
+précède l'accès DB/quota et est répété avant signature. Cette liste est un
+périmètre de déploiement, jamais une autorisation utilisateur.
+
+Le flag dev ne peut pas ouvrir la production. Désactiver l'admission ne coupe
+pas le Cron indépendant. Les documents existants restent consultables selon les
+droits métier. Aucun secret ni liste de magasins n'est transmis au composant.
+
+**Le code seul n'active pas les uploads de production.** Il faut encore consigner
+la recette Preview déployée, puis l'activation des variables et le redéploiement
+de production. Aucun changement de budget ou de pause globale Vercel n'est inclus.
+
 ### Simplification approuvée — 2026-09-13
 
 Le responsable approuve une simplification opérationnelle après discussion du

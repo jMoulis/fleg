@@ -16,6 +16,8 @@ import { readBoundedUploadJson } from "@/server/http/upload-intent-request";
 import {
   VercelUploadTransport,
   requireUploadTransportConfig,
+  requireStoreUploadTransportConfig,
+  privateUploadsAvailable,
 } from "@/server/storage/upload-transport";
 
 const context: AuthorizedStoreContext = {
@@ -171,7 +173,7 @@ describe("TECH-04 constrained transport (no live provider)", () => {
       JSON.parse(url.searchParams.get("vercel-blob-callback-token-payload")!),
     ).toEqual({ intentId: input.intentId, attemptId: input.attemptId });
   });
-  it("opens only explicitly configured dev/preview resources and never production", async () => {
+  it("keeps the dev opt-in isolated from production", async () => {
     const env = {
       BLOB_DEV_UPLOADS_ENABLED: "true",
       BLOB_INTENTS_ENABLED: "true",
@@ -209,6 +211,79 @@ describe("TECH-04 constrained transport (no live provider)", () => {
     expect(
       new URL(result.url).searchParams.has("vercel-blob-callback-url"),
     ).toBe(false);
+  });
+  it("opens production only with its own opt-in, pinned resource, quotas and scoped maintenance", () => {
+    const env = {
+      VERCEL_ENV: "production",
+      BLOB_UPLOADS_ENABLED: "true",
+      BLOB_INTENTS_ENABLED: "true",
+      BLOB_STORE_ID: "store_k3DcIwSL9uBZuhhH",
+      BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_k3DcIwSL9uBZuhhH_test",
+      BLOB_NAMESPACE: "production-test",
+      BLOB_STORE_QUOTA_BYTES: "1000",
+      BLOB_ENV_QUOTA_BYTES: "2000",
+      BLOB_STORE_QUOTA_OBJECTS: "10",
+      BLOB_ENV_QUOTA_OBJECTS: "20",
+      BLOB_MAINTENANCE_ENABLED: "true",
+      BLOB_MAINTENANCE_STORE_IDS: context.storeId,
+      CRON_SECRET: "test-secret-".repeat(4),
+    };
+    expect(requireStoreUploadTransportConfig(context, env)).toMatchObject({
+      storeId: env.BLOB_STORE_ID,
+      allowedStoreIds: [context.storeId],
+    });
+    for (const key of [
+      "BLOB_UPLOADS_ENABLED",
+      "BLOB_INTENTS_ENABLED",
+      "BLOB_STORE_QUOTA_BYTES",
+      "BLOB_ENV_QUOTA_OBJECTS",
+      "BLOB_MAINTENANCE_ENABLED",
+      "BLOB_MAINTENANCE_STORE_IDS",
+      "CRON_SECRET",
+    ])
+      expect(() =>
+        requireUploadTransportConfig({ ...env, [key]: undefined }),
+      ).toThrow();
+    for (const override of [
+      { BLOB_NAMESPACE: "preview-test" },
+      { BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_5MOJSflf0L273Hz3_test" },
+      { BLOB_MAINTENANCE_STORE_IDS: "not-an-id" },
+      { CRON_SECRET: "invalid-secret" },
+    ])
+      expect(() =>
+        requireUploadTransportConfig({ ...env, ...override }),
+      ).toThrow();
+    expect(() =>
+      requireStoreUploadTransportConfig(
+        { ...context, storeId: "b".repeat(24) },
+        env,
+      ),
+    ).toThrow("pas activés pour ce magasin");
+    for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
+    expect(privateUploadsAvailable(context)).toBe(true);
+    expect(
+      privateUploadsAvailable({ ...context, storeId: "b".repeat(24) }),
+    ).toBe(false);
+    vi.stubEnv("CRON_SECRET", "invalid-secret");
+    expect(privateUploadsAvailable(context)).toBe(false);
+    expect(() => requireUploadTransportConfig()).not.toThrow("invalid-secret");
+    expect(issueSignedToken).not.toHaveBeenCalled();
+  });
+  it("checks maintenance scope again at signing, before calling the provider", async () => {
+    const scoped = new VercelUploadTransport({
+      ...config,
+      allowedStoreIds: ["b".repeat(24)],
+    });
+    await expect(scoped.authorize(context, grant())).rejects.toMatchObject({
+      code: "STORAGE_DISABLED",
+    });
+    expect(issueSignedToken).not.toHaveBeenCalled();
+    await expect(
+      new VercelUploadTransport({
+        ...config,
+        allowedStoreIds: [context.storeId],
+      }).authorize(context, grant()),
+    ).resolves.toMatchObject({ method: "PUT" });
   });
   it("rejects foreign scope/resource, readers and expired or expanded lifetimes before any provider call", async () => {
     const input = grant();

@@ -1,5 +1,20 @@
 # START HERE — Coding Agent
 
+## Latest continuation — 2026-09-13: production document admission
+
+PR #44 is merged and its production deployment is ready (`ee40245`). This
+follow-up replaces the unconditional production transport lock with explicit
+`BLOB_UPLOADS_ENABLED=true` admission. Production also requires intent quotas,
+the pinned private production Blob resource, a `production-` namespace, and
+enabled authenticated maintenance. New reservations/signing are restricted to
+the authorized application's store in `BLOB_MAINTENANCE_STORE_IDS`.
+`BLOB_DEV_UPLOADS_ENABLED` remains dev/Preview-only. The UI receives only a
+store-scoped boolean; disabling admission does not disable Cron cleanup.
+
+This code change alone does not enable production. Deployed Preview acceptance
+and the production environment rollout remain to be recorded. Do not claim
+TECH-04 closed or upload the user's untracked `assets/F&L-Promo.pdf` for testing.
+
 ## Latest continuation — 2026-09-13: simpler document recovery
 
 This entry supersedes earlier indefinite-quota/provider-lifetime gates below.
