@@ -2,6 +2,9 @@ import "server-only";
 import { uploadIntentMaxBodyBytes } from "@/domain/attachments/private-storage";
 import { PhotoValidationError } from "@/domain/attachments/photo-validation";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
+import { offlineIdentitySchema } from "@/domain/offline/schemas";
+import { requireSession } from "@/server/auth/session";
+import { createHash } from "node:crypto";
 
 export async function readUploadIntentRequest(
   request: Request,
@@ -13,6 +16,25 @@ export async function readUploadIntentRequest(
     request.headers.get("sec-fetch-site") === "cross-site"
   )
     throw new StoreAccessDeniedError();
+  // An optional offline identity is a fence, never an authorization grant.
+  // Prevent a stale tab from submitting A's pending bytes under B's cookie.
+  const ownerHeader = request.headers.get("x-fleg-photo-owner");
+  if (ownerHeader !== null) {
+    if (ownerHeader.length > 2048) throw new StoreAccessDeniedError();
+    const owner = offlineIdentitySchema.parse(
+      JSON.parse(ownerHeader) as unknown,
+    );
+    const session = await requireSession(request.headers);
+    if (
+      owner.userId !== session.user.id ||
+      owner.sessionBinding !==
+        createHash("sha256").update(session.session.id).digest("hex") ||
+      !new URL(request.url).pathname.startsWith(
+        `/api/stores/${owner.storeId}/attachments/`,
+      )
+    )
+      throw new StoreAccessDeniedError();
+  }
   return readBoundedUploadJson(request, uploadIntentMaxBodyBytes);
 }
 

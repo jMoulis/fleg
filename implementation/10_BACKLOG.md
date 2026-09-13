@@ -1,5 +1,13 @@
 # Build backlog — recommended order
 
+## Latest TECH-04 continuation — 2026-09-13
+
+PR #46/#47 merged. Lot 3b adds the consented, bounded local photo queue to the
+photothèque and existing field workspace, with session-fenced recovery and no
+automatic loss of pending bytes. See the current TECH-04 contract and START_HERE.
+Physical-device acceptance and lot 4 migration tooling remain; no actual migration,
+TECH-05/V4 feature start, or PILOT-01 closure is implied.
+
 ## Latest TECH-04 policy — 2026-09-13
 
 After the PDF worker fix (PR #43), the manager approves simpler recovery:

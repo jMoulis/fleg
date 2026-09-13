@@ -10,11 +10,14 @@ export async function preparationEpoch() {
   return (await db.meta.get("session"))?.epoch ?? 0;
 }
 
-export async function forgetPreparedWorkspace() {
+export async function forgetPreparedWorkspace(
+  scope: "all" | "inventory" = "all",
+) {
   await db.transaction("rw", db.copies, db.meta, async () => {
     const epoch = await preparationEpoch();
     await db.meta.put({ key: "session", epoch: epoch + 1 });
-    await db.copies.clear();
+    if (scope === "inventory") await db.copies.delete("current");
+    else await db.copies.clear();
   });
 }
 

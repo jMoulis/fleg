@@ -83,6 +83,44 @@ visibles et retirables dans la sélection. Les opérations annulées sont class�
 de la plus récente à la plus ancienne et présentées par pages de 25. Les photos
 restent des observations manuelles.
 
+## Photos lorsque le réseau est incertain
+
+Dans la photothèque d’**Espace**, **TG** ou **Paramètres** :
+
+1. Choisir l’élément photographié, puis ouvrir **Photos hors connexion**.
+2. Ouvrir **Préparer « … » hors connexion**, accepter la conservation sur cet
+   appareil de confiance, puis **Préparer cette cible**. Répéter pour les autres
+   cibles nécessaires, avant de quitter le réseau.
+3. Ouvrir **Photos terrain dans l’espace hors connexion**. Cette rubrique est
+   dans le même espace terrain que les stocks ; les autres pages ne deviennent
+   pas pour autant accessibles hors connexion.
+4. Choisir la cible préparée, une photo et éventuellement sa légende. Appuyer sur
+   **Conserver et envoyer dès que possible** et attendre la confirmation locale.
+5. Au retour du réseau, garder la rubrique ouverte : l’app vérifie les accès,
+   envoie les photos et confirme leur ajout à la photothèque.
+
+**Enregistrée sur cet appareil** ne signifie pas encore **ajoutée à la
+photothèque**. Une réception incertaine déclenche une vérification, pas un nouvel
+envoi. Après plusieurs tentatives, utiliser **Reprendre la vérification**.
+L’app ne promet pas d’envoyer lorsque le navigateur est fermé.
+
+Limites : JPEG, PNG ou WebP, 4 Mio par photo ; au total **10 photos / 40 Mio sur
+l’appareil**, tous comptes et magasins confondus. Aucune photo en attente n’est
+effacée pour libérer de la place. Éviter la navigation privée et ne pas effacer
+les données du site tant que des photos ou comptages restent à envoyer.
+
+Si la préparation expire ou si vous vous reconnectez, préparer à nouveau une
+cible avec le **même compte et le même magasin** pour retrouver la file. Un autre
+compte ne la voit pas. **Garder une copie** permet de télécharger l’original.
+**Retirer de la file** demande confirmation ; si un envoi a commencé, il faut du
+réseau pour confirmer son abandon. Une photo déjà ajoutée reste dans la galerie.
+Un envoi définitivement refusé peut être retiré puis recréé depuis la copie gardée.
+
+Pour la recette sur votre téléphone/tablette : noter le modèle et le navigateur,
+préparer une cible, activer le mode avion, conserver une photo, fermer puis rouvrir
+l’app, vérifier la présence de la photo, rétablir le réseau et vérifier qu’elle
+n’apparaît qu’une seule fois dans la bonne cible. Signaler tout message ambigu.
+
 ## Démarque : enregistrer un fait de perte
 
 La rubrique **Démarque** enregistre, pour un article et une date, un montant de

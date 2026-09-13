@@ -54,9 +54,35 @@ loss of visibility, then physical cleanup. Legacy BSON deletion remains immediat
 
 Only an opaque recovery ID is kept in sessionStorage, scoped to user/store.
 Reloading the same tab verifies the same intent; it never resends the file.
-This connected lot does **not** persist image bytes locally or provide offline
-capture. The bounded, consented IndexedDB queue and migration tooling remain in
-[TECH-04](../implementation/38_TECH_04_PRIVATE_OBJECT_STORAGE.md).
+This immediate connected mode does not persist image bytes. An optional,
+explicitly consented queue is now available in the same photothèque and the
+existing `/offline#offline-photos` field workspace. It stores original bytes and
+frozen user/organization/store/target/version metadata transactionally in the
+new IndexedDB v4 `photos` table. Inventory drafts/operations/sync tables are
+unchanged; auth invalidation clears disposable references, never pending bytes.
+
+The global origin/device ceiling is 10 photos / 40 MiB, including all accounts;
+only the current owner's count is visible. No automatic eviction or expiration
+of pending images. Prepared targets expire at the earlier of the auth session
+expiry or the existing offline maximum age (12 h by default). Same-owner
+reconnection and renewed preparation unlock older pending images. The opaque
+session hash is a fence, not a credential or an offline authorization grant.
+
+Only a foreground open application resumes work. A live access check precedes
+sending; all offline commands carry the expected user/session binding and the
+server refuses mismatched cookies. Local transactional leases serialize tabs.
+Interrupted attempts only check/replay the existing metadata reservation; no
+automatic second PUT, and no multipart-resume promise. Verification retries
+respect server deadlines, have a 30-second minimum backoff and stop after five
+attempts. Manual verification remains available. A rejected/abandoned upload
+keeps its local bytes until explicit removal; export is available beforehand.
+If reception cannot be recovered, keep a copy, explicitly abandon the old
+attempt, then add the file again. Linking is never inferred from a successful PUT.
+
+Only a durable verified linked receipt, or explicit reconciled abandonment,
+allows local deletion. Removing from the queue never removes a photo already
+linked in the remote gallery. Migration of historical MongoDB images remains
+a separate [TECH-04](../implementation/38_TECH_04_PRIVATE_OBJECT_STORAGE.md) lot.
 
 ## Interface
 

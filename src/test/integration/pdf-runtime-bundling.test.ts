@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { chromium, expect as browserExpect } from "@playwright/test";
 import { verifyPhotoLibrary } from "@/test/helpers/photo-library-browser";
+import { verifyPhotoQueue } from "@/test/helpers/photo-queue-browser";
 
 // Separate CI job/command: exercises Next's real compiler, not Vitest's loader.
 // The isolated fixture has no .env, auth, database, Blob, or provider access.
@@ -199,6 +200,7 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
           const browser = await chromium.launch({ headless: true });
           try {
             await verifyPhotoLibrary(browser, `http://127.0.0.1:${port}`, root);
+            await verifyPhotoQueue(browser, `http://127.0.0.1:${port}`, root);
             for (const width of [390, 1440]) {
               const page = await browser.newPage({
                 viewport: { width, height: 900 },
