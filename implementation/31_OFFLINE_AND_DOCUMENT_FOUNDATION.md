@@ -13,8 +13,10 @@ requirements for delivered capabilities, not an obligation to expand them.
 ## Decision and status
 
 **Future planning, 2026-09-14:** [V7-01](./41_V7_OFFLINE_FIRST_ROADMAP.md)
-records a unified offline-first refactoring with Serwist. It does not lift the
-freeze above or authorize further offline work in TECH-04/05/06 or V4/V5.
+evaluates an Expo native mobile companion while retaining Next.js desktop and
+backend. It supersedes the Serwist-first target; eventual web PWA retirement is
+conditional on native acceptance and recovery of pending browser work. It does
+not lift the freeze above, authorize current removals or expand TECH-04/05/06 or V4/V5.
 
 Framed on 2026-09-11. `TECH-01` now has a read-only implementation and automated
 production-build acceptance; physical device acceptance remains open. See

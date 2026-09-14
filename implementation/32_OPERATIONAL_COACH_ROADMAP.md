@@ -297,11 +297,14 @@ causes are uncertain; do not trigger supplier orders or autonomous intervention.
 
 ## Deferred choices
 
-### V7 — unified offline-first refactoring
+### V7 — native mobile companion and connected Next.js desktop
 
-On 2026-09-14 the manager requested a deferred **V7-01** epic using Serwist,
-local domain persistence and reliable synchronization to unify connected and
-offline workflows. See [the V7 roadmap](./41_V7_OFFLINE_FIRST_ROADMAP.md).
+On 2026-09-14 the manager amended deferred **V7-01** to evaluate a monorepo with
+React Native / Expo for native mobile, retaining the current Next.js desktop UI
+and backend. This supersedes the Serwist-first target, not the current delivered
+offline capabilities. Web PWA retirement is conditional on native field acceptance
+and recovery of pending browser work. No Expo Web replacement is proposed.
+See [the V7 roadmap](./41_V7_OFFLINE_FIRST_ROADMAP.md).
 This records future intent only: the offline freeze remains active, V4/V5 stay
 in their current order, and no V6 scope or immediate implementation is implied.
 
