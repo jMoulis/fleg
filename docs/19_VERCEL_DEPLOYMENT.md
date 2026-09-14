@@ -70,6 +70,31 @@ L’intégration Atlas du Marketplace Vercel peut automatiser la connexion, mais
 
 ## Isolation MongoDB Preview — état vérifié le 2026-09-12
 
+### TECH-05 — activation Production du 14 septembre 2026
+
+Activation et recette explicitement autorisées après la fusion de PR #55.
+Déploiement Production READY `dpl_4oh3WGkamHePsaS6MfK7xYjG12Va`, commit master
+`7df60aa3748f223a517d64fa2d1be27a429fb3d7`, sur
+[F&L Cockpit](https://fleg-two.vercel.app/). Deux seules variables Production
+ajoutées : `DOCUMENT_PROCESSING_ENABLED=true` et l'allowlist
+`DOCUMENT_PROCESSING_STORE_IDS=6a96ea77bd32c857c7b4f866`. Pas de rotation de secret,
+changement des autres environnements ou promotion de Preview.
+
+Le Cron cinq minutes pointe sur le nouveau déploiement. Invocation automatique
+HTTP 200 observée à 06:35:45 UTC, extraction synthétique réussie en une tentative
+à 06:35:47 UTC après demande à 06:34:50 UTC et fermeture de l'onglet. Aucun appel
+opérateur au Cron. Les résultats UI/API/MongoDB et la conservation du PDF après
+retrait du texte sont consignés dans
+[le contrat TECH-05](../implementation/40_DOCUMENT_PROCESSING_JOBS.md#activation-production-et-recette-automatique--14-septembre-2026).
+
+Le PDF synthétique de 877 octets a ensuite été retiré de la liste ; sa suppression
+physique Blob est en attente de la maintenance normale, quota encore réservé.
+Les sources utilisateur et les autres variables ont été contrôlées inchangées.
+Aucun appel OpenAI ; aucun nouveau dispositif de monitoring permanent ajouté.
+Contrôle ponctuel des logs depuis l'activation : aucune entrée de niveau erreur.
+Preuves opérateur, sessions et captures privées :
+`.local-backups/tech05-production-20260914/`, ignoré par Git. Aucun secret dans la PR.
+
 ### TECH-05 — recette Preview du 14 septembre 2026
 
 Après fusion de la PR #54 et autorisation explicite, branche de recette
