@@ -81,6 +81,8 @@ autorisé et un magasin activé. Le serveur reste l’autorité de chaque comman
 Une configuration invalide masque l’admission sans casser la liste des PDF.
 
 Le volet distingue attente, exécution, échec définitif, annulation et texte prêt.
+L’attente confirme « Demande enregistrée », indique un délai possible de quelques
+minutes et précise que l’utilisateur peut quitter la page, sans promettre une échéance.
 Il affiche le texte littéralement (pas de HTML/Markdown interprété), une page à
 la fois, et laisse les pages vides/scannées vides, sans OCR. Le texte n’est ni
 une analyse IA ni une validation commerciale ; la date d’expiration est visible.
@@ -89,6 +91,9 @@ Lecture et retrait du texte restent disponibles quand l’admission est désacti
 Suivi automatique : GET toutes les 30 secondes pendant les états actifs, au plus
 20 vérifications par ouverture/actualisation manuelle, seulement avec page visible
 et réseau disponible. L’erreur arrête ce suivi ; l’utilisateur peut actualiser.
+Le retour dans l’onglet visible ou le rétablissement du réseau déclenche aussi
+une lecture du statut actif, dans la même limite de 20 vérifications. Ces événements
+ne relancent jamais l’extraction et ne reprennent pas un suivi en pause ou en erreur.
 Chaque requête expire après 15 secondes. Une réponse perdue à POST/DELETE laisse
 l’action **non confirmée** : vérifier par GET, sans réémission automatique.
 Fermeture/navigation annule les requêtes et libère le texte en mémoire. Aucun

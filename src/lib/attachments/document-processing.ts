@@ -32,7 +32,9 @@ export function processingDetail(job: DocumentProcessingStatus): string {
   if (job.state === "queued" || job.state === "running")
     return job.error === "temporary"
       ? "Une reprise automatique est prévue. Vous pouvez quitter cette page."
-      : "Le traitement peut prendre quelques minutes. Vous pouvez quitter cette page.";
+      : job.state === "queued"
+        ? "Demande enregistrée. Le traitement peut prendre quelques minutes. Vous pouvez quitter cette page."
+        : "Le traitement peut prendre quelques minutes. Vous pouvez quitter cette page.";
   return "Texte brut, sans analyse IA ni validation commerciale. Vérifiez les tableaux dans le PDF original.";
 }
 
