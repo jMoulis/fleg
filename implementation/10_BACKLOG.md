@@ -263,6 +263,14 @@ for this complete historical table. New planned entries include `dependsOn`,
 | V5-02 | Vision | Photo-assisted field observations | P2 | TECH-04, V4-05, V5-01, representative photo evals |
 | V5-03 | Simulation | Visual merchandising proposals and bounded simulation | P2 | V4-07, V4-08, V5-02, measured response data |
 | V5-04 | Coaching | Actionable anomaly follow-up | P2 | V4-04, V4-08, false-alert evaluation |
+| V7-01 | Deferred architecture | Evaluate Expo native mobile, retain Next.js desktop and conditionally retire web PWA | P3 / deferred | Existing TECH-01/03, PILOT-01 feedback, explicit reprioritization |
+
+V7-01 is a future planning epic, **not a reopening of the offline extension
+freeze** or a prerequisite to current TECH-05/06 and V4/V5 work. The monorepo/native
+evaluation supersedes the Serwist-first target, not the delivered safeguards.
+Web PWA removal requires native acceptance and recovery of pending browser work.
+Its phased scope, online-only exceptions and acceptance gates are recorded in
+[the V7 roadmap](./41_V7_OFFLINE_FIRST_ROADMAP.md). No V6 scope is inferred.
 
 ## Pre-V3 gate acceptance
 
