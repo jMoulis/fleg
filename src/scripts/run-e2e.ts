@@ -48,6 +48,8 @@ async function run() {
       BLOB_DEV_UPLOADS_ENABLED: "false",
       BLOB_UPLOADS_ENABLED: "false",
       BLOB_MAINTENANCE_ENABLED: "false",
+      DOCUMENT_PROCESSING_ENABLED: "false",
+      DOCUMENT_PROCESSING_STORE_IDS: "",
       BLOB_MAINTENANCE_STORE_IDS: "",
       CRON_SECRET: "",
       BLOB_READ_WRITE_TOKEN: "",

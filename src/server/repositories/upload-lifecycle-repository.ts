@@ -653,6 +653,27 @@ export class UploadLifecycleRepository {
             { session },
           );
         document.state = "deleting";
+        if (document.kind === "document") {
+          // Same transaction as source revocation: no late extraction may recreate text.
+          await this.db
+            .collection("documentProcessingJobs")
+            .updateMany(
+              {
+                organizationId: context.organizationId,
+                storeId: new ObjectId(context.storeId),
+                sourceId,
+              },
+              {
+                $set: {
+                  state: "cancelled",
+                  error: "source_unavailable",
+                  updatedAt: new Date(),
+                },
+                $unset: { result: "", lease: "" },
+              },
+              { session },
+            );
+        }
         await intents.updateOne(
           { ...scope, _id: document._id },
           {

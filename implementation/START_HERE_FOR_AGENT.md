@@ -1,5 +1,35 @@
 # START HERE — Coding Agent
 
+## Current continuation — 2026-09-14: TECH-05 Documents controls
+
+PR #52 is merged. The manager approved the next UI-only processing lot: expand
+"Texte du PDF", explicitly request native text extraction, follow status, inspect
+one page at a time and cancel/remove derived text without removing the PDF.
+No OCR, OpenAI, commercial extraction, retrieval or Copilot change. No production
+activation; offline extensions remain frozen. See `40_DOCUMENT_PROCESSING_JOBS.md`.
+Preview acceptance and explicit activation remain separate gates.
+
+Before any future AI/Copilot implementation, present intentions, data/provider
+use, costs, permission boundaries and tests, then wait for explicit manager
+approval (also recorded in AGENTS.md). Do not treat a generic "continue" as that
+approval. TECH-05/PILOT-01 remain open; V4-01 is not started.
+
+## Current continuation — 2026-09-14: TECH-05 backend
+
+PR #49 is merged. Authorized Atlas inventory for the demo store found no inline
+photo/PDF content to migrate/delete. Blob originals and deletion metadata remain
+intact. Do not infer other stores are audited or build a migration for this empty
+scope. Offline extensions remain frozen.
+
+The manager approves TECH-05. This backend lot adds bounded native PDF text
+extraction, durable MongoDB jobs, an opt-in authenticated Cron, source/page
+provenance and transactional source-deletion cleanup. No new SDK, OCR, AI,
+commercial extraction, indexing or UI. Read `40_DOCUMENT_PROCESSING_JOBS.md`.
+No production activation or real-source processing is authorized implicitly.
+Next: lean Documents controls and Preview recovery/deletion acceptance, then
+explicit activation. TECH-05/PILOT-01 are not complete; V4-01 is not started.
+Historical blockers below are superseded only by these scoped decisions.
+
 ## Current decision — 2026-09-13: freeze offline extensions; migration preparation
 
 PR #48 is merged (`43fa370`). The manager reports the photo workflow works but

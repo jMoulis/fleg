@@ -1,5 +1,16 @@
 # Offline field work and document foundation
 
+## 2026-09-14 — current document continuation
+
+Authorized inventory found no inline PDF/photo files in the demo store after
+PR #49. No migration/deletion was needed; other stores are not covered by that
+finding. TECH-05 starts with a bounded native-text backend, MongoDB durable jobs
+and an opt-in authenticated Cron. See [40 — processing jobs](./40_DOCUMENT_PROCESSING_JOBS.md)
+for the Workflow evaluation, budgets and deletion guarantees. After PR #52, the
+manager approved connected Documents controls (request/status/per-page text/cancel).
+Local UI acceptance is recorded there; Preview acceptance and explicit activation
+remain open. No offline expansion, production activation, V4-01 or pilot closure.
+
 ## 2026-09-13 scope override — offline extensions frozen
 
 The manager approves stopping further offline expansion after PR #48: the photo
@@ -11,6 +22,12 @@ adding offline behavior. Historical acceptance criteria below remain evidence
 requirements for delivered capabilities, not an obligation to expand them.
 
 ## Decision and status
+
+**Future planning, 2026-09-14:** [V7-01](./41_V7_OFFLINE_FIRST_ROADMAP.md)
+evaluates an Expo native mobile companion while retaining Next.js desktop and
+backend. It supersedes the Serwist-first target; eventual web PWA retirement is
+conditional on native acceptance and recovery of pending browser work. It does
+not lift the freeze above, authorize current removals or expand TECH-04/05/06 or V4/V5.
 
 Framed on 2026-09-11. `TECH-01` now has a read-only implementation and automated
 production-build acceptance; physical device acceptance remains open. See
