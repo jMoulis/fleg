@@ -30,6 +30,14 @@ export function requireDocumentProcessing(storeId: string) {
       "Traitement PDF non activé pour ce magasin",
     );
 }
+// Presentation only: mutations still enforce admission and authorization.
+export function documentProcessingAvailable(storeId: string): boolean {
+  try {
+    return documentProcessingConfig()?.storeIds.includes(storeId) ?? false;
+  } catch {
+    return false;
+  }
+}
 export async function getDocumentProcessingRepository() {
   const [db, authDb, client] = await Promise.all([
     getAppDb(),
