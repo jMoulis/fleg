@@ -1,5 +1,25 @@
 # START HERE — Coding Agent
 
+## Current decision — 2026-09-13: freeze offline extensions; migration preparation
+
+PR #48 is merged (`43fa370`). The manager reports the photo workflow works but
+rejects its UX cost, and explicitly approves freezing further offline extensions.
+Keep delivered stock protections, synchronization and pending local photos intact.
+Do not remove/disable features, clear local work, redesign the offline UI, add
+offline notes (V4-02) or cached coach briefings (V4-04) without a new decision.
+This is a scope freeze, not exhaustive device acceptance or PILOT-01 closure.
+
+Next scoped work: TECH-04 lot 4a, **read-only migration preparation**. Inventory
+historical BSON photos, verify their bytes under authorized store scope and
+produce a dry-run/rollback plan before deciding whether migration is useful.
+`maintenance:plan-photo-migration` has no copy/switch/purge mode and never calls
+Blob. Its default/snapshot mode loads no credentials; live inventory requires
+explicit URI/host/databases/scope and current organization-admin access.
+No real Atlas inventory, migration or production change is authorized by this
+implementation. Use synthetic local tests. Keep the user PDF untracked.
+See `39_PHOTO_MIGRATION_PREPARATION.md`. Prior entries below are historical;
+their offline extension requirements no longer drive new work.
+
 ## Latest continuation — 2026-09-13: TECH-04 consented local photo queue
 
 PR #46/#47 are merged on master (`da6b307`). The manager reports successful

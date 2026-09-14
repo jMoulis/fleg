@@ -2,6 +2,12 @@
 
 ## Decision and status
 
+**2026-09-13 override — offline extensions frozen by the manager.** Preserve
+existing stock safeguards and queued work, but do not expand offline features
+as a prerequisite to V4/V5. V4-02 notes and V4-04 briefings below are connected
+only until a new explicit product decision. This does not close PILOT-01 or
+remove any already delivered functionality.
+
 Framed on 2026-09-11. This document records the product discussion as planned
 tickets; it does not declare those features delivered. `V4-01` keeps its existing
 identifier and [commercial-brief contract](./30_WEEKLY_COMMERCIAL_BRIEF_IMPORT.md).
@@ -90,7 +96,7 @@ Acceptance:
   and local event feeds follow only where an appropriate source exists.
 - Capture manual supplier quality, strike, works, delivery or local demand
   notes as qualitative evidence with observation time, author and provenance.
-  Support bounded offline notes using the existing local/sync foundation.
+  Offline notes are deferred under the approved scope freeze.
 - Keep forecast issuance/valid time, observations, corrections and retrieval
   time distinct; provider updates are versioned and never rewrite prior facts.
 - A regional alert or public event is context, not proof that this store was
@@ -98,8 +104,8 @@ Acceptance:
 - Deduplicate automatic entries, expose missing/outdated sources and ask the
   manager only for useful exceptions. Context collection does not apply an
   unexplained sales multiplier.
-- Test provider failure, timezone/date boundaries, duplicate imports, offline
-  replay and no cross-store exposure; measure time spent maintaining the journal.
+- Test provider failure, timezone/date boundaries, duplicate imports and no
+  cross-store exposure; measure time spent maintaining the journal.
 
 ## V4-03 — local assortment opportunities
 
@@ -145,8 +151,8 @@ Acceptance:
   is valid. Deduplicate and suppress deferred/rejected repetitions.
 - Provide a distinct, bounded exploration option for an unproven product/theme;
   lack of evidence must be visible rather than converted into a financial gain.
-- Keep network scope explicit and recommendations readable from cached evidence
-  offline. New AI generation waits for a connection; approval uses live rights.
+- Keep network scope explicit. Briefing generation/reading remains connected;
+  offline cached evidence is deferred. Approval uses live rights.
 - Evaluate decision time, usefulness and workload against the pilot baseline;
   numeric consistency, unavailable penetration and sparse evidence are test cases.
 

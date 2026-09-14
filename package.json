@@ -30,6 +30,7 @@
     "check": "npm run lint && npm run typecheck && npm run audit:unused && npm run test",
     "seed:demo": "tsx src/scripts/seed-demo.ts",
     "maintenance:cleanup-e2e-orders": "tsx src/scripts/cleanup-e2e-orders.ts",
+    "maintenance:plan-photo-migration": "node --import tsx --conditions=react-server src/scripts/plan-photo-migration.ts",
     "verify:preprod": "tsx src/scripts/verify-preproduction.ts",
     "verify:storage": "node --import tsx --conditions=react-server src/scripts/verify-storage.ts",
     "verify:deployment": "tsx src/scripts/verify-deployment.ts"
