@@ -2,7 +2,13 @@
 
 ## Status and delivery gate
 
-This ticket is framed but not scheduled for implementation. `PILOT-01` remains
+**2026-09-14 update:** the manager accepts the current functional workflow with
+UX reservations and explicitly authorizes the first native-text review lot plus
+selected-text provider processing. Quantified PILOT-01 outcomes remain open.
+See [lot 1 scope and activation gates](./42_COMMERCIAL_BRIEF_REVIEW.md). No OCR,
+canonical-association commit or downstream adoption is included in this first lot.
+
+Original framing: this ticket was not scheduled for implementation. `PILOT-01` remains
 the product gate for V4 prioritization, and implementation also requires at
 least one representative original PDF and `TECH-05` (private storage and durable
 processing through `TECH-04/05`). The seven photographs reviewed during

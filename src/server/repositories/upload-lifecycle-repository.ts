@@ -654,6 +654,13 @@ export class UploadLifecycleRepository {
           );
         document.state = "deleting";
         if (document.kind === "document") {
+          // Revoke derived commercial text in the same transaction. Billing
+          // reservations contain no source content and are deliberately retained.
+          await this.db.collection("commercialBriefs").deleteMany({
+            organizationId: context.organizationId,
+            storeId: new ObjectId(context.storeId),
+            sourceId: sourceId.toHexString(),
+          }, { session });
           // Same transaction as source revocation: no late extraction may recreate text.
           await this.db
             .collection("documentProcessingJobs")

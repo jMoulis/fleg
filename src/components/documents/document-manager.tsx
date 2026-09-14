@@ -13,6 +13,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DocumentProcessingPanel } from "./document-processing-panel";
+import { CommercialBriefPanel } from "./commercial-brief-panel";
 import { documentSourceListSchema } from "@/domain/attachments/document-source";
 import {
   uploadIntentReceiptSchema,
@@ -385,6 +386,7 @@ export function DocumentManager({
                   canWrite={canWrite}
                   processingAvailable={processingAvailable}
                 />
+                <CommercialBriefPanel storeId={storeId} sourceId={source.id} />
               </li>
             ))}
           </ul>

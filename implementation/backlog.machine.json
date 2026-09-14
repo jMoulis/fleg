@@ -500,6 +500,7 @@
       "title": "Instrumented single-store operational pilot",
       "priority": "P0",
       "status": "awaiting_field_data",
+      "functionalFeedback": "2026-09-14: manager accepts functional workflow with UX reservations; quantified time/waste/commercial outcomes remain open",
       "acceptance": [
         "execution waits for restored Mercalys access",
         "named store owner dates and frozen baseline",
@@ -645,7 +646,9 @@
       "epic": "commercial_intelligence",
       "title": "Weekly commercial brief PDF and image import",
       "priority": "P1",
-      "status": "planned",
+      "status": "in_progress",
+      "deliveryRecord": "implementation/42_COMMERCIAL_BRIEF_REVIEW.md",
+      "approval": "2026-09-14: explicit manager approval of first native-text review lot and selected PDF text transfer to OpenAI; quantified PILOT-01 is not closed",
       "dependsOn": ["PILOT-01", "TECH-05"],
       "externalGates": ["Representative original PDF and explicit provider processing policy"],
       "spec": "implementation/30_WEEKLY_COMMERCIAL_BRIEF_IMPORT.md",

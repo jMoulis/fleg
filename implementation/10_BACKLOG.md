@@ -1,5 +1,25 @@
 # Build backlog — recommended order
 
+## 2026-09-14 — V4-01 first native-text review lot authorized
+
+After PR #57, the manager reports the current functional workflow satisfactory,
+with UX still needing work. This is a functional field assessment, **not** proof
+of time saved, reduced waste or commercial uplift. PILOT-01 stays open for those
+measurements. The manager explicitly approves starting the bounded V4-01 lot and
+sending the selected PDF text to OpenAI for acceptance. This is the recorded
+exception to waiting for the complete quantified pilot; it does not unlock all V4.
+
+The first lot implements explicit page selection/consent, durable one-attempt
+analysis, cited typed draft fields, read-only catalogue suggestions and auditable
+transcription correction/confirmation/exclusion. Original files stay in Blob.
+No OCR, embeddings, supplier action, Copilot change or downstream publication.
+Provider model/rates/budget configuration and real-PDF acceptance remain separate;
+no remote flag or credentials changed by this branch. See
+[the delivery contract](./42_COMMERCIAL_BRIEF_REVIEW.md).
+
+V4-01 is **in progress**, not complete: image/OCR fallback, explicit canonical
+product resolution and downstream draft handoffs remain later increments.
+
 ## 2026-09-14 — TECH-05 native-text production pilot accepted
 
 After PR #55 merged and explicit manager approval, native text extraction is
