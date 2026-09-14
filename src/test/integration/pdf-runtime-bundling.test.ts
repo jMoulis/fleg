@@ -8,6 +8,7 @@ import { chromium, expect as browserExpect } from "@playwright/test";
 import { verifyPhotoLibrary } from "@/test/helpers/photo-library-browser";
 import { verifyPhotoQueue } from "@/test/helpers/photo-queue-browser";
 import { verifyDocumentProcessing } from "@/test/helpers/document-processing-browser";
+import { verifyCommercialBrief } from "@/test/helpers/commercial-brief-browser";
 import { textPdf } from "@/test/fixtures/text-pdf";
 
 // Separate CI job/command: exercises Next's real compiler, not Vitest's loader.
@@ -235,6 +236,7 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
               `http://127.0.0.1:${port}`,
               root,
             );
+            await verifyCommercialBrief(browser, new URL(url).origin, root);
             await verifyPhotoLibrary(browser, `http://127.0.0.1:${port}`, root);
             await verifyPhotoQueue(browser, `http://127.0.0.1:${port}`, root);
             for (const width of [390, 1440]) {

@@ -98,6 +98,7 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       "attachments",
       "documentSources",
       "documentProcessingJobs",
+      "commercialBriefs",
       "auditLogs",
       "stores",
       "storeMemberships",
@@ -732,6 +733,10 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       ).toEqual([]);
       const derivedId = new ObjectId();
       const foreignDerivedId = new ObjectId();
+      await db.collection("commercialBriefs").insertMany([
+        { organizationId: context.organizationId, storeId: new ObjectId(context.storeId), sourceId, pages: [{ text: "private brief" }] },
+        { organizationId: "foreign", storeId: new ObjectId(context.storeId), sourceId, pages: [{ text: "foreign brief" }] },
+      ]);
       await db.collection("documentProcessingJobs").insertMany([
         {
           _id: derivedId,
@@ -762,6 +767,8 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
         sources.content(context, sourceId, objects),
       ).rejects.toMatchObject({ code: "UPLOAD_NOT_FOUND" });
       expect((await sources.list(context)).sources).toEqual([]);
+      expect(await db.collection("commercialBriefs").countDocuments({ organizationId: context.organizationId, sourceId })).toBe(0);
+      expect(await db.collection("commercialBriefs").countDocuments({ organizationId: "foreign", sourceId })).toBe(1);
       const derived = await db
         .collection("documentProcessingJobs")
         .findOne({ _id: derivedId });

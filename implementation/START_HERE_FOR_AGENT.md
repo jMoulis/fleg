@@ -1,5 +1,20 @@
 # START HERE — Coding Agent
 
+## Current continuation — 2026-09-14: authorized V4-01 native-text review
+
+PR #57 was reported merged. The manager's latest feedback accepts the functional
+workflow with an UX reservation, not the measured commercial benefits. They
+explicitly approved the first V4-01 scope and selected-PDF text processing by
+OpenAI. This permits the bounded first lot without falsely closing PILOT-01.
+
+See `42_COMMERCIAL_BRIEF_REVIEW.md` for delivered boundaries and remaining gates.
+Analysis is disabled by default; model, rates and budget must be reviewed before
+the first real provider call. This branch changes no remote configuration and
+does not send the untracked PDF to a provider. Retain that user file untracked.
+V4-01 is not complete; do not jump to TECH-06 or V4-07. Offline remains frozen.
+
+Older continuation entries below are historical.
+
 ## Current continuation — 2026-09-14: TECH-05 Documents controls
 
 PR #52 is merged. The manager approved the next UI-only processing lot: expand

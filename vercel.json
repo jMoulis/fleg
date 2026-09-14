@@ -4,6 +4,7 @@
   "regions": ["cdg1"],
   "crons": [
     { "path": "/api/cron/storage-maintenance", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/document-processing", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron/document-processing", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/commercial-briefs", "schedule": "*/5 * * * *" }
   ]
 }
