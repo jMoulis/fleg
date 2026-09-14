@@ -1,5 +1,51 @@
 # TECH-05 — traitements PDF persistants, lot backend
 
+## Lot Documents — 14 septembre 2026, après fusion de la PR #52
+
+Périmètre présenté puis approuvé par le manager avant codage. L’écran Documents
+propose un volet **Texte du PDF** sur chaque source. Aucune requête de traitement
+tant que le volet reste fermé ; l’ouverture lit le statut, jamais ne crée un job.
+**Extraire le texte** appelle le POST existant, seulement pour un utilisateur
+autorisé et un magasin activé. Le serveur reste l’autorité de chaque commande.
+Une configuration invalide masque l’admission sans casser la liste des PDF.
+
+Le volet distingue attente, exécution, échec définitif, annulation et texte prêt.
+Il affiche le texte littéralement (pas de HTML/Markdown interprété), une page à
+la fois, et laisse les pages vides/scannées vides, sans OCR. Le texte n’est ni
+une analyse IA ni une validation commerciale ; la date d’expiration est visible.
+Lecture et retrait du texte restent disponibles quand l’admission est désactivée.
+
+Suivi automatique : GET toutes les 30 secondes pendant les états actifs, au plus
+20 vérifications par ouverture/actualisation manuelle, seulement avec page visible
+et réseau disponible. L’erreur arrête ce suivi ; l’utilisateur peut actualiser.
+Chaque requête expire après 15 secondes. Une réponse perdue à POST/DELETE laisse
+l’action **non confirmée** : vérifier par GET, sans réémission automatique.
+Fermeture/navigation annule les requêtes et libère le texte en mémoire. Aucun
+texte ni résultat dans IndexedDB, sessionStorage ou cache HTTP. Une lecture refusée
+efface le résultat affiché ; l’expiration locale le retire aussi.
+
+**Annuler l’extraction / Retirer le texte extrait** demande confirmation et appelle
+DELETE sur le traitement, pas sur le PDF. Une annulation n’est pas une commande
+de redémarrage ; l’admission d’un nouveau job attend expiration/nettoyage TTL.
+Les limites/rétentions/backend et les gates de déploiement ci-dessous ne changent
+pas. Aucun flag distant activé, aucune donnée réelle traitée par ce lot.
+
+Acceptation : états et requêtes Zod, réponse perdue sans double POST, refus d’accès,
+annulation, contenu littéral, page scannée, admission désactivée, lecture seule,
+polling/fermeture et rendu 390/1440 px. Recette application réelle avec MongoDB
+jetable : lecture inter-magasin refusée, texte consultable par page, retrait
+transactionnel du texte conservant le PDF et annulation persistante après reload.
+Les fixtures sont synthétiques ; la recette Preview/Blob réel reste à faire.
+
+Vérifications locales du lot : `npm run check` avec MongoDB jetable, **560 tests
+réussis**, un test runtime conditionnel exécuté séparément avec succès. La recette
+Chromium des composants réels (API simulée uniquement) passe en 390/1440 px,
+y compris arrêt après 20 vérifications et expiration du texte affiché. Build
+webpack et suite E2E complète : **72 réussis, 4 tests OpenAI réels ignorés**.
+La revue React conserve la page serveur, les contrôles d’accès dans les API et
+un chargement du texte à la demande. Le guide utilisateur est mis à jour ; la
+validation préalable des prochains lots IA/Copilote est inscrite dans AGENTS.md.
+
 ## Décision du 14 septembre 2026
 
 PR #49 fusionnée. L’inventaire autorisé du magasin démo ne trouve aucun contenu

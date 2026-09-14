@@ -24,7 +24,10 @@ import {
   DELETE,
 } from "@/app/api/stores/[storeId]/attachments/documents/[sourceId]/processing/route";
 import { GET as cron } from "@/app/api/cron/document-processing/route";
-import { documentProcessingConfig } from "@/server/services/document-processing-service";
+import {
+  documentProcessingAvailable,
+  documentProcessingConfig,
+} from "@/server/services/document-processing-service";
 import { StoreAccessDeniedError } from "@/domain/stores/authorization";
 const storeId = "a".repeat(24),
   sourceId = "b".repeat(24),
@@ -57,6 +60,14 @@ describe("document processing API and scheduled boundary", () => {
     mocks.batch.mockResolvedValue({ processed: 1 });
   });
   afterEach(() => vi.unstubAllEnvs());
+  it("exposes only scoped UI admission and fails closed for invalid configuration", () => {
+    expect(documentProcessingAvailable(storeId)).toBe(true);
+    expect(documentProcessingAvailable("c".repeat(24))).toBe(false);
+    vi.stubEnv("DOCUMENT_PROCESSING_STORE_IDS", "invalid-private-value");
+    expect(documentProcessingAvailable(storeId)).toBe(false);
+    vi.stubEnv("DOCUMENT_PROCESSING_ENABLED", "false");
+    expect(documentProcessingAvailable(storeId)).toBe(false);
+  });
   it("authorizes before accessing jobs and keeps private no-store responses", async () => {
     mocks.context.mockRejectedValueOnce(new StoreAccessDeniedError());
     expect((await GET(request(), route)).status).toBe(404);

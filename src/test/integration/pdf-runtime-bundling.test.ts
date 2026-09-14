@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { chromium, expect as browserExpect } from "@playwright/test";
 import { verifyPhotoLibrary } from "@/test/helpers/photo-library-browser";
 import { verifyPhotoQueue } from "@/test/helpers/photo-queue-browser";
+import { verifyDocumentProcessing } from "@/test/helpers/document-processing-browser";
 import { textPdf } from "@/test/fixtures/text-pdf";
 
 // Separate CI job/command: exercises Next's real compiler, not Vitest's loader.
@@ -87,11 +88,26 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
             `
             import { DocumentManager } from "@/components/documents/document-manager";
             export default function Page() {
-              return <DocumentManager storeId={"a".repeat(24)} userId="synthetic-manager" basePath="/" canWrite uploadsAvailable hasCursor={false} documents={{sources:[],nextCursor:null}} />;
+              return <DocumentManager storeId={"a".repeat(24)} userId="synthetic-manager" basePath="/" canWrite uploadsAvailable processingAvailable={false} hasCursor={false} documents={{sources:[],nextCursor:null}} />;
             }
           `,
           );
           await mkdir(join(fixture, "app", "photos"));
+          await mkdir(join(fixture, "app", "processing"));
+          await writeFile(
+            join(fixture, "app", "processing", "page.tsx"),
+            `
+            import { DocumentManager } from "@/components/documents/document-manager";
+            import { processingSource } from "@/test/helpers/document-processing-fixture";
+            export default async function Page({searchParams}) {
+              const query = await searchParams;
+              return <main className="mx-auto max-w-4xl p-4"><h1 className="text-3xl font-semibold">Documents</h1><DocumentManager
+                storeId={"a".repeat(24)} userId="synthetic-manager" basePath="/processing" canWrite={query.readonly !== "true"}
+                uploadsAvailable={false} processingAvailable={query.disabled !== "true"} hasCursor={false}
+                documents={{sources:[processingSource],nextCursor:null}} /></main>;
+            }
+          `,
+          );
           await writeFile(
             join(fixture, "app", "photos", "page.tsx"),
             `
@@ -214,6 +230,11 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
         if (process.env.DOCUMENT_UPLOAD_BROWSER_TEST === "true") {
           const browser = await chromium.launch({ headless: true });
           try {
+            await verifyDocumentProcessing(
+              browser,
+              `http://127.0.0.1:${port}`,
+              root,
+            );
             await verifyPhotoLibrary(browser, `http://127.0.0.1:${port}`, root);
             await verifyPhotoQueue(browser, `http://127.0.0.1:${port}`, root);
             for (const width of [390, 1440]) {

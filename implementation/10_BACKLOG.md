@@ -1,5 +1,15 @@
 # Build backlog — recommended order
 
+## 2026-09-14 — TECH-05 Documents controls after PR #52
+
+Manager-approved connected UI: native PDF extraction on request, bounded status
+polling, literal per-page text and cancellation preserving the original. No
+AI/provider call or production activation. See
+[the updated contract](./40_DOCUMENT_PROCESSING_JOBS.md).
+Next gate: Preview acceptance and explicit activation, not V4-01 implementation.
+All AI/Copilot changes now require intentions presented and approved before coding.
+Offline extensions stay frozen; PILOT-01 remains open.
+
 ## 2026-09-14 — TECH-05 backend started after authorized inventory
 
 PR #49 merged. No inline image/PDF content remains in the audited demo-store

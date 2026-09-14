@@ -1,5 +1,19 @@
 # START HERE — Coding Agent
 
+## Current continuation — 2026-09-14: TECH-05 Documents controls
+
+PR #52 is merged. The manager approved the next UI-only processing lot: expand
+"Texte du PDF", explicitly request native text extraction, follow status, inspect
+one page at a time and cancel/remove derived text without removing the PDF.
+No OCR, OpenAI, commercial extraction, retrieval or Copilot change. No production
+activation; offline extensions remain frozen. See `40_DOCUMENT_PROCESSING_JOBS.md`.
+Preview acceptance and explicit activation remain separate gates.
+
+Before any future AI/Copilot implementation, present intentions, data/provider
+use, costs, permission boundaries and tests, then wait for explicit manager
+approval (also recorded in AGENTS.md). Do not treat a generic "continue" as that
+approval. TECH-05/PILOT-01 remain open; V4-01 is not started.
+
 ## Current continuation — 2026-09-14: TECH-05 backend
 
 PR #49 is merged. Authorized Atlas inventory for the demo store found no inline
