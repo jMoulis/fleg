@@ -97,6 +97,7 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
       "attachmentTargetLocks",
       "attachments",
       "documentSources",
+      "documentProcessingJobs",
       "auditLogs",
       "stores",
       "storeMemberships",
@@ -729,6 +730,26 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
           })
         ).sources,
       ).toEqual([]);
+      const derivedId = new ObjectId();
+      const foreignDerivedId = new ObjectId();
+      await db.collection("documentProcessingJobs").insertMany([
+        {
+          _id: derivedId,
+          organizationId: context.organizationId,
+          storeId: new ObjectId(context.storeId),
+          sourceId: new ObjectId(sourceId),
+          state: "ready",
+          result: { privateText: "derived" },
+        },
+        {
+          _id: foreignDerivedId,
+          organizationId: "foreign",
+          storeId: new ObjectId(context.storeId),
+          sourceId: new ObjectId(sourceId),
+          state: "ready",
+          result: { privateText: "foreign" },
+        },
+      ]);
       objects.read.mockImplementationOnce(async () => {
         await lifecycle.removeSource(
           context,
@@ -741,6 +762,18 @@ describe.skipIf(!uri)("TECH-04 durable validation and cleanup", () => {
         sources.content(context, sourceId, objects),
       ).rejects.toMatchObject({ code: "UPLOAD_NOT_FOUND" });
       expect((await sources.list(context)).sources).toEqual([]);
+      const derived = await db
+        .collection("documentProcessingJobs")
+        .findOne({ _id: derivedId });
+      expect(derived?.state).toBe("cancelled");
+      expect(derived).not.toHaveProperty("result");
+      expect(
+        (
+          await db
+            .collection("documentProcessingJobs")
+            .findOne({ _id: foreignDerivedId })
+        )?.state,
+      ).toBe("ready");
       expect(await intents().findOne({ _id: receipt.id })).toMatchObject({
         state: "deleting",
         budgetHeld: true,

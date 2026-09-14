@@ -12,6 +12,7 @@ import Link from "next/link";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DocumentProcessingPanel } from "./document-processing-panel";
 import { documentSourceListSchema } from "@/domain/attachments/document-source";
 import {
   uploadIntentReceiptSchema,
@@ -30,6 +31,7 @@ interface Props {
   basePath: string;
   canWrite: boolean;
   uploadsAvailable: boolean;
+  processingAvailable: boolean;
   documents: z.infer<typeof documentSourceListSchema>;
   hasCursor: boolean;
 }
@@ -50,6 +52,7 @@ export function DocumentManager({
   basePath,
   canWrite,
   uploadsAvailable,
+  processingAvailable,
   documents,
   hasCursor,
 }: Props) {
@@ -311,70 +314,77 @@ export function DocumentManager({
         ) : (
           <ul className="divide-y rounded-xl border bg-card">
             {documents.sources.map((source) => (
-              <li
-                key={source.id}
-                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <h3 className="break-words text-sm font-semibold">
-                    {source.originalFileName}
-                  </h3>
-                  {source.caption && (
-                    <p className="break-words text-sm">{source.caption}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {source.pageCount} page{source.pageCount > 1 ? "s" : ""} ·{" "}
-                    {source.sizeBytes < 1024 * 1024
-                      ? `${Math.max(1, Math.ceil(source.sizeBytes / 1024))} Ko`
-                      : `${(source.sizeBytes / 1024 / 1024).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} Mo`}
-                    {" · "}
-                    {new Date(source.createdAt).toLocaleDateString("fr-FR", {
-                      timeZone: "Europe/Paris",
-                    })}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-3">
-                  <a
-                    className="text-sm font-medium text-primary underline underline-offset-4"
-                    href={source.contentUrl}
-                    download
-                    aria-label={`Télécharger ${source.originalFileName}`}
-                  >
-                    Télécharger
-                  </a>
-                  {canWrite && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      disabled={busy}
-                      aria-label={`Supprimer ${source.originalFileName}`}
-                      onClick={() => {
-                        if (
-                          !window.confirm(
-                            `Retirer « ${source.originalFileName} » des documents du magasin ?`,
-                          )
-                        )
-                          return;
-                        void run(async () => {
-                          z.object({
-                            state: z.literal("deleting"),
-                            deletionComplete: z.literal(false),
-                          }).parse(
-                            await attachmentCommand(
-                              `/api/stores/${storeId}/attachments/sources/${source.id}/remove`,
-                            ),
-                          );
-                          setMessage(
-                            "Document retiré. Le nettoyage du stockage est en attente.",
-                          );
-                          router.refresh();
-                        });
-                      }}
+              <li key={source.id} className="flex flex-col gap-3 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="break-words text-sm font-semibold">
+                      {source.originalFileName}
+                    </h3>
+                    {source.caption && (
+                      <p className="break-words text-sm">{source.caption}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {source.pageCount} page{source.pageCount > 1 ? "s" : ""} ·{" "}
+                      {source.sizeBytes < 1024 * 1024
+                        ? `${Math.max(1, Math.ceil(source.sizeBytes / 1024))} Ko`
+                        : `${(source.sizeBytes / 1024 / 1024).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} Mo`}
+                      {" · "}
+                      {new Date(source.createdAt).toLocaleDateString("fr-FR", {
+                        timeZone: "Europe/Paris",
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-3">
+                    <a
+                      className="text-sm font-medium text-primary underline underline-offset-4"
+                      href={source.contentUrl}
+                      download
+                      aria-label={`Télécharger ${source.originalFileName}`}
                     >
-                      Supprimer
-                    </Button>
-                  )}
+                      Télécharger
+                    </a>
+                    {canWrite && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        disabled={busy}
+                        aria-label={`Supprimer ${source.originalFileName}`}
+                        onClick={() => {
+                          if (
+                            !window.confirm(
+                              `Retirer « ${source.originalFileName} » des documents du magasin ?`,
+                            )
+                          )
+                            return;
+                          void run(async () => {
+                            z.object({
+                              state: z.literal("deleting"),
+                              deletionComplete: z.literal(false),
+                            }).parse(
+                              await attachmentCommand(
+                                `/api/stores/${storeId}/attachments/sources/${source.id}/remove`,
+                              ),
+                            );
+                            setMessage(
+                              "Document retiré. Le nettoyage du stockage est en attente.",
+                            );
+                            router.refresh();
+                          });
+                        }}
+                      >
+                        Supprimer
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                <DocumentProcessingPanel
+                  key={`${userId}:${storeId}:${source.id}`}
+                  storeId={storeId}
+                  sourceId={source.id}
+                  fileName={source.originalFileName}
+                  canWrite={canWrite}
+                  processingAvailable={processingAvailable}
+                />
               </li>
             ))}
           </ul>

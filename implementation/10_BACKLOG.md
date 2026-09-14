@@ -1,5 +1,58 @@
 # Build backlog — recommended order
 
+## 2026-09-14 — TECH-05 native-text production pilot accepted
+
+After PR #55 merged and explicit manager approval, native text extraction is
+enabled in Production for the demo/pilot store only. A synthetic two-page PDF
+was uploaded once and processed by the real Vercel schedule, without a manual
+Cron invocation, in one attempt. Mobile/desktop display, anonymous refusal, exact
+text, empty-page preservation and text removal preserving the original passed.
+See [production evidence](./40_DOCUMENT_PROCESSING_JOBS.md#activation-production-et-recette-automatique--14-septembre-2026).
+Only the two processing flags changed. Existing documents and other environment
+settings were unchanged. The test PDF was removed from the app; physical Blob
+cleanup remains pending normal maintenance, not declared complete.
+
+The TECH-05 bounded native-text lot is operationally accepted for this pilot,
+not an OCR/indexing rollout or representative commercial-PDF validation.
+Next: review the V4-01 prerequisites and present AI/provider intentions for explicit
+approval before coding. PILOT-01 is still open; TECH-06 and V7 are not started.
+
+## 2026-09-14 — TECH-05 authorized Preview acceptance after PR #54
+
+PR #54 is merged. Extraction is enabled only on `codex/tech05-preview`, for
+synthetic store `UPLOAD-01`; production configuration remains unchanged.
+Real private dev Blob → persisted job → deployed PDFium → mobile/desktop text
+display and text removal passed with one synthetic PDF. Duplicate admission
+reused one job, foreign-store access was denied, and the original remained intact.
+Preview processing was explicitly invoked through the authenticated operator
+route after closing the document tab; this is not proof of scheduled production
+execution or worker-interruption recovery. Temporary Preview bypass was revoked.
+See [deployment evidence](../docs/19_VERCEL_DEPLOYMENT.md#tech-05--recette-preview-du-14-septembre-2026).
+Next gate: separately approved production activation and deployed scheduling
+acceptance. TECH-05 stays open; PILOT-01/V4-01 prerequisites and AI approval remain.
+
+## 2026-09-14 — TECH-05 Documents controls after PR #52
+
+Manager-approved connected UI: native PDF extraction on request, bounded status
+polling, literal per-page text and cancellation preserving the original. No
+AI/provider call or production activation. See
+[the updated contract](./40_DOCUMENT_PROCESSING_JOBS.md).
+Next gate: Preview acceptance and explicit activation, not V4-01 implementation.
+All AI/Copilot changes now require intentions presented and approved before coding.
+Offline extensions stay frozen; PILOT-01 remains open.
+
+## 2026-09-14 — TECH-05 backend started after authorized inventory
+
+PR #49 merged. No inline image/PDF content remains in the audited demo-store
+scope; no file was deleted or migrated. Skip an unnecessary migration executor
+for this store. All further offline extensions stay frozen.
+
+TECH-05 backend: bounded literal PDF text extraction, persisted scoped jobs,
+retry leases, authenticated opt-in Cron and transactional derived-text deletion.
+See [the contract](./40_DOCUMENT_PROCESSING_JOBS.md). No new UI, production flag,
+OCR/provider calls or V4 business extraction. Next: Documents controls, Preview
+acceptance and explicit activation. TECH-05 and PILOT-01 remain open.
+
 ## Current scope override — 2026-09-13: offline freeze approved
 
 After PR #48, the manager confirms basic photo operation but reports excessive
@@ -210,6 +263,14 @@ for this complete historical table. New planned entries include `dependsOn`,
 | V5-02 | Vision | Photo-assisted field observations | P2 | TECH-04, V4-05, V5-01, representative photo evals |
 | V5-03 | Simulation | Visual merchandising proposals and bounded simulation | P2 | V4-07, V4-08, V5-02, measured response data |
 | V5-04 | Coaching | Actionable anomaly follow-up | P2 | V4-04, V4-08, false-alert evaluation |
+| V7-01 | Deferred architecture | Evaluate Expo native mobile, retain Next.js desktop and conditionally retire web PWA | P3 / deferred | Existing TECH-01/03, PILOT-01 feedback, explicit reprioritization |
+
+V7-01 is a future planning epic, **not a reopening of the offline extension
+freeze** or a prerequisite to current TECH-05/06 and V4/V5 work. The monorepo/native
+evaluation supersedes the Serwist-first target, not the delivered safeguards.
+Web PWA removal requires native acceptance and recovery of pending browser work.
+Its phased scope, online-only exceptions and acceptance gates are recorded in
+[the V7 roadmap](./41_V7_OFFLINE_FIRST_ROADMAP.md). No V6 scope is inferred.
 
 ## Pre-V3 gate acceptance
 

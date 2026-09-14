@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import { chromium, expect as browserExpect } from "@playwright/test";
 import { verifyPhotoLibrary } from "@/test/helpers/photo-library-browser";
 import { verifyPhotoQueue } from "@/test/helpers/photo-queue-browser";
+import { verifyDocumentProcessing } from "@/test/helpers/document-processing-browser";
+import { textPdf } from "@/test/fixtures/text-pdf";
 
 // Separate CI job/command: exercises Next's real compiler, not Vitest's loader.
 // The isolated fixture has no .env, auth, database, Blob, or provider access.
@@ -59,11 +61,12 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
         await writeFile(
           join(fixture, "app", "validate", "route.ts"),
           `
-        import { validatePdf } from "@/server/storage/pdf-validator";
+        import { validatePdf, extractPdfText } from "@/server/storage/pdf-validator";
         import { PrivateStorageError } from "@/domain/attachments/private-storage";
         export async function POST(request: Request) {
           try {
-            return Response.json(await validatePdf(new Uint8Array(await request.arrayBuffer())));
+            const bytes = new Uint8Array(await request.arrayBuffer());
+            return Response.json(await (new URL(request.url).searchParams.has("extract") ? extractPdfText(bytes) : validatePdf(bytes)));
           } catch (error) {
             const code = error instanceof PrivateStorageError ? error.code : "STORAGE_UNAVAILABLE";
             return Response.json({ code }, { status: code === "STORAGE_INTEGRITY" ? 422 : 503 });
@@ -85,11 +88,26 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
             `
             import { DocumentManager } from "@/components/documents/document-manager";
             export default function Page() {
-              return <DocumentManager storeId={"a".repeat(24)} userId="synthetic-manager" basePath="/" canWrite uploadsAvailable hasCursor={false} documents={{sources:[],nextCursor:null}} />;
+              return <DocumentManager storeId={"a".repeat(24)} userId="synthetic-manager" basePath="/" canWrite uploadsAvailable processingAvailable={false} hasCursor={false} documents={{sources:[],nextCursor:null}} />;
             }
           `,
           );
           await mkdir(join(fixture, "app", "photos"));
+          await mkdir(join(fixture, "app", "processing"));
+          await writeFile(
+            join(fixture, "app", "processing", "page.tsx"),
+            `
+            import { DocumentManager } from "@/components/documents/document-manager";
+            import { processingSource } from "@/test/helpers/document-processing-fixture";
+            export default async function Page({searchParams}) {
+              const query = await searchParams;
+              return <main className="mx-auto max-w-4xl p-4"><h1 className="text-3xl font-semibold">Documents</h1><DocumentManager
+                storeId={"a".repeat(24)} userId="synthetic-manager" basePath="/processing" canWrite={query.readonly !== "true"}
+                uploadsAvailable={false} processingAvailable={query.disabled !== "true"} hasCursor={false}
+                documents={{sources:[processingSource],nextCursor:null}} /></main>;
+            }
+          `,
+          );
           await writeFile(
             join(fixture, "app", "photos", "page.tsx"),
             `
@@ -178,6 +196,19 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
           parserVersion: "pdfium-2.1.13-fleg-2",
         });
         expect(valid.status).toBe(200);
+        const extracted = await fetch(`${url}?extract=1`, {
+          method: "POST",
+          body: textPdf(["Literal page one", "Literal page two"]),
+          signal: AbortSignal.timeout(20000),
+        });
+        expect(extracted.status).toBe(200);
+        expect(await extracted.json()).toEqual({
+          extractorVersion: "pdfium-2.1.13-text-1",
+          pages: [
+            { page: 1, text: "Literal page one" },
+            { page: 2, text: "Literal page two" },
+          ],
+        });
         const padded = Buffer.concat([Buffer.from(pdf), Buffer.alloc(351792)]);
         const paddedResponse = await fetch(url, {
           method: "POST",
@@ -199,6 +230,11 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
         if (process.env.DOCUMENT_UPLOAD_BROWSER_TEST === "true") {
           const browser = await chromium.launch({ headless: true });
           try {
+            await verifyDocumentProcessing(
+              browser,
+              `http://127.0.0.1:${port}`,
+              root,
+            );
             await verifyPhotoLibrary(browser, `http://127.0.0.1:${port}`, root);
             await verifyPhotoQueue(browser, `http://127.0.0.1:${port}`, root);
             for (const width of [390, 1440]) {
