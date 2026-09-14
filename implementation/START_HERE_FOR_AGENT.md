@@ -1,5 +1,21 @@
 # START HERE — Coding Agent
 
+## Current continuation — 2026-09-14: TECH-05 backend
+
+PR #49 is merged. Authorized Atlas inventory for the demo store found no inline
+photo/PDF content to migrate/delete. Blob originals and deletion metadata remain
+intact. Do not infer other stores are audited or build a migration for this empty
+scope. Offline extensions remain frozen.
+
+The manager approves TECH-05. This backend lot adds bounded native PDF text
+extraction, durable MongoDB jobs, an opt-in authenticated Cron, source/page
+provenance and transactional source-deletion cleanup. No new SDK, OCR, AI,
+commercial extraction, indexing or UI. Read `40_DOCUMENT_PROCESSING_JOBS.md`.
+No production activation or real-source processing is authorized implicitly.
+Next: lean Documents controls and Preview recovery/deletion acceptance, then
+explicit activation. TECH-05/PILOT-01 are not complete; V4-01 is not started.
+Historical blockers below are superseded only by these scoped decisions.
+
 ## Current decision — 2026-09-13: freeze offline extensions; migration preparation
 
 PR #48 is merged (`43fa370`). The manager reports the photo workflow works but

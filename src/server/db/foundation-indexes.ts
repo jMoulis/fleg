@@ -64,6 +64,20 @@ export async function ensureFoundationIndexesForDb(db: Db): Promise<void> {
   await migrateExperimentAnalysisInputIndex(db);
   await migrateLayoutOptionalUniqueIndexes(db);
   await Promise.all([
+    db.collection("documentProcessingJobs").createIndex(
+      { organizationId: 1, storeId: 1, sourceId: 1, checksumSha256: 1, policyVersion: 1 },
+      { unique: true, name: "document_processing_source_version" },
+    ),
+    db.collection("documentProcessingJobs").createIndex(
+      { organizationId: 1, storeId: 1, state: 1, nextAttemptAt: 1 },
+      { name: "document_processing_due" },
+    ),
+    db.collection("documentProcessingJobs").createIndex(
+      { expiresAt: 1 }, { expireAfterSeconds: 0, name: "document_processing_expiry" },
+    ),
+    db.collection("documentProcessingLanes").createIndex(
+      { organizationId: 1, storeId: 1 }, { unique: true, name: "document_processing_lane_scope" },
+    ),
     db.collection("stores").createIndex(
       { organizationId: 1, code: 1 },
       { unique: true, name: "stores_org_code_unique" },

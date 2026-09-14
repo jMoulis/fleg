@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { chromium, expect as browserExpect } from "@playwright/test";
 import { verifyPhotoLibrary } from "@/test/helpers/photo-library-browser";
 import { verifyPhotoQueue } from "@/test/helpers/photo-queue-browser";
+import { textPdf } from "@/test/fixtures/text-pdf";
 
 // Separate CI job/command: exercises Next's real compiler, not Vitest's loader.
 // The isolated fixture has no .env, auth, database, Blob, or provider access.
@@ -59,11 +60,12 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
         await writeFile(
           join(fixture, "app", "validate", "route.ts"),
           `
-        import { validatePdf } from "@/server/storage/pdf-validator";
+        import { validatePdf, extractPdfText } from "@/server/storage/pdf-validator";
         import { PrivateStorageError } from "@/domain/attachments/private-storage";
         export async function POST(request: Request) {
           try {
-            return Response.json(await validatePdf(new Uint8Array(await request.arrayBuffer())));
+            const bytes = new Uint8Array(await request.arrayBuffer());
+            return Response.json(await (new URL(request.url).searchParams.has("extract") ? extractPdfText(bytes) : validatePdf(bytes)));
           } catch (error) {
             const code = error instanceof PrivateStorageError ? error.code : "STORAGE_UNAVAILABLE";
             return Response.json({ code }, { status: code === "STORAGE_INTEGRITY" ? 422 : 503 });
@@ -178,6 +180,19 @@ describe.skipIf(process.env.PDF_RUNTIME_TEST !== "true")(
           parserVersion: "pdfium-2.1.13-fleg-2",
         });
         expect(valid.status).toBe(200);
+        const extracted = await fetch(`${url}?extract=1`, {
+          method: "POST",
+          body: textPdf(["Literal page one", "Literal page two"]),
+          signal: AbortSignal.timeout(20000),
+        });
+        expect(extracted.status).toBe(200);
+        expect(await extracted.json()).toEqual({
+          extractorVersion: "pdfium-2.1.13-text-1",
+          pages: [
+            { page: 1, text: "Literal page one" },
+            { page: 2, text: "Literal page two" },
+          ],
+        });
         const padded = Buffer.concat([Buffer.from(pdf), Buffer.alloc(351792)]);
         const paddedResponse = await fetch(url, {
           method: "POST",
