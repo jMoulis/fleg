@@ -1,5 +1,19 @@
 # Build backlog — recommended order
 
+## 2026-09-14 — TECH-05 authorized Preview acceptance after PR #54
+
+PR #54 is merged. Extraction is enabled only on `codex/tech05-preview`, for
+synthetic store `UPLOAD-01`; production configuration remains unchanged.
+Real private dev Blob → persisted job → deployed PDFium → mobile/desktop text
+display and text removal passed with one synthetic PDF. Duplicate admission
+reused one job, foreign-store access was denied, and the original remained intact.
+Preview processing was explicitly invoked through the authenticated operator
+route after closing the document tab; this is not proof of scheduled production
+execution or worker-interruption recovery. Temporary Preview bypass was revoked.
+See [deployment evidence](../docs/19_VERCEL_DEPLOYMENT.md#tech-05--recette-preview-du-14-septembre-2026).
+Next gate: separately approved production activation and deployed scheduling
+acceptance. TECH-05 stays open; PILOT-01/V4-01 prerequisites and AI approval remain.
+
 ## 2026-09-14 — TECH-05 Documents controls after PR #52
 
 Manager-approved connected UI: native PDF extraction on request, bounded status
