@@ -297,6 +297,16 @@ causes are uncertain; do not trigger supplier orders or autonomous intervention.
 
 ## Deferred choices
 
+### V7 — unified offline-first refactoring
+
+On 2026-09-14 the manager requested a deferred **V7-01** epic using Serwist,
+local domain persistence and reliable synchronization to unify connected and
+offline workflows. See [the V7 roadmap](./41_V7_OFFLINE_FIRST_ROADMAP.md).
+This records future intent only: the offline freeze remains active, V4/V5 stay
+in their current order, and no V6 scope or immediate implementation is implied.
+
+### Other prerequisites
+
 Provider accounts, regions and budgets; actual field devices; representative
 PDF variations; optional aggregate transaction data; geographic coverage and
 terms of external context sources; and sufficient evidence for causal methods

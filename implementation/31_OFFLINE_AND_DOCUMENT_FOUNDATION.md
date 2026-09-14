@@ -12,6 +12,10 @@ requirements for delivered capabilities, not an obligation to expand them.
 
 ## Decision and status
 
+**Future planning, 2026-09-14:** [V7-01](./41_V7_OFFLINE_FIRST_ROADMAP.md)
+records a unified offline-first refactoring with Serwist. It does not lift the
+freeze above or authorize further offline work in TECH-04/05/06 or V4/V5.
+
 Framed on 2026-09-11. `TECH-01` now has a read-only implementation and automated
 production-build acceptance; physical device acceptance remains open. See
 [the delivery record](./33_TECH_01_OFFLINE_WORKSPACE.md).
