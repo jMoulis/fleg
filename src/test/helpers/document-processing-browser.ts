@@ -68,6 +68,15 @@ export async function verifyDocumentProcessing(
           .getByRole("button", { name: "Texte du PDF", exact: true })
           .click();
       };
+      const visibility = async (state: "visible" | "hidden") => {
+        await page.evaluate((value) => {
+          Object.defineProperty(document, "visibilityState", {
+            configurable: true,
+            value,
+          });
+          document.dispatchEvent(new Event("visibilitychange"));
+        }, state);
+      };
       await page.goto(`${origin}/processing`);
       expect(reads).toBe(0); // Collapsed list has no per-document requests.
       await page
@@ -95,16 +104,32 @@ export async function verifyDocumentProcessing(
         page.getByText("Extraction en attente", { exact: true }),
       ).toBeVisible();
       expect(posts).toBe(1); // Lost acknowledgement recovered by GET, not POST.
+      await expect(page.getByText(/^Demande enregistrée\./)).toBeVisible();
+      await page.screenshot({
+        path: join(
+          root,
+          ".local-backups",
+          `document-processing-waiting-${width}.png`,
+        ),
+        fullPage: true,
+      });
       job = { ...processingJob(), state: "running", result: null };
       await page.clock.runFor(30_100);
       await expect(
         page.getByText("Extraction en cours", { exact: true }),
       ).toBeVisible();
+      // No background reads while hidden, then immediate GET on return.
+      const beforeHidden = reads;
+      await visibility("hidden");
       job = processingJob();
       await page.clock.runFor(30_100);
+      expect(reads).toBe(beforeHidden);
+      await visibility("visible");
       await expect(
         page.getByText("Texte extrait", { exact: true }),
       ).toBeVisible();
+      expect(reads).toBe(beforeHidden + 1);
+      expect(posts).toBe(1);
       await expect(
         page.getByLabel("Texte de la page 1", { exact: true }),
       ).toContainText("<script>");
@@ -133,6 +158,11 @@ export async function verifyDocumentProcessing(
           })
           .getByRole("alert"),
       ).toContainText("Statut indisponible");
+      const beforeErrorReturn = reads;
+      await visibility("hidden");
+      await visibility("visible");
+      await page.clock.runFor(30_100);
+      expect(reads).toBe(beforeErrorReturn); // Errors still require manual recovery.
       await expect(
         page.getByLabel("Texte de la page 1", { exact: true }),
       ).toHaveCount(0);
@@ -197,10 +227,38 @@ export async function verifyDocumentProcessing(
       await expect(
         page.getByText("Extraction en attente", { exact: true }),
       ).toBeVisible();
+      // Returning while offline does not read. Network recovery reads once,
+      // including when visibility and online notifications arrive together.
+      const beforeOffline = reads;
+      await visibility("hidden");
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, "onLine", {
+          configurable: true,
+          value: false,
+        });
+      });
+      await visibility("visible");
+      await page.clock.runFor(30_100);
+      expect(reads).toBe(beforeOffline);
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, "onLine", {
+          configurable: true,
+          value: true,
+        });
+        window.dispatchEvent(new Event("online"));
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      await expect.poll(() => reads).toBe(beforeOffline + 1);
+      await expect(
+        page.getByRole("button", { name: "Actualiser le statut" }),
+      ).toBeEnabled();
       await page
         .getByRole("button", { name: "Masquer le texte du PDF" })
         .click();
       const before = reads;
+      await visibility("hidden");
+      await visibility("visible");
+      await page.evaluate(() => window.dispatchEvent(new Event("online")));
       await page.clock.runFor(90_000);
       expect(reads).toBe(before);
       if (width === 390) {
@@ -211,7 +269,12 @@ export async function verifyDocumentProcessing(
         ).toBeVisible();
         const initialReads = reads;
         for (let check = 1; check <= 20; check++) {
-          await page.clock.runFor(30_100);
+          if (check % 2 === 0) {
+            await visibility("hidden");
+            await visibility("visible");
+          } else {
+            await page.clock.runFor(30_100);
+          }
           await expect.poll(() => reads).toBe(initialReads + check);
           await expect(
             page.getByRole("button", { name: "Actualiser le statut" }),
@@ -220,6 +283,9 @@ export async function verifyDocumentProcessing(
         await expect(
           page.getByText(/Suivi automatique en pause/),
         ).toBeVisible();
+        await visibility("hidden");
+        await visibility("visible");
+        await page.evaluate(() => window.dispatchEvent(new Event("online")));
         await page.clock.runFor(90_000);
         expect(reads).toBe(initialReads + 20);
         // Text already displayed disappears at expiry, even without navigation.

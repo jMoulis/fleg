@@ -100,7 +100,7 @@ function ProcessingContent({
   const active = job?.state === "queued" || job?.state === "running";
   useEffect(() => {
     if (!active || error || checks >= 20) return;
-    const timer = setInterval(() => {
+    const checkStatus = () => {
       if (
         document.visibilityState !== "visible" ||
         !navigator.onLine ||
@@ -109,8 +109,15 @@ function ProcessingContent({
         return;
       setChecks((value) => value + 1);
       void run("GET");
-    }, 30_000);
-    return () => clearInterval(timer);
+    };
+    const timer = setInterval(checkStatus, 30_000);
+    document.addEventListener("visibilitychange", checkStatus);
+    window.addEventListener("online", checkStatus);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", checkStatus);
+      window.removeEventListener("online", checkStatus);
+    };
   }, [active, error, checks, run]);
 
   // Expiry also applies to text already in memory, not just the next API read.

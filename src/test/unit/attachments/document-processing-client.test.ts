@@ -82,6 +82,12 @@ describe("document processing controls contract", () => {
     const job = processingJob();
     expect(processingLabels.ready).toBe("Texte extrait");
     expect(processingDetail(job)).toContain("sans analyse IA");
+    expect(processingDetail({ ...job, state: "queued", result: null })).toBe(
+      "Demande enregistrée. Le traitement peut prendre quelques minutes. Vous pouvez quitter cette page.",
+    );
+    expect(processingDetail({ ...job, state: "running", result: null })).toBe(
+      "Le traitement peut prendre quelques minutes. Vous pouvez quitter cette page.",
+    );
     expect(
       processingDetail({ ...job, state: "queued", error: "temporary" }),
     ).toContain("reprise automatique");
