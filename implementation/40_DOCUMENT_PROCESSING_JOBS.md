@@ -1,5 +1,46 @@
 # TECH-05 — traitements PDF persistants, lot backend
 
+## Activation Production et recette automatique — 14 septembre 2026
+
+Après fusion de la PR #55, le manager autorise explicitement l'activation
+Production et sa recette synthétique. Deux seules variables ajoutées en
+Production : `DOCUMENT_PROCESSING_ENABLED=true` et `DOCUMENT_PROCESSING_STORE_IDS`
+limité à `6a96ea77bd32c857c7b4f866`. Les autres paramètres, dont les credentials,
+le stockage, les plafonds et le Copilote, sont inchangés. Aucun job en attente
+dans ce magasin avant activation ; aucune demande créée sur les PDF existants.
+
+Déploiement `dpl_4oh3WGkamHePsaS6MfK7xYjG12Va`, master fusionné
+`7df60aa3748f223a517d64fa2d1be27a429fb3d7`, READY et alias Production courant.
+La configuration Vercel référence ce déploiement pour `/api/cron/document-processing`
+toutes les cinq minutes. Pas de promotion d'une Preview.
+
+Recette réelle : un PDF synthétique de 877 octets / deux pages, un seul PUT Blob
+Production ; demande depuis Documents à **06:34:50 UTC**, onglet fermé ensuite.
+**Aucun appel manuel de Cron.** Invocation Vercel HTTP 200 à **06:35:45 UTC**,
+job extrait en une tentative entre **06:35:47.343 et 06:35:47.923 UTC**. Ce passage
+confirme l'exécution planifiée réelle, pas une garantie de délai pour tous les jobs.
+
+Texte exact, page vide préservée, consultation mobile 390 px et desktop 1440 px,
+réponse `private, no-store`, refus anonyme 404 et aucun coût fournisseur IA.
+Retrait du texte confirmé dans MongoDB (champ résultat absent), API et après
+reload ; le PDF original téléchargé avait toujours la même empreinte SHA-256.
+Zéro erreur navigateur pendant la recette et zéro entrée de niveau erreur dans
+les logs de ce déploiement entre activation et contrôle final.
+
+Le PDF synthétique a ensuite été retiré de l'application via son API normale,
+après vérification de son identifiant, empreinte et chemin Blob. Le contenu n'est
+plus accessible (404). État observé : `deleting`, budget conservé en attendant la
+maintenance de stockage ; **suppression physique et libération du quota non encore
+confirmées**. Aucun document utilisateur supprimé. Métadonnées/empreintes des cinq
+sources préexistantes inchangées ; sessions de recette fermées.
+
+Le lot TECH-05 d'extraction native bornée est accepté pour ce pilote. Les tests
+locaux de conflits, interruption/reprise et révocation restent les preuves de ces
+cas : ils n'ont pas été provoqués en Production. Pas d'OCR, d'IA, de vectorisation,
+d'analyse métier ni de validation PILOT-01/V4-01 implicite. Pour arrêter l'admission,
+mettre le flag à `false` et redéployer le code courant ; lecture/annulation restent
+disponibles. Respecter les règles de rollback ci-dessous si des résultats existent.
+
 ## Recette Preview autorisée — après fusion de la PR #54
 
 Le 14 septembre 2026, le manager autorise une activation **Preview uniquement**

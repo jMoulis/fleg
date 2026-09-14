@@ -1,5 +1,22 @@
 # Build backlog — recommended order
 
+## 2026-09-14 — TECH-05 native-text production pilot accepted
+
+After PR #55 merged and explicit manager approval, native text extraction is
+enabled in Production for the demo/pilot store only. A synthetic two-page PDF
+was uploaded once and processed by the real Vercel schedule, without a manual
+Cron invocation, in one attempt. Mobile/desktop display, anonymous refusal, exact
+text, empty-page preservation and text removal preserving the original passed.
+See [production evidence](./40_DOCUMENT_PROCESSING_JOBS.md#activation-production-et-recette-automatique--14-septembre-2026).
+Only the two processing flags changed. Existing documents and other environment
+settings were unchanged. The test PDF was removed from the app; physical Blob
+cleanup remains pending normal maintenance, not declared complete.
+
+The TECH-05 bounded native-text lot is operationally accepted for this pilot,
+not an OCR/indexing rollout or representative commercial-PDF validation.
+Next: review the V4-01 prerequisites and present AI/provider intentions for explicit
+approval before coding. PILOT-01 is still open; TECH-06 and V7 are not started.
+
 ## 2026-09-14 — TECH-05 authorized Preview acceptance after PR #54
 
 PR #54 is merged. Extraction is enabled only on `codex/tech05-preview`, for
