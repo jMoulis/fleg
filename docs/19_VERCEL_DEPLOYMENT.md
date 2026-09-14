@@ -70,6 +70,40 @@ L’intégration Atlas du Marketplace Vercel peut automatiser la connexion, mais
 
 ## Isolation MongoDB Preview — état vérifié le 2026-09-12
 
+### TECH-05 — recette Preview du 14 septembre 2026
+
+Après fusion de la PR #54 et autorisation explicite, branche de recette
+`codex/tech05-preview` au commit `1ddc0c16d550e90c6e7916b123b078cd9eecba49`.
+[Preview de recette](https://fleg-git-codex-tech05-preview-julien-moulis-projects.vercel.app)
+sur `dpl_GD3xpjX1VJ78KVGW9hsYcN6rrwu2` (READY). La protection Vercel reste active.
+Un lien opérateur temporaire de 30 minutes a été révoqué après les vérifications.
+
+Les overrides sont limités à cette branche Preview :
+
+- `DOCUMENT_PROCESSING_ENABLED=true` ; allowlist limitée à `UPLOAD-01`
+  (`6aa6c95cc9bde65039036e8e`), pas au magasin témoin ;
+- `fleg_preview_app` / `fleg_preview_auth`, compte `fleg_preview` ;
+- Blob dev `store_5MOJSflf0L273Hz3`, namespace `preview-tech05-20260914` ;
+- plafonds de recette 10 Mio / 5 objets par magasin et environnement ;
+- uploads dev et maintenance activés ; secret Cron dédié ;
+- OpenAI et Resend neutralisés, inscriptions fermées, invitations manuelles.
+
+Recette réelle : un PDF synthétique (871 octets, deux pages), un PUT, un job même
+après rejeu, extraction en une tentative après fermeture de l'onglet et appel
+authentifié de la route opérateur. Accès inter-magasin refusé, texte exact et page
+vide préservée, rendu mobile/desktop, retrait physique du texte et état persistant
+après reload. PDF original conservé, empreinte de téléchargement identique.
+L'assertion de recette MongoDB a été corrigée (`result` absent, et non `null`) ;
+aucun correctif applicatif n'a été nécessaire. Le PDF synthétique reste en Preview.
+
+Les variables Production ont été comparées avant/après : aucune modification.
+Aucun PDF utilisateur ni appel IA. Les plafonds applicatifs ne constituent pas
+un plafond de facturation commun aux autres bases utilisant Blob dev.
+Matériel opérateur et captures privés dans `.local-backups/tech05-preview-20260914/`.
+La planification Cron automatique Production, la reprise après interruption sur
+infrastructure distante et l'activation Production ne sont pas validées par cette
+recette. Ne pas promouvoir le runtime Preview en Production.
+
 ### Mise à jour du 2026-09-13 — recette Documents PR #45
 
 La branche `codex/enable-production-documents` a maintenant une configuration
