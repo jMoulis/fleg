@@ -62,20 +62,20 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^26",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.3.4",
     "fake-indexeddb": "^6.2.5",
     "knip": "^6.35.1",
     "serwist": "^9.5.12",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
-    "typescript": "^5",
-    "undici": "7.29.0",
-    "vitest": "^4.1.11"
+    "typescript": "^7",
+    "undici": "8.10.2",
+    "vitest": "^5.0.0"
   }
 }
