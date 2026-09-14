@@ -1,5 +1,16 @@
 # Offline field work and document foundation
 
+## 2026-09-14 — current document continuation
+
+Authorized inventory found no inline PDF/photo files in the demo store after
+PR #49. No migration/deletion was needed; other stores are not covered by that
+finding. TECH-05 starts with a bounded native-text backend, MongoDB durable jobs
+and an opt-in authenticated Cron. See [40 — processing jobs](./40_DOCUMENT_PROCESSING_JOBS.md)
+for the Workflow evaluation, budgets and deletion guarantees. After PR #52, the
+manager approved connected Documents controls (request/status/per-page text/cancel).
+Local UI acceptance is recorded there; Preview acceptance and explicit activation
+remain open. No offline expansion, production activation, V4-01 or pilot closure.
+
 ## 2026-09-13 scope override — offline extensions frozen
 
 The manager approves stopping further offline expansion after PR #48: the photo

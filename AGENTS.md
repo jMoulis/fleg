@@ -27,6 +27,11 @@
 - Persist recommendation inputs/model version so decisions are explainable.
 - Build for monthly data now, daily/weekly facts later without schema replacement.
 
+## AI/Copilot approval workflow
+
+- Before coding any step that changes AI or Copilot behavior, present the intended user benefit, scope, deterministic vs AI responsibilities, data sent to providers, tools/permissions, expected costs, safeguards and tests.
+- Wait for the manager's explicit approval of that scope before implementation. A general request to continue does not approve an unpresented AI change.
+
 ## Definition of done
 Every feature includes:
 - types + Zod schemas,

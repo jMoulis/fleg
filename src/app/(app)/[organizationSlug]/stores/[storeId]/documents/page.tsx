@@ -6,6 +6,7 @@ import { requireStoreContext } from "@/server/auth/store-context";
 import { getAppDb } from "@/server/db/mongo-client";
 import { DocumentSourceRepository } from "@/server/repositories/document-source-repository";
 import { privateUploadsAvailable } from "@/server/storage/upload-transport";
+import { documentProcessingAvailable } from "@/server/services/document-processing-service";
 
 export const metadata: Metadata = { title: "Documents — F&L Cockpit" };
 export default async function DocumentsPage({
@@ -28,7 +29,7 @@ export default async function DocumentsPage({
     cursor.success ? cursor.data : undefined,
   );
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-10">
+    <main className="mx-auto w-full max-w-4xl px-4 pt-6 pb-24 sm:px-6 lg:py-10">
       <h1 className="text-3xl font-semibold tracking-tight">Documents</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Conservez les PDF de votre magasin. Leur ajout ne déclenche pas
@@ -43,6 +44,7 @@ export default async function DocumentsPage({
         hasCursor={cursor.success}
         canWrite={context.permissions.includes("attachments.write")}
         uploadsAvailable={privateUploadsAvailable(context)}
+        processingAvailable={documentProcessingAvailable(context.storeId)}
       />
     </main>
   );

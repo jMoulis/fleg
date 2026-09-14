@@ -9,12 +9,13 @@ import { capWasmMemory } from "./pdf-memory.mjs";
 const require = createRequire(import.meta.url);
 let contentStarted = false;
 try {
-  const { bytes, maxPages, wasmMemoryPages } = workerData;
+  const { bytes, maxPages, wasmMemoryPages, extractText = false } = workerData;
   if (
     !(bytes instanceof Uint8Array) ||
     bytes.length > 25 * 1024 * 1024 ||
     maxPages !== 60 ||
-    wasmMemoryPages !== 4096
+    wasmMemoryPages !== 4096 ||
+    typeof extractText !== "boolean"
   )
     throw new Error("Invalid worker input");
   const { PDFiumModule } = require("@hyzyla/pdfium");
@@ -68,15 +69,44 @@ try {
   const pageCount = pdf._FPDF_GetPageCount(document);
   if (!Number.isInteger(pageCount) || pageCount < 1 || pageCount > maxPages)
     throw new Error("Invalid page count");
+  const pages = [];
+  let totalCharacters = 0;
   for (let index = 0; index < pageCount; index++) {
     const page = pdf._FPDF_LoadPage(document, index);
     if (!page) throw new Error("Unreadable page");
+    if (extractText) {
+      const textPage = pdf._FPDFText_LoadPage(page);
+      if (!textPage) throw new Error("Unreadable text page");
+      const count = pdf._FPDFText_CountChars(textPage);
+      if (!Number.isInteger(count) || count < 0 || count > 20000)
+        throw new Error("Text limit");
+      let text = "";
+      if (count > 0) {
+        const textPointer = pdf._malloc((count + 1) * 2);
+        if (!textPointer) throw new Error("Text allocation refused");
+        const length = pdf._FPDFText_GetText(textPage, 0, count, textPointer);
+        if (length < 1 || length > count + 1)
+          throw new Error("Invalid text size");
+        text = new TextDecoder("utf-16le").decode(
+          pdf.HEAPU8.subarray(textPointer, textPointer + (length - 1) * 2),
+        );
+        pdf._free(textPointer);
+      }
+      totalCharacters += text.length;
+      if (totalCharacters > 120000) throw new Error("Document text limit");
+      pages.push({ page: index + 1, text });
+      pdf._FPDFText_ClosePage(textPage);
+    }
     pdf._FPDF_ClosePage(page);
   }
   pdf._FPDF_CloseDocument(document);
   pdf._free(pointer);
   pdf._FPDF_DestroyLibrary();
-  parentPort.postMessage({ pageCount, parserVersion: "pdfium-2.1.13-fleg-2" });
+  parentPort.postMessage(
+    extractText
+      ? { extractorVersion: "pdfium-2.1.13-text-1", pages }
+      : { pageCount, parserVersion: "pdfium-2.1.13-fleg-2" },
+  );
 } catch {
   // Never emit document content or library diagnostics.
   parentPort.postMessage({

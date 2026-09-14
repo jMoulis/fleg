@@ -73,6 +73,28 @@ mensuel seul ne permet pas de reconstituer des jours manquants.
 
 ## Conserver un PDF dans Documents
 
+### Lire le texte d’un PDF
+
+Dans la liste, **Texte du PDF** ouvre le suivi de son extraction. Si cette fonction
+est activée pour le magasin, un responsable peut cliquer sur **Extraire le texte**.
+Ce n’est pas une analyse IA : le document n’est pas envoyé à OpenAI et ne crée
+aucune promotion ou recommandation.
+
+Le traitement peut prendre quelques minutes ; vous pouvez quitter la page puis
+revenir. **Actualiser le statut** vérifie où il en est sans le relancer. Si une
+action n’est pas confirmée, actualisez avant de recommencer, sans renvoyer le PDF.
+
+Lorsque le texte est prêt, choisissez une **Page**. Les tableaux peuvent perdre
+leur disposition : vérifiez toujours l’original. Une page vide ou scannée peut
+ne contenir aucun texte détectable ; aucune reconnaissance d’image (OCR) n’est
+effectuée. La date de disponibilité du texte temporaire est affichée.
+
+**Retirer le texte extrait** (ou **Annuler l’extraction**) conserve le PDF original.
+Une annulation est durable jusqu’à expiration du traitement ; elle ne permet pas
+de relancer aussitôt. Le bouton **Supprimer** de la fiche reste, lui, destiné au PDF.
+
+### Envoyer et conserver le fichier
+
 La rubrique **Documents** est distincte des imports de ventes. Elle permet de
 conserver un PDF pour le magasin actif ; elle ne transforme pas son contenu en
 ventes, promotions ou recommandations IA. Le bouton **Envoyer le PDF** est
