@@ -1,5 +1,35 @@
 # TECH-05 — traitements PDF persistants, lot backend
 
+## Recette Preview autorisée — après fusion de la PR #54
+
+Le 14 septembre 2026, le manager autorise une activation **Preview uniquement**
+et une recette sur données synthétiques. La branche fusionnée ayant été supprimée,
+`codex/tech05-preview` part du master `1ddc0c1`. Déploiement validé :
+`dpl_GD3xpjX1VJ78KVGW9hsYcN6rrwu2`, état READY, cible Preview.
+
+Un seul magasin de test (`UPLOAD-01`) est autorisé pour le traitement et la
+maintenance. Bases Preview, compte MongoDB limité et Blob dev ; OpenAI et envoi
+d'e-mails neutralisés sur cette branche. Aucune variable Production modifiée.
+
+Preuves : PDF synthétique de 871 octets / deux pages, un PUT Blob réel ; demande
+depuis Documents puis fermeture de l'onglet ; demande répétée sans second job ;
+refus du magasin témoin ; route opérateur sans secret refusée (401), puis un
+traitement authentifié réussi en une tentative. Le texte extrait est exact et
+la page vide reste vide. Consultation 390/1440 px, retrait du texte et reload
+réussis. Le champ résultat est supprimé dans MongoDB et exposé comme `null` par
+l'API ; le PDF original téléchargé conserve la même empreinte SHA-256.
+
+Le script de recette a initialement attendu `null` en MongoDB plutôt que l'absence
+du champ. Assertion corrigée, état final revérifié sans nouvel upload ni changement
+applicatif. Le PDF synthétique est conservé dans le magasin de test ; aucun fichier
+utilisateur n'a été envoyé. L'accès temporaire Vercel a été révoqué après recette.
+
+La route Cron a été invoquée manuellement, comme prévu en Preview. Cette recette
+ne prouve pas un déclenchement automatique en Production, une reprise après arrêt
+de worker ou une révocation concurrente sur infrastructure distante (tests locaux
+existants conservés). TECH-05 reste ouvert pour l'activation Production séparément
+autorisée et sa recette. Pas d'OCR, d'IA, de vectorisation ni de changement V4/V7.
+
 ## Lot Documents — 14 septembre 2026, après fusion de la PR #52
 
 Périmètre présenté puis approuvé par le manager avant codage. L’écran Documents
